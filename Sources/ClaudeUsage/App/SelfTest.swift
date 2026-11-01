@@ -647,7 +647,7 @@ enum SelfTest {
             AppModels.music.bridge.injectForTesting(track: nil, playing: false)
             UserDefaults.standard.set(NotchTab.home.rawValue, forKey: NotchTab.storageKey)
             await wait(0.8)
-            check(LayoutProbe.frames["home.startMusic"] != nil, "\(label): Home offers Putar musik when nothing plays")
+            check(LayoutProbe.frames["home.startMusic"] != nil, "\(label): Home offers Play music when nothing plays")
             verify("Home with no music", "tab-home-nomusic-\(label)")
         }
         notch.close()

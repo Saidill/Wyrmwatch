@@ -13,15 +13,15 @@ struct MusicPage: View {
             Group {
                 if bridge.permissionDenied {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Beri izin app ini mengontrol Music untuk melihat lagu yang diputar.")
+                        Text("Allow this app to control Music to see what's playing.")
                             .font(.app(12))
                             .foregroundStyle(Palette.text2)
                             .fixedSize(horizontal: false, vertical: true)
-                        NotchChip(title: "Beri izin") { bridge.openPermissionSettings() }
+                        NotchChip(title: "Give access") { bridge.openPermissionSettings() }
                             .frame(width: 100)
                     }
                 } else if bridge.track == nil {
-                    NotchChip(title: "Putar musik") { bridge.startMusic() }
+                    NotchChip(title: "Play music") { bridge.startMusic() }
                         .frame(width: 120)
                 } else {
                     playlist
@@ -41,7 +41,7 @@ struct MusicPage: View {
     @ViewBuilder private var playlist: some View {
         if let list = bridge.playlist {
             if list.isEmpty {
-                Text("Daftar lagu tidak tersedia untuk sumber ini.")
+                Text("No song list for this source.")
                     .font(.app(12))
                     .foregroundStyle(Palette.text2)
             } else {

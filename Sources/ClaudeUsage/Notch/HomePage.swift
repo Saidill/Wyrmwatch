@@ -78,7 +78,7 @@ struct HomePage: View {
         Button { bridge.startMusic() } label: {
             HStack(spacing: 8) {
                 Image(systemName: "play.fill").font(.system(size: 12, weight: .semibold))
-                Text("Putar musik").font(.app(12.5, .medium)).lineLimit(1)
+                Text("Play music").font(.app(12.5, .medium)).lineLimit(1)
             }
             .foregroundStyle(Palette.text)
             .padding(.horizontal, 16)
@@ -106,7 +106,7 @@ struct HomePage: View {
         let percent = limits.fiveHourPercent
         return VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 6) {
-                Text("Claude · sesi")
+                Text("Claude · session")
                     .font(.app(11))
                     .foregroundStyle(Palette.text2)
                     .lineLimit(1)
@@ -126,8 +126,8 @@ struct HomePage: View {
     }
 }
 
-/// The Pomodoro in one 58 pt row: "Fokus n/N" and the time with pause and stop while running;
-/// 25/5, 50/10 (start at once) and Atur (the full setup) while stopped. Used on Home and in the popover.
+/// The Pomodoro in one 58 pt row: "Focus n/N" and the time with pause and stop while running;
+/// 25/5, 50/10 (start at once) and Set up (the full setup) while stopped. Used on Home and in the popover.
 struct FocusMini: View {
     @ObservedObject var timer: PomodoroTimer
     let openSetup: () -> Void
@@ -139,7 +139,7 @@ struct FocusMini: View {
     private var running: some View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 0) {
-                Text(timer.phase == .focus ? "Fokus \(timer.sessionNumber)/\(timer.sessionsTarget)" : "Istirahat")
+                Text(timer.phase == .focus ? "Focus \(timer.sessionNumber)/\(timer.sessionsTarget)" : "Break")
                     .font(.app(11))
                     .foregroundStyle(Palette.text2)
                     .lineLimit(1)
@@ -150,7 +150,7 @@ struct FocusMini: View {
                     .probe("home.focus.time")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            RoundButton(systemName: timer.isPaused ? "play.fill" : "pause.fill", help: timer.isPaused ? "Lanjut" : "Pause") {
+            RoundButton(systemName: timer.isPaused ? "play.fill" : "pause.fill", help: timer.isPaused ? "Resume" : "Pause") {
                 timer.toggle()
             }
             .probe("home.focus.pause")
@@ -161,7 +161,7 @@ struct FocusMini: View {
 
     private var chips: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Fokus")
+            Text("Focus")
                 .font(.app(11))
                 .foregroundStyle(Palette.text2)
                 .probe("home.focus.label")
@@ -170,7 +170,7 @@ struct FocusMini: View {
                     .probe("home.chip1")
                 NotchChip(title: "50/10") { timer.apply(.long); timer.start() }
                     .probe("home.chip2")
-                NotchChip(title: "Atur", action: openSetup)
+                NotchChip(title: "Set up", action: openSetup)
                     .probe("home.chip3")
             }
         }

@@ -80,3 +80,25 @@ struct ClaudeIcon: Shape {
         return p
     }
 }
+
+/// A gear: a ring with six teeth.
+struct SettingsIcon: Shape {
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        let c = CGPoint(x: r.midX, y: r.midY)
+        let side = Double(min(r.width, r.height))
+        let outer = 0.44 * side, inner = 0.31 * side, hole = 0.13 * side
+        let cx = Double(c.x), cy = Double(c.y)
+        for i in 0..<12 {
+            // Alternate tooth tops and gaps, each a short arc.
+            let radius = i % 2 == 0 ? outer : inner
+            let a0 = Double(i) * .pi / 6 - .pi / 14, a1 = Double(i) * .pi / 6 + .pi / 14
+            let start = CGPoint(x: cx + cos(a0) * radius, y: cy + sin(a0) * radius)
+            if i == 0 { p.move(to: start) } else { p.addLine(to: start) }
+            p.addLine(to: CGPoint(x: cx + cos(a1) * radius, y: cy + sin(a1) * radius))
+        }
+        p.closeSubpath()
+        p.addEllipse(in: CGRect(x: cx - hole, y: cy - hole, width: hole * 2, height: hole * 2))
+        return p
+    }
+}

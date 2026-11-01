@@ -123,7 +123,7 @@ final class PomodoroTimer: ObservableObject {
         return min(max(remaining(at: date) / max(length, 1), 0), 1)
     }
 
-    /// The focus session being worked on, 1-based ("Fokus 2/4").
+    /// The focus session being worked on, 1-based ("Focus 2/4").
     var sessionNumber: Int { min(completedInCycle + 1, sessionsTarget) }
 
     // MARK: Controls
