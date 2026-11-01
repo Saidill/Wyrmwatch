@@ -26,6 +26,8 @@ enum SelfTest {
         let notch = NotchWindowController.shared
         let original = display.setting
         notch.holdOpenForTesting = true
+        // A real pointer resting on the notch would hold pops open; the timing checks must not depend on it.
+        notch.model.registry.popQueue.isHovering = { false }
         await wait(1.5) // let the app finish launching
         renderDragons()
 

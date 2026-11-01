@@ -109,7 +109,7 @@ Ringkasan per milestone: apa yang dibuat dan apa yang perlu dicek manual.
 - Buat acara 30 menit lagi di Calendar: muncul di baris info dalam beberapa detik.
 - Tolak akses Kalender di System Settings: baris kalender hilang tanpa pesan error.
 
-## M6 · Polishing dan rename (`feat/m6-polish`), BELUM SELESAI
+## M6 · Polishing (`feat/m6-polish`), rename belum
 
 **Sudah dibuat**
 - Reduce Motion (sistem + "Always reduce motion" di Settings): spring jadi fade 0,2 detik, semua animasi berulang berhenti. Diverifikasi self-test (0 piksel berubah).
@@ -126,4 +126,4 @@ Ringkasan per milestone: apa yang dibuat dan apa yang perlu dicek manual.
 
 **Catatan**: kalau `--perf` dihentikan paksa, ia bisa meninggalkan `motion.forceReduce` dan state Pomodoro di UserDefaults. Hapus dengan `defaults delete com.saidilhalim.claudeusage motion.forceReduce`.
 
-**Self-test terakhir di `feat/m6-polish`: 3 FAILED** ("song pop goes away after 2.5 s", "charger pop goes away after 2 s", "no pop without a new plug-in"). Pop tidak hilang tepat waktu. Belum diselidiki: bisa karena kursor sungguhan berada di atas notch (pop ditahan saat hover), atau regresi dari perubahan M6. Karena itu M6 **belum di-merge** ke `feat/notch-hub`.
+**Self-test M6**: 3 kegagalan sebelumnya ("song pop goes away…", "charger pop goes away…", "no pop without a new plug-in") ternyata karena faktor lingkungan. Kursor sungguhan berada di atas notch, dan pop ditahan saat hover. Self-test kini mengabaikan hover asli untuk antrean pop, dan hasilnya `ALL PASSED`. M6 (tanpa rename) di-merge ke `feat/notch-hub`, lalu `feat/notch-hub` ke `main`.
