@@ -23,8 +23,8 @@ final class PomodoroModule: NotchModule {
     func liveLeading() -> AnyView { AnyView(PomodoroLiveDragon(timer: timer)) }
     func liveTrailing() -> AnyView { AnyView(PomodoroLiveTime(timer: timer)) }
     func liveAccent() -> AnyView? { AnyView(EmberFuse(timer: timer)) }
-    /// The Focus page, also used as a card in the menu bar popover.
-    func expandedCard() -> AnyView? { AnyView(FocusPage(timer: timer).card()) }
+    /// The menu bar popover's Focus card: the compact row, opening the full setup only when asked.
+    func expandedCard() -> AnyView? { AnyView(FocusCard(timer: timer)) }
     func setVisible(_ visible: Bool) {}
 
     /// Sends the pop for a finished phase. Also used by the self-test.
@@ -160,3 +160,23 @@ private struct BreakDonePop: View {
     }
 }
 
+
+/// Focus in the menu bar popover: one compact row, so the popover never outgrows the screen.
+private struct FocusCard: View {
+    @ObservedObject var timer: PomodoroTimer
+    @State private var setup = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if setup && !timer.isActive {
+                FocusPage(timer: timer)
+                NotchChip(title: "Tutup") { withAnimation(Motion.page) { setup = false } }
+                    .frame(width: 80)
+            } else {
+                FocusMini(timer: timer) { withAnimation(Motion.page) { setup = true } }
+                    .frame(height: 58)
+            }
+        }
+        .card()
+    }
+}

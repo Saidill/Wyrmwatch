@@ -95,52 +95,10 @@ struct HomePage: View {
 
     private var side: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Group {
-                if timer.isActive { focusRunning } else { focusChips }
-            }
-            .frame(height: 58)
+            FocusMini(timer: timer) { withAnimation(Motion.resize) { tab = .focus } }
+                .frame(height: 58)
             Spacer(minLength: 0)
             claude
-        }
-    }
-
-    private var focusRunning: some View {
-        HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 0) {
-                Text(timer.phase == .focus ? "Fokus \(timer.sessionNumber)/\(timer.sessionsTarget)" : "Istirahat")
-                    .font(.app(11))
-                    .foregroundStyle(Palette.text2)
-                    .lineLimit(1)
-                    .probe("home.focus.label")
-                PomodoroDigits(timer: timer, size: 28, weight: .regular, color: Palette.silverBright)
-                    .lineLimit(1)
-                    .fixedSize()
-                    .probe("home.focus.time")
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            RoundButton(systemName: timer.isPaused ? "play.fill" : "pause.fill", help: timer.isPaused ? "Lanjut" : "Pause") {
-                timer.toggle()
-            }
-            .probe("home.focus.pause")
-            RoundButton(systemName: "xmark", help: "Stop") { timer.stopToSetup() }
-                .probe("home.focus.close")
-        }
-    }
-
-    private var focusChips: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Fokus")
-                .font(.app(11))
-                .foregroundStyle(Palette.text2)
-                .probe("home.focus.label")
-            HStack(spacing: 6) {
-                NotchChip(title: "25/5") { timer.apply(.classic); timer.start() }
-                    .probe("home.chip1")
-                NotchChip(title: "50/10") { timer.apply(.long); timer.start() }
-                    .probe("home.chip2")
-                NotchChip(title: "Atur") { withAnimation(Motion.resize) { tab = .focus } }
-                    .probe("home.chip3")
-            }
         }
     }
 
@@ -164,6 +122,57 @@ struct HomePage: View {
             }
             ThinBar(fraction: (percent ?? 0) / 100, color: Palette.level(percent ?? 0, base: Palette.silver, warn: 80))
                 .probe("home.claude.bar")
+        }
+    }
+}
+
+/// The Pomodoro in one 58 pt row: "Fokus n/N" and the time with pause and stop while running;
+/// 25/5, 50/10 (start at once) and Atur (the full setup) while stopped. Used on Home and in the popover.
+struct FocusMini: View {
+    @ObservedObject var timer: PomodoroTimer
+    let openSetup: () -> Void
+
+    var body: some View {
+        if timer.isActive { running } else { chips }
+    }
+
+    private var running: some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(timer.phase == .focus ? "Fokus \(timer.sessionNumber)/\(timer.sessionsTarget)" : "Istirahat")
+                    .font(.app(11))
+                    .foregroundStyle(Palette.text2)
+                    .lineLimit(1)
+                    .probe("home.focus.label")
+                PomodoroDigits(timer: timer, size: 28, weight: .regular, color: Palette.silverBright)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .probe("home.focus.time")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            RoundButton(systemName: timer.isPaused ? "play.fill" : "pause.fill", help: timer.isPaused ? "Lanjut" : "Pause") {
+                timer.toggle()
+            }
+            .probe("home.focus.pause")
+            RoundButton(systemName: "xmark", help: "Stop") { timer.stopToSetup() }
+                .probe("home.focus.close")
+        }
+    }
+
+    private var chips: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Fokus")
+                .font(.app(11))
+                .foregroundStyle(Palette.text2)
+                .probe("home.focus.label")
+            HStack(spacing: 6) {
+                NotchChip(title: "25/5") { timer.apply(.classic); timer.start() }
+                    .probe("home.chip1")
+                NotchChip(title: "50/10") { timer.apply(.long); timer.start() }
+                    .probe("home.chip2")
+                NotchChip(title: "Atur", action: openSetup)
+                    .probe("home.chip3")
+            }
         }
     }
 }
