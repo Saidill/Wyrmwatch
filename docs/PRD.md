@@ -327,3 +327,7 @@ Semua pengembangan dilakukan di branch terpisah, di-commit otomatis per langkah,
     - Keputusan sementara: **nonaktif** secara default, bisa diaktifkan di Settings → Pomodoro.
 - Shortcut global untuk Pomodoro: perlu di versi pertama atau nanti?
     - Keputusan sementara: **ditunda**, tidak masuk versi pertama.
+- Mode Auto saat MacBook tersambung ke monitor eksternal: notch di layar MacBook, di layar utama, atau keduanya?
+    - Keputusan sementara: **satu notch di layar yang memegang menu bar** (`NSScreen.screens.first`). Notch asli kalau layar itu punya notch, notch virtual kalau tidak. "Semua layar" untuk notch di setiap layar.
+- Pop saat mode "Semua layar": di layar mana?
+    - Keputusan sementara: pop tampil di semua panel; expanded hanya di layar tempat kursor berada.
