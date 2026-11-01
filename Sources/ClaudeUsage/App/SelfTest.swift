@@ -123,6 +123,7 @@ enum SelfTest {
         checkCore()
         await checkPomodoro()
         await checkMusic()
+        await checkInfo()
         await checkVirtualNotch()
 
         display.setting = original
@@ -331,6 +332,35 @@ enum SelfTest {
         bridge.injectForTesting(track: nil, playing: false)
         registry.onlyForTesting = nil
         await wait(0.6)
+    }
+
+    /// Header line (date, time, battery, next event) and the charger pop, fed made-up readings.
+    private static func checkInfo() async {
+        let notch = NotchWindowController.shared
+        let info = AppModels.info
+        log("— Info")
+        check(info.livePriority == nil, "info never takes the live notch")
+        info.battery.update(.init(percent: 64, charging: false, onPower: false))
+        info.calendar.injectForTesting(.init(title: "Design review with the team", start: Date().addingTimeInterval(25 * 60),
+                                             end: Date().addingTimeInterval(55 * 60)))
+        check(InfoStrip.when(info.calendar.next!, now: Date()).hasPrefix("in 2"), "next event shows how soon it starts")
+        notch.open()
+        await wait(1.0)
+        if let w = notch.window { snapshot(w, "22-info-header") }
+        notch.close()
+        await wait(0.6)
+
+        info.battery.update(.init(percent: 65, charging: true, onPower: true))
+        await wait(0.8)
+        check(notch.model.pop?.kind == .info, "plugging in the charger pops")
+        if let w = notch.window { snapshot(w, "23-info-charger-pop") }
+        await wait(2.0)
+        check(notch.model.pop == nil, "charger pop goes away after 2 s")
+        info.battery.update(.init(percent: 65, charging: true, onPower: true))
+        check(notch.model.pop == nil, "no pop without a new plug-in")
+
+        info.calendar.injectForTesting(nil)
+        info.battery.update(nil)
     }
 
     /// A stand-in album cover: a soft two-colour gradient.

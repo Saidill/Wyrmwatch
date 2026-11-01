@@ -87,3 +87,24 @@ Ringkasan per milestone: apa yang dibuat dan apa yang perlu dicek manual.
 - Klik lagu di daftar: langsung diputar. Geser progress: posisi pindah.
 - Putar radio atau lagu katalog di luar library: daftar menampilkan "Song list isn't available for this source." (atau isi kalau Music menyediakannya).
 - Tolak izin di System Settings → Automation: kartu menampilkan tombol "Give access".
+
+## M5 · Info dasar (`feat/m5-info`)
+
+**Dibuat**
+- `BatteryMonitor`: persen, charging, dan status colokan lewat `IOPSNotificationCreateRunLoopSource` (tanpa polling).
+- `CalendarSource`: EventKit `requestFullAccessToEvents`. Acara berikutnya (bukan seharian, belum selesai, dalam 24 jam) diperbarui lewat `EKEventStoreChanged` dan saat notch dibuka. Kalau izin ditolak, baris kalender disembunyikan tanpa pesan.
+- `InfoModule` (tidak pernah mengambil notch live): baris info di bawah header (tanggal, jam via `TimelineView(.everyMinute)`, ikon baterai, acara berikutnya "in 25m" / jam mulai). Pop "Charging" 2 detik saat charger dicolok (bisa dimatikan di Settings → Info).
+- `NSCalendarsFullAccessUsageDescription` di Info.plist.
+- Mode `--diagnose <file>`: membaca Music, kalender, dan baterai dengan izin app sendiri, lalu menulis laporan.
+- Self-test: baris header, pop charger muncul dan hilang setelah 2 detik, tidak ada pop tanpa colokan baru.
+
+**Hasil `--diagnose` dengan izin asli (1 Nov 2026)**
+- Music (radio / lagu katalog): judul, artis, cover, dan posisi terbaca. Daftar lagu: **unavailable**, jadi teks fallback yang tampil (sesuai risiko di PRD).
+- Kalender: full access diberikan, tidak ada acara dalam 24 jam ke depan.
+- Baterai: 41%, tidak dicolok.
+- Catatan: kalau app dijalankan langsung sebagai child process terminal, prompt Kalender tidak muncul. Lewat `open` / Finder, prompt muncul normal.
+
+**Cek manual**
+- Colok charger: pop "Charging" + persen selama 2 detik.
+- Buat acara 30 menit lagi di Calendar: muncul di baris info dalam beberapa detik.
+- Tolak akses Kalender di System Settings: baris kalender hilang tanpa pesan error.

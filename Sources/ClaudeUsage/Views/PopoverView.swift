@@ -69,6 +69,7 @@ struct PopoverView: View {
             VStack(spacing: 12) {
                 header
                 if !showSettings {
+                    InfoStrip(battery: AppModels.info.battery, calendar: AppModels.info.calendar)
                     ModuleCardsRow(registry: AppModels.registry)
                     PillToggle(options: ["Now", "Recent", "Usage"], selection: $tab, fill: true)
                 }
