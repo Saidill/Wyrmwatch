@@ -38,17 +38,24 @@ struct DragonView: View {
     @Environment(\.animationsPaused) private var paused
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: paused || at != nil)) { timeline in
+        TimelineView(.animation(minimumInterval: frameInterval, paused: paused || at != nil)) { timeline in
             Canvas { ctx, canvasSize in
                 DragonDrawing(mood: mood, t: at ?? timeline.date.timeIntervalSinceReferenceDate, detailed: size >= 26)
                     .draw(in: &ctx, side: canvasSize.height)
             }
         }
         .frame(width: size * (1 + fireRoom), height: size)
+        // Its own layer, so each frame redraws just the dragon and not the window around it.
+        .drawingGroup()
         .id(mood)
         .transition(.opacity)
         .animation(Motion.smooth, value: mood)
         .accessibilityLabel(label)
+    }
+
+    /// Slow, calm moods breathe fine at 15 fps; growling and roaring get 30.
+    private var frameInterval: Double {
+        mood == .working || mood == .happy ? 1.0 / 30 : 1.0 / 15
     }
 
     private var label: String {

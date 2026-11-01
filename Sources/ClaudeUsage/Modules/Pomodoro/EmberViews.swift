@@ -50,7 +50,8 @@ struct Ember: View {
     @Environment(\.animationsPaused) private var paused
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: paused || still)) { context in
+        // A slow 2 s flicker needs no more than 15 fps.
+        TimelineView(.animation(minimumInterval: 1.0 / 15, paused: paused || still)) { context in
             let t = context.date.timeIntervalSinceReferenceDate
             let flicker = still ? 1 : 0.875 + 0.125 * sin(t * .pi)
             Canvas { ctx, canvas in
@@ -67,6 +68,7 @@ struct Ember: View {
             .opacity(flicker)
         }
         .frame(width: size * 2.5, height: size * 2.5)
+        .drawingGroup()
         .allowsHitTesting(false)
     }
 }

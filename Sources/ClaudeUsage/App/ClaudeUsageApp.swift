@@ -9,6 +9,7 @@ struct ClaudeUsageApp: App {
         _ = DisplayModeController.shared
         SelfTest.startIfRequested()
         Diagnose.startIfRequested()
+        Perf.startIfRequested()
     }
 
     var body: some Scene {
@@ -32,7 +33,7 @@ enum AppModels {
 
     static let claude = ClaudeModule(sessions: sessions, limits: limits)
     static let pomodoro = PomodoroModule(timer: PomodoroTimer())
-    static let music = MusicModule(bridge: MusicBridge(offline: SelfTest.isRequested), pomodoro: pomodoro.timer)
+    static let music = MusicModule(bridge: MusicBridge(offline: SelfTest.isRequested || Perf.isRequested), pomodoro: pomodoro.timer)
     static let info = InfoModule(battery: BatteryMonitor(live: !SelfTest.isRequested),
                                  calendar: CalendarSource(live: !SelfTest.isRequested))
     /// Every notch module, in tie-break order.

@@ -110,6 +110,7 @@ struct MusicVisualizer: View {
             }
         }
         .frame(width: 4 * 2.5 + 3 * 2, height: 12)
+        .drawingGroup()
     }
 }
 
