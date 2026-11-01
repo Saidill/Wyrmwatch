@@ -118,6 +118,7 @@ enum SelfTest {
         notch.model.registry.popQueue.clear()
         await wait(0.6)
         checkCore()
+        await checkPomodoro()
         await checkVirtualNotch()
 
         display.setting = original
@@ -186,6 +187,81 @@ enum SelfTest {
         display.setting = .auto
         await wait(0.8)
         check(notch.screens.count == 1, "auto puts one notch on the menu bar screen")
+    }
+
+    /// Pomodoro: wins the live notch, pauses, pops when focus ends, and survives a restart.
+    /// Its saved state is put back afterwards so the test leaves no trace in the real stats.
+    private static func checkPomodoro() async {
+        let notch = NotchWindowController.shared
+        let timer = AppModels.pomodoro.timer
+        log("— Pomodoro")
+        let keys = UserDefaults.standard.dictionaryRepresentation().keys.filter { $0.hasPrefix("pomodoro.") }
+        let saved = Dictionary(uniqueKeysWithValues: keys.map { ($0, UserDefaults.standard.object(forKey: $0)) })
+        let display = notch.screens.first?.screen.display ?? 0
+
+        timer.runForTesting(phase: .focus, secondsLeft: 8 * 60 + 12)
+        await wait(0.8)
+        check(notch.model.live?.id == "pomodoro", "running Pomodoro owns the live notch (over Claude)")
+        check(notch.model.state(on: display) == .live, "notch is live while focusing")
+        if let w = notch.window { snapshot(w, "10-pomodoro-live") }
+
+        timer.pause()
+        await wait(0.6)
+        check(timer.isPaused && notch.model.live?.id == "pomodoro", "paused Pomodoro stays live")
+        check(abs(timer.remaining() - timer.remaining(at: Date().addingTimeInterval(60))) < 0.01, "paused clock doesn't move")
+        if let w = notch.window { snapshot(w, "11-pomodoro-paused") }
+
+        timer.runForTesting(phase: .focus, secondsLeft: 9)
+        await wait(0.5)
+        if let w = notch.window { snapshot(w, "12-pomodoro-last-seconds") }
+
+        let before = (timer.todaySessions, timer.completedInCycle)
+        timer.runForTesting(phase: .focus, secondsLeft: 1.2)
+        await wait(2.2)
+        check(timer.phase == .shortBreak || timer.phase == .longBreak, "focus ending moves on to a break")
+        check(timer.todaySessions == before.0 + 1, "finished focus counts in today's stats")
+        check(timer.completedInCycle == min(before.1 + 1, PomodoroTimer.sessionsPerCycle), "one more ember lit")
+        check(notch.model.pop?.kind == .pomodoro, "focus done pops")
+        if let w = notch.window { snapshot(w, "13-pomodoro-focus-done") }
+        notch.dismissPop()
+        await wait(0.6)
+        check(notch.model.live?.id != "pomodoro", "Pomodoro leaves the live notch between phases")
+
+        timer.runForTesting(phase: .shortBreak, secondsLeft: 3 * 60)
+        await wait(0.8)
+        if let w = notch.window { snapshot(w, "14-pomodoro-break") }
+        timer.runForTesting(phase: .shortBreak, secondsLeft: 1.2)
+        await wait(2.2)
+        check(timer.phase == .focus && notch.model.pop?.kind == .pomodoro, "break ending pops and goes back to focus")
+        if let w = notch.window { snapshot(w, "15-pomodoro-break-done") }
+        notch.dismissPop()
+
+        // Restart: a fresh clock reads the same end date back.
+        timer.runForTesting(phase: .focus, secondsLeft: 600)
+        let end = timer.endDate
+        let reloaded = PomodoroTimer()
+        check(reloaded.isRunning && reloaded.endDate.map { abs($0.timeIntervalSince(end!)) < 0.01 } == true,
+              "Pomodoro picks up after a restart")
+        // A phase that ran out while the app was closed is finished on launch.
+        UserDefaults.standard.set(Date().addingTimeInterval(-30).timeIntervalSince1970, forKey: PomodoroTimer.Keys.endDate)
+        let late = PomodoroTimer()
+        check(!late.isRunning && late.phase != .focus, "a phase that ended while closed is finished on launch")
+
+        // The card in the open notch.
+        timer.runForTesting(phase: .focus, secondsLeft: 17 * 60 + 40)
+        notch.open()
+        await wait(1.0)
+        if let w = notch.window { snapshot(w, "16-pomodoro-card") }
+        notch.close()
+        await wait(0.6)
+
+        timer.reset()
+        for key in keys { UserDefaults.standard.set(saved[key] ?? nil, forKey: key) }
+        for key in UserDefaults.standard.dictionaryRepresentation().keys where key.hasPrefix("pomodoro.") && !keys.contains(key) {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+        timer.restore()
+        await wait(0.4)
     }
 
     /// The module plumbing on its own: who wins the live notch, and in what order pops show.

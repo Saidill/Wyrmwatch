@@ -170,7 +170,7 @@ struct PomodoroCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            CardTitle("Focus") {
+            CardTitle("Pomodoro") {
                 Text(phaseLabel)
                     .font(.app(10.5, .medium))
                     .foregroundStyle(emberColor(timer.phase))
