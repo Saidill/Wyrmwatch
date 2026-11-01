@@ -131,6 +131,11 @@ private struct LiveRow: View {
                 module.liveTrailing()
                     .frame(width: 50)
             }
+            .overlay(alignment: .bottom) {
+                // Inside the rounded bottom corners.
+                module.liveAccent()?
+                    .frame(width: notch.width + 100 - 24, height: 6)
+            }
             .id(module.id)
             .transition(.asymmetric(insertion: .opacity.combined(with: .offset(y: 6)),
                                     removal: .opacity.combined(with: .offset(y: -6))))

@@ -69,6 +69,7 @@ struct PopoverView: View {
             VStack(spacing: 12) {
                 header
                 if !showSettings {
+                    ModuleCardsRow(registry: AppModels.registry)
                     PillToggle(options: ["Now", "Recent", "Usage"], selection: $tab, fill: true)
                 }
             }
@@ -382,6 +383,21 @@ struct PopoverView: View {
 }
 
 // MARK: - Session row
+
+/// The modules' own cards side by side (Pomodoro, Now Playing), between the header and the Claude tabs.
+struct ModuleCardsRow: View {
+    @ObservedObject var registry: ModuleRegistry
+
+    var body: some View {
+        let cards = registry.modules.compactMap { module in module.expandedCard().map { (module.id, $0) } }
+        if !cards.isEmpty {
+            HStack(alignment: .top, spacing: 10) {
+                ForEach(cards, id: \.0) { $0.1.frame(maxWidth: .infinity) }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
 
 struct SessionRow: View {
     let session: LiveSession

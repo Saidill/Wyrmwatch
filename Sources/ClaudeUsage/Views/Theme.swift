@@ -24,6 +24,8 @@ enum Palette {
     static let onSilver = Color(hex: 0x111114)
     static let amber = Color(hex: 0xE3B26A)
     static let rose = Color(hex: 0xE07A72)
+    /// Cold silver-blue: the Pomodoro fuse while resting.
+    static let frost = Color(hex: 0x9FB6CF)
 
     /// Polished-metal fill for bars and the selected tab.
     static let silverGradient = LinearGradient(colors: [Color(hex: 0xFAFAFC), Color(hex: 0xA7ACB4)],
@@ -62,6 +64,8 @@ enum Motion {
     static let quick = Animation.snappy(duration: 0.18, extraBounce: 0)
     /// Small celebratory pop-in (a badge or ember lighting up).
     static let popIn = Animation.snappy(duration: 0.3, extraBounce: 0.15)
+    /// The Pomodoro fuse drawing out from the centre when focus starts.
+    static let fuse = Animation.easeOut(duration: 0.5)
     /// Side panels (the playlist) sliding in and out.
     static let slide = Animation.spring(response: 0.4, dampingFraction: 0.86)
     /// What springs become with Reduce Motion on.

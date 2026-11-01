@@ -214,6 +214,11 @@ final class NotchWindowController {
         popQueue.dismiss()
     }
 
+    /// A button on the pop was used: hide it and show the next one.
+    func dismissPop() {
+        popQueue.dismiss()
+    }
+
     /// Clicking the pop opens the full app.
     func expand() {
         popQueue.clear()
