@@ -1,7 +1,7 @@
 import AppKit
 import EventKit
 
-/// Reads the live sources once (Music, calendar, battery) with the app's own permissions, writes what it saw
+/// Reads the live sources once (Music, calendar) with the app's own permissions, writes what it saw
 /// to a file and quits. Used to check access after the permission prompts.
 /// Run: ClaudeUsage.app/Contents/MacOS/ClaudeUsage --diagnose <output file>
 @MainActor
@@ -36,7 +36,6 @@ enum Diagnose {
         lines.append("playlist: \(music.playlist.map { $0.isEmpty ? "unavailable" : "\($0.count) songs in \"\(music.playlistName)\"" } ?? "not loaded"), current index: \(music.currentIndex.map(String.init) ?? "none")")
         lines.append("calendar status: \(EKEventStore.authorizationStatus(for: .event).rawValue) (3 = full access)\(info.calendar.lastError.map { ", error: \($0)" } ?? "")")
         lines.append("next event: \(info.calendar.next.map { "\($0.title) at \($0.start)" } ?? "none")")
-        lines.append("battery: \(info.battery.reading.map { "\($0.percent)% charging=\($0.charging) onPower=\($0.onPower)" } ?? "none")")
         try? lines.joined(separator: "\n").write(to: out, atomically: true, encoding: .utf8)
         print(lines.joined(separator: "\n"))
         NSApp.terminate(nil)

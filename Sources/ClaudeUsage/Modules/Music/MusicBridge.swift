@@ -42,6 +42,11 @@ final class MusicBridge: ObservableObject {
     @Published private(set) var currentIndex: Int?
     /// The user hasn't let this app control Music (System Settings → Privacy → Automation).
     @Published private(set) var permissionDenied = false
+    @Published private(set) var shuffle = false
+    /// Music's song repeat: off, one or all.
+    @Published private(set) var repeatMode: RepeatMode = .off
+
+    enum RepeatMode: String { case off, one, all }
 
     /// Self-test only: asks the card to slide its playlist in.
     @Published var showListForTesting = false
@@ -133,7 +138,7 @@ final class MusicBridge: ObservableObject {
         tell application "Music"
             if player state is stopped then return "stopped"
             set t to current track
-            return (player state as text) & tab & (persistent ID of t) & tab & (name of t) & tab & (artist of t) & tab & (album of t) & tab & (duration of t) & tab & player position
+            return (player state as text) & tab & (persistent ID of t) & tab & (name of t) & tab & (artist of t) & tab & (album of t) & tab & (duration of t) & tab & player position & tab & (shuffle enabled as text) & tab & (song repeat as text)
         end tell
         """) { [weak self] result in
             guard let self, let text = result?.stringValue else { return }
@@ -146,6 +151,10 @@ final class MusicBridge: ObservableObject {
             self.isPlaying = f[0] == "playing"
             self.position = Double(f[6].replacingOccurrences(of: ",", with: ".")) ?? 0
             self.positionDate = Date()
+            if f.count >= 9 {
+                self.shuffle = f[7] == "true"
+                self.repeatMode = RepeatMode(rawValue: f[8]) ?? .off
+            }
         }
     }
 
@@ -235,6 +244,17 @@ final class MusicBridge: ObservableObject {
     }
 
     func next() { command("next track") }
+
+    func toggleShuffle() {
+        shuffle.toggle()
+        command("set shuffle enabled to \(shuffle)")
+    }
+
+    /// Off → all → one → off, like Music's own button.
+    func cycleRepeat() {
+        repeatMode = switch repeatMode { case .off: .all; case .all: .one; case .one: .off }
+        command("set song repeat to \(repeatMode.rawValue)")
+    }
     func previous() { command("previous track") }
 
     func seek(to seconds: Double) {

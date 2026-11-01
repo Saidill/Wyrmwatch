@@ -178,7 +178,7 @@ struct NowPlayingCard: View {
             .clipped()
             .animation(Motion.adapt(Motion.slide, reduceMotion), value: showList)
         }
-        .card(fillHeight: true)
+        .card()
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color(nsColor: bridge.accent ?? .clear).opacity(0.10))
@@ -257,7 +257,7 @@ struct NowPlayingCard: View {
 }
 
 /// Song progress you can drag to seek. Moves once a second while playing and in view.
-private struct Scrubber: View {
+struct Scrubber: View {
     @ObservedObject var bridge: MusicBridge
     @Environment(\.animationsPaused) private var paused
     @State private var dragging: Double?

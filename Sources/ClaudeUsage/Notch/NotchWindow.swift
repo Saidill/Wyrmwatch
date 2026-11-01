@@ -71,10 +71,11 @@ final class NotchScreen: ObservableObject {
         case .closed:
             return isVirtual ? Self.pill : CGSize(width: notch.width + flare * 2, height: notch.height)
         case .live: return CGSize(width: notch.width + 100 + flare * 2, height: notch.height)
-        case .pop: return CGSize(width: 340 + flare * 2, height: notch.height + 70)
+        // Just big enough for one row (a 44 pt picture and two lines of text, or a button).
+        case .pop: return CGSize(width: 320 + flare * 2, height: notch.height + 58)
+        // The same size on every page: wide rather than tall.
         case .expanded:
-            return CGSize(width: 376 + flare * 2,
-                          height: min(notch.height - 8 + contentHeight, NotchWindowController.windowSize.height))
+            return CGSize(width: ExpandedPanel.width + flare * 2, height: notch.height + 8 + ExpandedPanel.pageHeight + 14)
         }
     }
 }
@@ -96,7 +97,7 @@ struct NotchTarget {
 final class NotchWindowController {
     static let shared = NotchWindowController()
     /// The window never resizes (that's what made things lag); the shape animates inside it.
-    static let windowSize = CGSize(width: 420, height: 640)
+    static let windowSize = CGSize(width: 640, height: 260)
     /// Settings: open when the pointer rests on the notch (otherwise only a click opens it).
     static let openOnHoverKey = "notch.openOnHover"
 

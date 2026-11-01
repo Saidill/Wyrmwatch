@@ -34,8 +34,7 @@ enum AppModels {
     static let claude = ClaudeModule(sessions: sessions, limits: limits)
     static let pomodoro = PomodoroModule(timer: PomodoroTimer())
     static let music = MusicModule(bridge: MusicBridge(offline: SelfTest.isRequested || Perf.isRequested), pomodoro: pomodoro.timer)
-    static let info = InfoModule(battery: BatteryMonitor(live: !SelfTest.isRequested),
-                                 calendar: CalendarSource(live: !SelfTest.isRequested))
+    static let info = InfoModule(calendar: CalendarSource(live: !SelfTest.isRequested && !Perf.isRequested))
     /// Every notch module, in tie-break order.
     static let registry: ModuleRegistry = {
         let registry = ModuleRegistry()

@@ -4,6 +4,7 @@ import SwiftUI
 /// clicking a song plays it. Rows are built lazily, so long playlists stay light.
 struct PlaylistPanel: View {
     @ObservedObject var bridge: MusicBridge
+    var height: CGFloat = 196
 
     var body: some View {
         Group {
@@ -35,7 +36,7 @@ struct PlaylistPanel: View {
                     }
                 }
             }
-            .frame(height: 196)
+            .frame(height: height)
             .onAppear { center(proxy) }
             .onChange(of: bridge.currentIndex) { _, _ in withAnimation(Motion.smooth) { center(proxy) } }
         }
@@ -70,7 +71,7 @@ private struct PlaylistRow: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(item.title)
                     .font(.app(11.5, current ? .semibold : .regular))
-                    .foregroundStyle(current ? Palette.text : Palette.text2)
+                    .foregroundStyle(current ? Palette.blue : Palette.text2)
                     .lineLimit(1)
                 Text(item.artist)
                     .font(.app(10))
@@ -82,7 +83,7 @@ private struct PlaylistRow: View {
         .padding(.vertical, 4)
         .padding(.horizontal, 4)
         .background(RoundedRectangle(cornerRadius: 8, style: .continuous)
-            .fill(current ? Palette.hover : hovering ? Palette.glass : .clear))
+            .fill(current ? Palette.blue.opacity(0.16) : hovering ? Palette.glass : .clear))
         .contentShape(Rectangle())
         .onTapGesture(perform: play)
         .onHover { h in withAnimation(Motion.quick) { hovering = h } }
