@@ -233,12 +233,13 @@ enum SelfTest {
         if let w = notch.window { snapshot(w, "12-pomodoro-last-seconds") }
 
         let before = (timer.todaySessions, timer.completedInCycle)
+        notch.model.registry.popQueue.clear()
         timer.runForTesting(phase: .focus, secondsLeft: 1.2)
         await wait(2.2)
         check(timer.phase == .shortBreak || timer.phase == .longBreak, "focus ending moves on to a break")
         check(timer.todaySessions == before.0 + 1, "finished focus counts in today's stats")
         check(timer.completedInCycle == min(before.1 + 1, timer.sessionsTarget), "one more ember lit")
-        check(notch.model.pop?.kind == .pomodoro, "focus done pops")
+        check(pomodoroPopped(), "focus done pops")
         if let w = notch.window { snapshot(w, "13-pomodoro-focus-done") }
         notch.dismissPop()
         await wait(0.6)
@@ -247,9 +248,11 @@ enum SelfTest {
         timer.runForTesting(phase: .shortBreak, secondsLeft: 3 * 60)
         await wait(0.8)
         if let w = notch.window { snapshot(w, "14-pomodoro-break") }
+        notch.model.registry.popQueue.clear()
         timer.runForTesting(phase: .shortBreak, secondsLeft: 1.2)
         await wait(2.2)
-        check(timer.phase == .focus && notch.model.pop?.kind == .pomodoro, "break ending pops and goes back to focus")
+        check(timer.phase == .focus, "break ending goes back to focus")
+        check(pomodoroPopped(), "break ending pops")
         if let w = notch.window { snapshot(w, "15-pomodoro-break-done") }
         notch.dismissPop()
 
@@ -487,6 +490,12 @@ enum SelfTest {
     }
 
     // MARK: Helpers
+
+    /// A Pomodoro pop is showing or next in line (a real Claude pop may have arrived during the test).
+    private static func pomodoroPopped() -> Bool {
+        let queue = NotchWindowController.shared.model.registry.popQueue
+        return queue.current?.kind == .pomodoro || queue.pending.contains { $0.kind == .pomodoro }
+    }
 
     /// The app's own saved settings starting with `prefix` (not the registered defaults).
     private static func savedSettings(prefix: String) -> [String: Any] {
