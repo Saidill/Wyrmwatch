@@ -43,6 +43,8 @@ final class MusicBridge: ObservableObject {
     /// The user hasn't let this app control Music (System Settings → Privacy → Automation).
     @Published private(set) var permissionDenied = false
     @Published private(set) var shuffle = false
+    /// The song is a favourite (Music's heart).
+    @Published private(set) var favorite = false
     /// Music's song repeat: off, one or all.
     @Published private(set) var repeatMode: RepeatMode = .off
 
@@ -138,13 +140,22 @@ final class MusicBridge: ObservableObject {
         tell application "Music"
             if player state is stopped then return "stopped"
             set t to current track
-            return (player state as text) & tab & (persistent ID of t) & tab & (name of t) & tab & (artist of t) & tab & (album of t) & tab & (duration of t) & tab & player position & tab & (shuffle enabled as text) & tab & (song repeat as text)
+            set fav to "false"
+            try
+                set fav to (favorited of t) as text
+            on error
+                try
+                    set fav to (loved of t) as text
+                end try
+            end try
+            return fav & tab & (player state as text) & tab & (persistent ID of t) & tab & (name of t) & tab & (artist of t) & tab & (album of t) & tab & (duration of t) & tab & player position & tab & (shuffle enabled as text) & tab & (song repeat as text)
         end tell
         """) { [weak self] result in
             guard let self, let text = result?.stringValue else { return }
             if text == "stopped" { self.track = nil; self.isPlaying = false; return }
-            let f = text.components(separatedBy: "\t")
-            guard f.count >= 7 else { return }
+            var f = text.components(separatedBy: "\t")
+            guard f.count >= 8 else { return }
+            self.favorite = f.removeFirst() == "true"
             let next = NowPlaying(id: f[1], title: f[2], artist: f[3], album: f[4], duration: Double(f[5].replacingOccurrences(of: ",", with: ".")) ?? 0)
             if next.id != self.track?.id { self.loadArtwork(for: next) }
             self.track = next
@@ -250,6 +261,25 @@ final class MusicBridge: ObservableObject {
         command("set shuffle enabled to \(shuffle)")
     }
 
+    /// Hearts or un-hearts the playing song.
+    func toggleFavorite() {
+        favorite.toggle()
+        let value = favorite ? "true" : "false"
+        command("""
+        try
+            set favorited of current track to \(value)
+        on error
+            set loved of current track to \(value)
+        end try
+        """, wrapped: false)
+    }
+
+    /// "Play music" when nothing is on: starts Music (opening it if needed) and plays.
+    func startMusic() {
+        guard !offline else { return }
+        run("tell application \"Music\" to play") { [weak self] _ in self?.refreshAll() }
+    }
+
     /// Off → all → one → off, like Music's own button.
     func cycleRepeat() {
         repeatMode = switch repeatMode { case .off: .all; case .all: .one; case .one: .off }
@@ -285,9 +315,9 @@ final class MusicBridge: ObservableObject {
         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")!)
     }
 
-    private func command(_ line: String) {
+    private func command(_ line: String, wrapped: Bool = true) {
         guard !offline, Self.isRunning else { return }
-        run("tell application \"Music\" to \(line)") { _ in }
+        run(wrapped ? "tell application \"Music\" to \(line)" : "tell application \"Music\"\n\(line)\nend tell") { _ in }
     }
 
     // MARK: AppleScript

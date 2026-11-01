@@ -73,7 +73,7 @@ private struct PomodoroLiveTime: View {
     @ObservedObject var timer: PomodoroTimer
 
     var body: some View {
-        PomodoroDigits(timer: timer, size: 11, color: emberColor(timer.phase))
+        PomodoroDigits(timer: timer, size: 11, color: Palette.silverBright)
             .opacity(timer.isPaused ? 0.6 : 1)
     }
 }

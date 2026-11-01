@@ -63,27 +63,53 @@ struct PopoverView: View {
             .onChange(of: window) { _, _ in fitWindow(height: popoverHeight) }
     }
 
-    /// The Claude page in the open notch: limits | a tab of sessions, recent or usage, scrolling in its column.
+    /// The Claude page in the open notch: session and week side by side with the forecast, then
+    /// Now / Recent / Usage (or Settings, from the gear), each scrolling in its own height.
     private var claudePage: some View {
-        HStack(alignment: .top, spacing: 12) {
-            ScrollView(.vertical, showsIndicators: false) { limitsCard }
-                .frame(width: 262)
-            VStack(spacing: 8) {
-                PillToggle(options: ["Sessions", "Recent", "Usage"], selection: $tab, fill: true)
-                ScrollView(.vertical, showsIndicators: false) {
-                    Group {
+        let session = limits.windows.first { $0.id == "five_hour" }
+        let week = limits.windows.first { $0.id == "seven_day" }
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 16) {
+                ClaudeBar(title: "Sesi", window: session, reset: session?.resetsAt.map(formatReset))
+                    .probe("claude.session")
+                ClaudeBar(title: "Minggu", window: week, reset: week?.resetsAt.map(formatReset))
+                    .probe("claude.week")
+            }
+            if let forecast = limits.forecast {
+                ForecastLine(forecast: forecast)
+                    .lineLimit(1)
+                    .probe("claude.forecast")
+            } else if let error = limits.error, limits.windows.isEmpty {
+                Text(error).font(.app(11)).foregroundStyle(Palette.text2).lineLimit(1)
+            }
+            HStack(spacing: 8) {
+                PillToggle(options: ["Now", "Recent", "Usage"], selection: Binding(
+                    get: { showSettings ? -1 : tab },
+                    set: { tab = $0; showSettings = false }), fill: true)
+                RoundButton(systemName: "gearshape.fill", diameter: 26, help: "Settings") {
+                    withAnimation(Motion.page) { showSettings.toggle() }
+                }
+            }
+            .probe("claude.tabs")
+            ScrollView(.vertical, showsIndicators: false) {
+                Group {
+                    if showSettings {
+                        SettingsView()
+                    } else {
                         switch tab {
                         case 1: recentCard
                         case 2: tokensCard
                         default: sessionsCard
                         }
                     }
-                    .id(tab)
-                    .transition(pageTransition)
                 }
+                .id(showSettings ? -1 : tab)
+                .transition(.opacity.combined(with: .offset(y: 5)))
             }
+            .frame(height: 120)
+            .probe("claude.list")
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     private var content: some View {
@@ -408,6 +434,32 @@ struct PopoverView: View {
 }
 
 // MARK: - Session row
+
+/// One limit on the Claude page: name and reset on the left, percent on the right, a 4 pt bar under them.
+struct ClaudeBar: View {
+    let title: String
+    let window: LimitWindow?
+    let reset: String?
+
+    var body: some View {
+        let percent = window?.utilization
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(title).font(.app(12.5, .medium)).foregroundStyle(Palette.text)
+                Text(reset ?? "").font(.app(10.5)).foregroundStyle(Palette.text2)
+                    .lineLimit(1).truncationMode(.tail)
+                Spacer(minLength: 4)
+                Text(percent.map { "\(Int($0.rounded()))%" } ?? "–")
+                    .font(.app(13, .medium))
+                    .foregroundStyle(Palette.level(percent ?? 0, base: Palette.text, warn: 80))
+                    .monospacedDigit()
+                    .fixedSize()
+            }
+            ThinBar(fraction: (percent ?? 0) / 100, color: Palette.level(percent ?? 0, base: Palette.silver, warn: 80))
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
 
 /// Date, time and next event under the header, unless Info is switched off.
 struct InfoHeaderLine: View {

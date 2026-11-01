@@ -2,138 +2,149 @@ import SwiftUI
 
 /// Pages of the open notch, picked in the header's tab bar.
 enum NotchTab: String, CaseIterable, Identifiable {
-    case focus, music, claude, settings
+    case home, focus, music, claude
     var id: String { rawValue }
     static let storageKey = "notchTab"
 
-    var symbol: String {
+    var title: String {
         switch self {
-        case .focus: return "flame.fill"
-        case .music: return "music.note"
-        case .claude: return "sparkle"
-        case .settings: return "gearshape.fill"
+        case .home: return "Home"
+        case .focus: return "Fokus"
+        case .music: return "Musik"
+        case .claude: return "Claude"
         }
     }
 
-    var title: String {
+    @ViewBuilder var icon: some View {
+        let style = StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round)
         switch self {
-        case .focus: return "Fokus"
-        case .music: return "Music"
-        case .claude: return "Claude"
-        case .settings: return "Settings"
+        case .home: HomeIcon().stroke(style: style)
+        case .focus: FocusIcon().stroke(style: style)
+        case .music: MusicIcon().stroke(style: style)
+        case .claude: ClaudeIcon().stroke(style: style)
         }
     }
 }
 
-/// The open notch: a header in the band beside the camera (dragon, date, time, next event | tab bar),
-/// and below it one page. Every page has the same size, so switching pages never moves the shape.
+/// The open notch. The header is split by the camera into three columns (left | the physical notch | right):
+/// the dragon and date on the left, the tabs on the right. Below it, one page; the notch grows or shrinks to fit it.
 struct ExpandedPanel: View {
-    /// Height of the page area under the header band.
-    static let pageHeight: CGFloat = 150
     static let width: CGFloat = 600
+    /// Never taller than this (long lists scroll inside their page).
+    static let maxPageHeight: CGFloat = 260
 
     let notch: CGSize
-    @AppStorage(NotchTab.storageKey) private var tab: NotchTab = .focus
+    var coverSpace: Namespace.ID?
+    /// Reports the page's height so the shape can follow it.
+    let onPageHeight: (CGFloat) -> Void
+    @AppStorage(NotchTab.storageKey) private var tab: NotchTab = .home
     @EnvironmentObject var sessions: SessionMonitor
+    @EnvironmentObject var limits: PlanLimitClient
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-                .frame(height: notch.height)
-            page
-                .frame(height: Self.pageHeight)
-                .padding(.top, 8)
+        VStack(spacing: 10) {
+            HStack(spacing: 0) {
+                left
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .probe("header.left")
+                // The camera.
+                Color.clear.frame(width: notch.width)
+                TabBar(selection: $tab)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .probe("header.tabs")
+            }
+            .frame(height: notch.height)
+
+            ZStack(alignment: .topLeading) {
+                page
+                    .id(tab)
+                    .transition(.asymmetric(insertion: .opacity.combined(with: .offset(y: 5)).animation(Motion.page),
+                                            removal: .opacity.animation(Motion.page)))
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .fixedSize(horizontal: false, vertical: true)
+            // Measured at its own height, before the cap below stretches it.
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { onPageHeight(min($0, Self.maxPageHeight)) }
+            .frame(height: nil, alignment: .top)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 18)
         .frame(width: Self.width, alignment: .top)
+        .coordinateSpace(name: LayoutProbe.space)
+        .environment(\.layoutProbing, true)
     }
 
-    // MARK: Header
-
-    private var header: some View {
-        HStack(spacing: 0) {
-            HStack(spacing: 8) {
-                DragonView(mood: dragonMood, size: 24)
-                TimelineView(.everyMinute) { context in
-                    VStack(alignment: .leading, spacing: 0) {
-                        HStack(spacing: 6) {
-                            Text(context.date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))
-                                .foregroundStyle(Palette.text2)
-                            Text(context.date.formatted(date: .omitted, time: .shortened))
-                                .foregroundStyle(Palette.text)
-                                .monospacedDigit()
-                        }
-                        .font(.app(11.5, .medium))
-                        EventLine(now: context.date)
-                    }
-                }
+    private var left: some View {
+        HStack(spacing: 8) {
+            DragonView(mood: dragonMood, size: 22)
+            TimelineView(.everyMinute) { context in
+                Text(Self.stamp(context.date))
+                    .font(.app(12, .medium))
+                    .foregroundStyle(Palette.text)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .help(AppModels.info.calendar.next.map { "Next: \($0.title)" } ?? "")
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            // The camera sits here.
-            Spacer(minLength: notch.width + 12)
-            TabBar(selection: $tab)
-                .frame(maxWidth: .infinity, alignment: .trailing)
         }
+    }
+
+    /// "Min 1 Nov · 18.52".
+    static func stamp(_ date: Date) -> String {
+        let day = DateFormatter()
+        day.locale = Locale(identifier: "id_ID")
+        day.dateFormat = "EEE d MMM"
+        let time = DateFormatter()
+        time.locale = Locale(identifier: "id_ID")
+        time.dateFormat = "HH.mm"
+        return "\(day.string(from: date)) · \(time.string(from: date))"
     }
 
     private var dragonMood: DragonMood {
         let pomodoro = AppModels.pomodoro.timer
-        if pomodoro.isRunning, pomodoro.phase == .focus { return .guarding }
         if sessions.celebrating { return .happy }
+        if pomodoro.isRunning, pomodoro.phase == .focus { return .guarding }
         if sessions.busyCount > 0 { return .working }
         return sessions.sessions.isEmpty ? .sleeping : .idle
     }
 
-    // MARK: Pages
-
     @ViewBuilder
     private var page: some View {
-        ZStack(alignment: .topLeading) {
-            switch tab {
-            case .focus: FocusPage(timer: AppModels.pomodoro.timer)
-            case .music: MusicPage(bridge: AppModels.music.bridge)
-            case .claude: PopoverView(inNotch: true)
-            case .settings:
-                ScrollView(.vertical, showsIndicators: false) { SettingsView() }
-            }
-        }
-        .id(tab)
-        .transition(.opacity)
-        .animation(Motion.smooth, value: tab)
-    }
-}
-
-/// The next calendar event, small, under the date (only when Info is on and there is one).
-private struct EventLine: View {
-    let now: Date
-    @ObservedObject private var registry = AppModels.registry
-
-    var body: some View {
-        if registry.isEnabled("info") {
-            NextEventLabel(calendar: AppModels.info.calendar, now: now)
-                .font(.app(9.5))
+        switch tab {
+        case .home:
+            HomePage(bridge: AppModels.music.bridge, timer: AppModels.pomodoro.timer, limits: limits, coverSpace: coverSpace)
+        case .focus:
+            FocusPage(timer: AppModels.pomodoro.timer)
+        case .music:
+            MusicPage(bridge: AppModels.music.bridge)
+        case .claude:
+            PopoverView(inNotch: true)
         }
     }
 }
 
-/// Icon tabs on the right of the header.
+/// Four icon tabs (17 pt icons on 38 × 26 buttons); the active capsule glides between them.
 private struct TabBar: View {
     @Binding var selection: NotchTab
+    @Namespace private var glide
 
     var body: some View {
         HStack(spacing: 2) {
             ForEach(NotchTab.allCases) { tab in
-                Image(systemName: tab.symbol)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(selection == tab ? Palette.silver : Palette.text3)
-                    .frame(width: 30, height: 22)
-                    .background(Capsule().fill(selection == tab ? Palette.silver.opacity(0.18) : .clear))
+                tab.icon
+                    .frame(width: 17, height: 17)
+                    .foregroundStyle(selection == tab ? Palette.text : Palette.text2)
+                    .frame(width: 38, height: 26)
+                    .background {
+                        if selection == tab {
+                            Capsule().fill(Palette.track).matchedGeometryEffect(id: "tab", in: glide)
+                        }
+                    }
                     .contentShape(Capsule())
-                    .onTapGesture { withAnimation(Motion.smooth) { selection = tab } }
+                    .onTapGesture { withAnimation(Motion.resize) { selection = tab } }
                     .help(tab.title)
+                    .accessibilityLabel(tab.title)
+                    .accessibilityAddTraits(.isButton)
             }
         }
-        .padding(2)
-        .background(Capsule().fill(Palette.glass))
     }
 }

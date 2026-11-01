@@ -47,6 +47,8 @@ struct NotchView: View {
     @EnvironmentObject var limits: PlanLimitClient
     @EnvironmentObject var usage: UsageTracker
     @ObservedObject private var motion = MotionPreference.shared
+    /// The album cover flies between the live notch and Home.
+    @Namespace private var coverSpace
     /// Whether the open panel is built: only around being open.
     @State private var mounted = false
 
@@ -66,12 +68,12 @@ struct NotchView: View {
                 shape.fill(.black)
 
                 ZStack(alignment: .top) {
-                    // The full app is only built while open (and briefly at launch, to learn its height): kept hidden,
-                    // it still redrew on every session update, which cost a lot of CPU while closed.
                     // The open panel is only built while open: kept hidden, it redrew on every session update
                     // and cost a lot of CPU while closed.
                     if mounted || state == .expanded {
-                        ExpandedPanel(notch: screen.notch)
+                        ExpandedPanel(notch: screen.notch, coverSpace: coverSpace) { height in
+                            if abs(height - model.contentHeight) > 0.5 { model.contentHeight = height }
+                        }
                             // Eases in a beat after the shape starts opening, settling down from slightly smaller.
                             .opacity(state == .expanded ? 1 : 0)
                             .scaleEffect(state == .expanded || motion.reduce ? 1 : 0.94, anchor: .top)
@@ -83,7 +85,8 @@ struct NotchView: View {
                     }
 
                     if state == .live, let live = model.live {
-                        LiveRow(module: live, notch: screen.notch)
+                        LiveRow(modules: model.registry.liveRotation(fallback: live), notch: screen.notch)
+                            .environment(\.coverSpace, coverSpace)
                             .transition(.opacity.animation(Motion.liveIn))
                     }
                     if state == .pop, let pop = model.pop {
@@ -102,7 +105,8 @@ struct NotchView: View {
             }
             .frame(width: size.width, height: size.height)
             .animation(morph(to: state), value: state)
-            .animation(morph(to: state), value: size)
+            // While open, the height follows the page with its own spring.
+            .animation(state == .expanded ? Motion.adapt(Motion.resize, motion.reduce) : morph(to: state), value: size)
             Spacer(minLength: 0)
         }
         .frame(width: NotchWindowController.windowSize.width, height: NotchWindowController.windowSize.height,
@@ -127,12 +131,24 @@ struct NotchView: View {
 }
 
 /// The active module either side of the camera: its visual on the left, its number on the right.
-/// Switching module swaps the content in place (old one up and out, new one up from below); the width stays.
+/// With the Pomodoro and music both on, they take turns every 6 seconds. Switching swaps the content in place
+/// (old one up and out, new one up from below); the width stays.
 private struct LiveRow: View {
-    let module: any NotchModule
+    let modules: [any NotchModule]
     let notch: CGSize
 
     var body: some View {
+        if modules.count > 1 {
+            TimelineView(.periodic(from: .now, by: 6)) { context in
+                let turn = Int(context.date.timeIntervalSinceReferenceDate / 6) % modules.count
+                row(modules[turn])
+            }
+        } else if let module = modules.first {
+            row(module)
+        }
+    }
+
+    private func row(_ module: any NotchModule) -> some View {
         ZStack {
             HStack(spacing: 0) {
                 module.liveLeading()
@@ -154,6 +170,18 @@ private struct LiveRow: View {
         // Exactly as wide as the live shape, so the two sides sit just either side of the notch.
         .frame(width: notch.width + 100, height: notch.height)
         .clipped()
+    }
+}
+
+private struct CoverSpaceKey: EnvironmentKey {
+    static let defaultValue: Namespace.ID? = nil
+}
+
+extension EnvironmentValues {
+    /// Where the album cover's matched geometry lives (the notch view's namespace).
+    var coverSpace: Namespace.ID? {
+        get { self[CoverSpaceKey.self] }
+        set { self[CoverSpaceKey.self] = newValue }
     }
 }
 

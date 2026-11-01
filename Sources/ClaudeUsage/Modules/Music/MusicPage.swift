@@ -1,41 +1,36 @@
 import SwiftUI
 
-/// The Music page, three columns across the open notch: the cover | title, artist · album, progress and
-/// controls | the playlist, scrolling on its own with the playing song in blue.
+/// The Music page: the cover (120 pt) and the playlist beside it, title | length per row,
+/// the playing song in white and the rest in grey. Clicking a song plays it.
 struct MusicPage: View {
     @ObservedObject var bridge: MusicBridge
     @Environment(\.animationsPaused) private var paused
 
     var body: some View {
-        Group {
-            if bridge.permissionDenied {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Allow this app to control Music to see what's playing.")
-                        .font(.app(12))
-                        .foregroundStyle(Palette.text2)
-                    Button("Give access") { bridge.openPermissionSettings() }
-                        .controlSize(.small)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-            } else if let track = bridge.track {
-                HStack(alignment: .top, spacing: 16) {
-                    CoverArt(image: bridge.artwork, id: track.id, size: 120, radius: 14)
-                    details(track)
-                        .frame(width: 214, height: 120, alignment: .topLeading)
-                    PlaylistPanel(bridge: bridge, height: 128)
-                        .frame(maxWidth: .infinity)
-                }
-            } else {
-                HStack(spacing: 14) {
-                    CoverArt(image: nil, id: "", size: 120, radius: 14)
-                    Text(MusicBridge.isRunning ? "Nothing playing" : "Music isn't open")
-                        .font(.app(13))
-                        .foregroundStyle(Palette.text3)
-                    Spacer()
+        HStack(alignment: .top, spacing: 16) {
+            CoverArt(image: bridge.artwork, id: bridge.track?.id ?? "", size: 120, radius: 16)
+                .probe("music.cover")
+            Group {
+                if bridge.permissionDenied {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Beri izin app ini mengontrol Music untuk melihat lagu yang diputar.")
+                            .font(.app(12))
+                            .foregroundStyle(Palette.text2)
+                            .fixedSize(horizontal: false, vertical: true)
+                        NotchChip(title: "Beri izin") { bridge.openPermissionSettings() }
+                            .frame(width: 100)
+                    }
+                } else if bridge.track == nil {
+                    NotchChip(title: "Putar musik") { bridge.startMusic() }
+                        .frame(width: 120)
+                } else {
+                    playlist
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .probe("music.list")
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(height: 120)
         .onAppear {
             bridge.refreshAll()
             bridge.loadPlaylist()
@@ -43,41 +38,60 @@ struct MusicPage: View {
         .onChange(of: bridge.track?.id) { _, _ in if !paused { bridge.loadPlaylist() } }
     }
 
-    private func details(_ track: NowPlaying) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(track.title)
-                .font(.app(14, .semibold))
-                .foregroundStyle(Palette.text)
-                .lineLimit(2)
-            Text([track.artist, track.album].filter { !$0.isEmpty }.joined(separator: " · "))
-                .font(.app(11.5))
-                .foregroundStyle(Palette.text3)
-                .lineLimit(1)
-            Spacer(minLength: 4)
-            Scrubber(bridge: bridge)
-            HStack(spacing: 4) {
-                toggle("shuffle", on: bridge.shuffle, help: "Shuffle") { bridge.toggleShuffle() }
-                Spacer(minLength: 0)
-                IconButton(systemName: "backward.fill", help: "Previous") { bridge.previous() }
-                IconButton(systemName: bridge.isPlaying ? "pause.fill" : "play.fill",
-                           help: bridge.isPlaying ? "Pause" : "Play") { bridge.playPause() }
-                IconButton(systemName: "forward.fill", help: "Next") { bridge.next() }
-                Spacer(minLength: 0)
-                toggle(bridge.repeatMode == .one ? "repeat.1" : "repeat", on: bridge.repeatMode != .off,
-                       help: "Repeat") { bridge.cycleRepeat() }
+    @ViewBuilder private var playlist: some View {
+        if let list = bridge.playlist {
+            if list.isEmpty {
+                Text("Daftar lagu tidak tersedia untuk sumber ini.")
+                    .font(.app(12))
+                    .foregroundStyle(Palette.text2)
+            } else {
+                ScrollViewReader { proxy in
+                    ScrollView(.vertical, showsIndicators: false) {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            ForEach(list) { item in
+                                SongRow(item: item, current: bridge.currentIndex == item.index - 1) { bridge.play(item) }
+                                    .id(item.index)
+                            }
+                        }
+                    }
+                    .onAppear { center(proxy) }
+                    .onChange(of: bridge.currentIndex) { _, _ in withAnimation(Motion.smooth) { center(proxy) } }
+                }
             }
+        } else {
+            ProgressView().controlSize(.small)
         }
     }
 
-    private func toggle(_ symbol: String, on: Bool, help: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(on ? Palette.silver : Palette.text3)
-                .frame(width: 26, height: 26)
-                .contentShape(Rectangle())
+    private func center(_ proxy: ScrollViewProxy) {
+        guard let index = bridge.currentIndex else { return }
+        proxy.scrollTo(index + 1, anchor: .center)
+    }
+}
+
+private struct SongRow: View {
+    let item: PlaylistTrack
+    let current: Bool
+    let play: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Text(item.title)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text(SeekRow.format(item.duration))
+                .monospacedDigit()
+                .fixedSize()
         }
-        .buttonStyle(.plain)
-        .help(help)
+        .font(.app(12, current ? .semibold : .regular))
+        .foregroundStyle(current ? Palette.text : (hovering ? Palette.text2.opacity(1) : Palette.text2))
+        .padding(.horizontal, 8)
+        .frame(height: 24)
+        .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(hovering ? Palette.button : .clear))
+        .contentShape(Rectangle())
+        .onTapGesture(perform: play)
+        .onHover { h in withAnimation(Motion.quick) { hovering = h } }
     }
 }

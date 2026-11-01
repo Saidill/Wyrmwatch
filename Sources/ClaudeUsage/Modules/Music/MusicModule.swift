@@ -79,9 +79,11 @@ struct CoverArt: View {
 
 private struct MusicLiveCover: View {
     @ObservedObject var bridge: MusicBridge
+    @Environment(\.coverSpace) private var coverSpace
 
     var body: some View {
         CoverArt(image: bridge.artwork, id: bridge.track?.id ?? "", size: 18, radius: 5)
+            .modifier(MatchedCover(space: coverSpace))
     }
 }
 
