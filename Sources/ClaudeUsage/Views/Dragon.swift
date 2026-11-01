@@ -46,7 +46,7 @@ enum DragonArt {
                                     startPoint: .top, endPoint: .bottom)
 }
 
-/// The Notchwyrm mascot. Animates gently while on show (at most 15 fps, 24 for the flame), lifts a little
+/// The Notchwyrm mascot. Animates gently while on show (in Core Animation layers), lifts a little
 /// when the pointer is on it, and stays completely still when `animated` is off (the live notch) or out of sight.
 struct DragonView: View {
     var mood: DragonMood
@@ -61,14 +61,14 @@ struct DragonView: View {
     @State private var hovering = false
 
     var body: some View {
-        let still = paused || at != nil || !animated || mood == .idle && size < 24
+        let still = paused || at != nil || !animated
         Group {
             if still {
                 DragonFrame(mood: mood, t: at ?? 0, size: size)
             } else {
-                TimelineView(.animation(minimumInterval: mood == .happy ? 1.0 / 24 : 1.0 / 15)) { timeline in
-                    DragonFrame(mood: mood, t: timeline.date.timeIntervalSinceReferenceDate, size: size)
-                }
+                // Animated by Core Animation: no work in the app per frame.
+                LayerDragon(mood: mood, size: size, running: true)
+                    .frame(width: size, height: size)
             }
         }
         .frame(width: size * (1 + fireRoom), height: size, alignment: .leading)

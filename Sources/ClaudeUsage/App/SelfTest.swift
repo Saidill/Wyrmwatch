@@ -573,36 +573,18 @@ enum SelfTest {
     }
 
     /// Captures the window twice, half a second apart, and checks that the header avatar (the dragon) changed.
+    /// Whether a dragon in the window is animating: its Core Animation layers carry running animations.
     private static func dragonMoves(in window: NSWindow) async -> Bool {
-        func capture() -> NSBitmapImageRep? {
-            guard let view = window.contentView, let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return nil }
-            view.cacheDisplay(in: view.bounds, to: rep)
-            return rep
+        await wait(0.3)
+        func hosts(_ view: NSView) -> [DragonHost] {
+            (view as? DragonHost).map { [$0] } ?? view.subviews.flatMap(hosts)
         }
-        guard let a = capture() else { return false }
-        await wait(0.5)
-        guard let b = capture(), a.pixelsWide == b.pixelsWide, a.pixelsHigh == b.pixelsHigh else { return false }
-        // Where the dragon sits, in points from the window's top left: the left of the open notch's header band,
-        // or the avatar at the top left of the menu bar popover.
-        let notch = NotchWindowController.shared
-        let region: CGRect
-        if window === notch.window {
-            let band = notch.screens.first?.screen.notch.height ?? 32
-            let left = (window.frame.width - (ExpandedPanel.width + 20)) / 2 + 10 + 18
-            region = CGRect(x: left, y: 0, width: 36, height: band)
-        } else {
-            region = CGRect(x: 10, y: 10, width: 50, height: 50)
+        guard let root = window.contentView else { return false }
+        let animating = hosts(root).filter { host in
+            (host.layer?.sublayers ?? []).contains { !($0.animationKeys() ?? []).isEmpty }
         }
-        let scale = CGFloat(a.pixelsWide) / window.frame.width
-        var changed = 0
-        for y in Int(region.minY * scale)..<min(a.pixelsHigh, Int(region.maxY * scale)) {
-            for x in Int(region.minX * scale)..<min(a.pixelsWide, Int(region.maxX * scale))
-            where a.colorAt(x: x, y: y) != b.colorAt(x: x, y: y) {
-                changed += 1
-            }
-        }
-        log("   \(changed) pixels changed around the dragon")
-        return changed > 20
+        log("   \(hosts(root).count) dragon layer views, \(animating.count) animating")
+        return !animating.isEmpty
     }
 
     /// Every tab of the open notch: 600 wide, the height following the page, nothing overlapping or spilling out,
