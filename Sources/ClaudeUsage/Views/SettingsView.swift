@@ -13,6 +13,9 @@ struct SettingsView: View {
     @State private var loginError: String?
     @State private var previewBounce = 0
     @EnvironmentObject var display: DisplayModeController
+    @ObservedObject private var pomodoro = AppModels.pomodoro.timer
+    @AppStorage(PomodoroTimer.Keys.sound) private var pomodoroSound = true
+    @AppStorage(PomodoroTimer.Keys.haptic) private var pomodoroHaptic = true
 
     var body: some View {
         VStack(spacing: 12) {
@@ -55,6 +58,14 @@ struct SettingsView: View {
                 .disabled(!limitAlerts && !resetPing)
                 .opacity(limitAlerts || resetPing ? 1 : 0.4)
                 row("Ping when the session limit resets") { toggle($resetPing) }
+            }
+
+            section("Pomodoro", symbol: "flame.fill", color: Palette.amber) {
+                row("Focus") { minutes($pomodoro.focusMinutes, 5...120, step: 5) }
+                row("Short break") { minutes($pomodoro.shortBreakMinutes, 1...30, step: 1) }
+                row("Long break (every 4)") { minutes($pomodoro.longBreakMinutes, 5...60, step: 5) }
+                row("Sound when a phase ends") { toggle($pomodoroSound) }
+                row("Haptic when a phase ends") { toggle($pomodoroHaptic) }
             }
 
             section("Display", symbol: "macbook", color: Palette.silver) {
@@ -139,6 +150,18 @@ struct SettingsView: View {
             control()
         }
         .frame(minHeight: 32)
+    }
+
+    private func minutes(_ binding: Binding<Int>, _ range: ClosedRange<Int>, step: Int) -> some View {
+        HStack(spacing: 6) {
+            Text("\(binding.wrappedValue) min")
+                .font(.app(12))
+                .foregroundStyle(Palette.text2)
+                .monospacedDigit()
+            Stepper("", value: binding, in: range, step: step)
+                .labelsHidden()
+                .controlSize(.small)
+        }
     }
 
     private func toggle(_ binding: Binding<Bool>) -> some View {

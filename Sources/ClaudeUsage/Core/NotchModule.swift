@@ -12,12 +12,18 @@ protocol NotchModule: ObservableObject {
     func liveLeading() -> AnyView
     /// Right of the camera: a number or indicator.
     func liveTrailing() -> AnyView
+    /// Drawn along the bottom edge of the live notch, across its whole width (the Pomodoro fuse).
+    func liveAccent() -> AnyView?
     /// Card shown in the expanded notch, if the module has one.
     func expandedCard() -> AnyView?
     /// One-off events that ask for a pop.
     var pops: AsyncStream<NotchPop> { get }
     /// Whether the module's views are on screen, so it can stop anything that repeats.
     func setVisible(_ visible: Bool)
+}
+
+extension NotchModule {
+    func liveAccent() -> AnyView? { nil }
 }
 
 /// A short card that drops out of the notch for a moment.

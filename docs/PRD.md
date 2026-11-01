@@ -331,3 +331,9 @@ Semua pengembangan dilakukan di branch terpisah, di-commit otomatis per langkah,
     - Keputusan sementara: **satu notch di layar yang memegang menu bar** (`NSScreen.screens.first`). Notch asli kalau layar itu punya notch, notch virtual kalau tidak. "Semua layar" untuk notch di setiap layar.
 - Pop saat mode "Semua layar": di layar mana?
     - Keputusan sementara: pop tampil di semua panel; expanded hanya di layar tempat kursor berada.
+- Bahasa teks UI: PRD memakai contoh teks berbahasa Indonesia ("Mulai istirahat", "Siap fokus lagi?"), sedangkan UI yang ada berbahasa Inggris.
+    - Keputusan sementara: **UI tetap berbahasa Inggris** supaya konsisten ("Start break", "Skip", "Ready to focus again?", "Focus", "Later").
+- Preset "Custom" Pomodoro: di mana durasinya diatur?
+    - Keputusan sementara: di Settings → Pomodoro (stepper menit). Chip "Custom" menyala otomatis kalau durasi tidak cocok dengan 25/5 atau 50/10.
+- Setelah satu fase selesai, apakah fase berikutnya mulai otomatis?
+    - Keputusan sementara: **tidak**. Fase berikutnya disiapkan, dan pop memberi tombol untuk memulainya.

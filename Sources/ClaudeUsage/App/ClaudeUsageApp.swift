@@ -25,9 +25,11 @@ enum AppModels {
     static let recent = RecentSessionStore()
 
     static let claude = ClaudeModule(sessions: sessions, limits: limits)
+    static let pomodoro = PomodoroModule(timer: PomodoroTimer())
     /// Every notch module, in tie-break order.
     static let registry: ModuleRegistry = {
         let registry = ModuleRegistry()
+        registry.register(pomodoro)
         registry.register(claude)
         return registry
     }()
