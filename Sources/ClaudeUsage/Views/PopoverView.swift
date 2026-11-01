@@ -170,7 +170,7 @@ struct PopoverView: View {
                     Task { await limits.refresh() }
                 }
             }
-            if display.notchScreen != nil, !showSettings {
+            if !showSettings {
                 IconButton(systemName: display.isNotch ? "menubar.rectangle" : "rectangle.topthird.inset.filled",
                            help: display.isNotch ? "Show in the menu bar" : "Show in the notch") {
                     display.toggle()

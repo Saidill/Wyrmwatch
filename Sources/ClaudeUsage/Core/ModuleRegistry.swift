@@ -11,6 +11,10 @@ final class ModuleRegistry: ObservableObject {
     private var subscriptions: Set<AnyCancellable> = []
     private var listeners: [Task<Void, Never>] = []
     private var visible = false
+    /// Self-test only: treat every module as inactive, so the closed notch can be checked while Claude is busy.
+    var mutedForTesting = false {
+        didSet { resolve() }
+    }
 
     func register(_ module: some NotchModule) {
         modules.append(module)
@@ -34,7 +38,7 @@ final class ModuleRegistry: ObservableObject {
     }
 
     func resolve() {
-        let next = PriorityResolver.resolve(modules)
+        let next = mutedForTesting ? nil : PriorityResolver.resolve(modules)
         if next?.id != active?.id { active = next }
     }
 }

@@ -103,7 +103,7 @@ enum SelfTest {
         if let panel = notch.window {
             // The closed hover zone must stay inside the menu bar, so browser tabs under the notch can't open it.
             let zone = notch.activeRect()
-            let notchBottom = panel.frame.maxY - notch.model.notch.height
+            let notchBottom = panel.frame.maxY - (notch.screens.first?.screen.notch.height ?? 0)
             check(zone.minY >= notchBottom - 0.5, "closed notch hover zone stays inside the menu bar")
             check(!zone.contains(NSPoint(x: panel.frame.midX, y: notchBottom - 12)), "pointer on a tab under the notch doesn't count")
         }
@@ -118,11 +118,74 @@ enum SelfTest {
         notch.model.registry.popQueue.clear()
         await wait(0.6)
         checkCore()
+        await checkVirtualNotch()
 
         display.setting = original
         log(failures == 0 ? "ALL PASSED" : "\(failures) FAILED")
         try? report.joined(separator: "\n").write(to: out.appendingPathComponent("report.txt"), atomically: true, encoding: .utf8)
         NSApp.terminate(nil)
+    }
+
+    /// A notch drawn by the app on a screen without one: pill when closed, same states as the real one,
+    /// one panel per screen, and only one of them open at a time.
+    private static func checkVirtualNotch() async {
+        let display = DisplayModeController.shared
+        let notch = NotchWindowController.shared
+        log("— Virtual notch")
+        display.forceVirtualForTesting = true
+        display.setting = .allScreens
+        await wait(1.0)
+        let screens = notch.screens
+        check(screens.count == NSScreen.screens.count, "one notch panel per screen (\(screens.count))")
+        check(screens.allSatisfy { $0.screen.isVirtual }, "every panel is virtual when forced")
+        check(screens.allSatisfy { $0.window.isVisible && $0.window.ignoresMouseEvents }, "closed virtual notches let clicks through")
+        check(screens.allSatisfy { $0.window.frame.size == NotchWindowController.windowSize }, "virtual panels keep the fixed window size")
+        if let first = screens.first {
+            let menuBar = NSScreen.screens.first { $0.displayID == first.screen.display }.map { $0.frame.maxY - $0.visibleFrame.maxY } ?? 0
+            check(first.screen.notch.width == 185 && abs(first.screen.notch.height - (menuBar >= 20 ? menuBar : 24)) < 0.5,
+                  "virtual notch is 185 × menu bar height (\(first.screen.notch))")
+            notch.model.registry.mutedForTesting = true
+            await wait(0.6)
+            check(notch.model.state(on: first.screen.display) == .closed, "virtual notch closes with no module active")
+            check(first.screen.size(for: .closed, contentHeight: 300) == NotchScreen.pill, "closed virtual notch is a 120 × 6 pill")
+            let zone = notch.activeRect()
+            check(zone.minY >= first.window.frame.maxY - 6.5, "pill hover zone stays at the very top")
+            snapshot(first.window, "7-virtual-closed")
+            notch.model.registry.mutedForTesting = false
+            await wait(0.6)
+            if notch.model.live != nil {
+                check(notch.model.state(on: first.screen.display) == .live, "virtual notch goes live with an active module")
+                snapshot(first.window, "7-virtual-live")
+            }
+
+            notch.open(on: first.screen.display)
+            await wait(0.9)
+            check(notch.model.state(on: first.screen.display) == .expanded, "virtual notch opens")
+            check(first.window.ignoresMouseEvents == false, "open virtual notch takes clicks")
+            check(screens.dropFirst().allSatisfy { notch.model.state(on: $0.screen.display) != .expanded },
+                  "only one screen's notch is open")
+            snapshot(first.window, "8-virtual-open")
+            notch.close()
+            await wait(0.6)
+
+            AppModels.claude.pop(LiveSession(pid: 1, sessionId: nil, cwd: nil, name: "virtual", status: "idle", kind: nil,
+                                             startedAt: nil, statusUpdatedAt: nil))
+            await wait(1.0)
+            check(notch.model.state(on: first.screen.display) == .pop, "virtual notch shows pops")
+            snapshot(first.window, "9-virtual-pop")
+            notch.model.registry.popQueue.clear()
+            await wait(0.6)
+        }
+
+        // Switching back to one notch closes and releases the extra panels, never leaving a duplicate.
+        display.forceVirtualForTesting = false
+        display.setting = .notch
+        await wait(0.8)
+        check(notch.screens.count == (display.notchScreen == nil ? 0 : 1), "back to a single notch panel")
+        check(notch.screens.allSatisfy { !$0.screen.isVirtual }, "notch mode uses only the real notch")
+        display.setting = .auto
+        await wait(0.8)
+        check(notch.screens.count == 1, "auto puts one notch on the menu bar screen")
     }
 
     /// The module plumbing on its own: who wins the live notch, and in what order pops show.
@@ -247,7 +310,7 @@ enum SelfTest {
         var top = 0
         while top < a.pixelsHigh - 1, (a.colorAt(x: a.pixelsWide / 2, y: top)?.alphaComponent ?? 0) < 0.5 { top += 1 }
         let scale = a.pixelsWide / Int(window.frame.width)
-        let notchOffset = window === NotchWindowController.shared.window ? Int(NotchWindowController.shared.model.notch.height) - 8 : 0
+        let notchOffset = window === NotchWindowController.shared.window ? Int(NotchWindowController.shared.screens.first?.screen.notch.height ?? 0) - 8 : 0
         let x0 = (window.frame.width > 400 ? (Int(window.frame.width) - 376) / 2 : 0) * scale
         let y0 = top + notchOffset * scale
         var changed = 0

@@ -65,7 +65,7 @@ struct SettingsView: View {
                     .labelsHidden()
                     .fixedSize()
                 }
-                Text("Auto uses the notch on your MacBook screen, and the menu bar when an external monitor is connected.")
+                Text("Auto uses the notch on the screen with the menu bar, drawing one on an external monitor. All screens puts a notch on every display.")
                     .font(.app(11))
                     .foregroundStyle(Palette.text3)
                     .fixedSize(horizontal: false, vertical: true)
