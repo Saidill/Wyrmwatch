@@ -125,3 +125,5 @@ Ringkasan per milestone: apa yang dibuat dan apa yang perlu dicek manual.
 3. Merge M6 ke `feat/notch-hub` dan ringkasan akhir.
 
 **Catatan**: kalau `--perf` dihentikan paksa, ia bisa meninggalkan `motion.forceReduce` dan state Pomodoro di UserDefaults. Hapus dengan `defaults delete com.saidilhalim.claudeusage motion.forceReduce`.
+
+**Self-test terakhir di `feat/m6-polish`: 3 FAILED** ("song pop goes away after 2.5 s", "charger pop goes away after 2 s", "no pop without a new plug-in"). Pop tidak hilang tepat waktu. Belum diselidiki: bisa karena kursor sungguhan berada di atas notch (pop ditahan saat hover), atau regresi dari perubahan M6. Karena itu M6 **belum di-merge** ke `feat/notch-hub`.
