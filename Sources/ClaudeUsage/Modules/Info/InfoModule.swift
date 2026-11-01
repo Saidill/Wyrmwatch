@@ -35,7 +35,7 @@ struct NextEventLabel: View {
             HStack(spacing: 4) {
                 Image(systemName: "calendar")
                     .font(.system(size: 9.5, weight: .semibold))
-                    .foregroundStyle(Palette.blue)
+                    .foregroundStyle(Palette.silver)
                 Text(event.title)
                     .foregroundStyle(Palette.text2)
                     .lineLimit(1)

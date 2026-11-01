@@ -51,10 +51,10 @@ private struct FocusSetup: View {
                 Button { timer.start() } label: {
                     Label("Mulai", systemImage: "play.fill")
                         .font(.app(12, .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Palette.onSilver)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 7)
-                        .background(Capsule().fill(Palette.blue))
+                        .background(Capsule().fill(Palette.silver))
                 }
                 .buttonStyle(.plain)
             }
@@ -78,11 +78,11 @@ private struct PresetChip: View {
     var body: some View {
         Text(title)
             .font(.app(11, .medium))
-            .foregroundStyle(selected ? .white : Palette.text2)
+            .foregroundStyle(selected ? Palette.onSilver : Palette.text2)
             .lineLimit(1)
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
-            .background(Capsule().fill(selected ? Palette.blue.opacity(0.85) : Palette.glass))
+            .background(Capsule().fill(selected ? Palette.silver.opacity(0.85) : Palette.glass))
             .overlay(Capsule().strokeBorder(Palette.rim, lineWidth: selected ? 0 : 1))
             .contentShape(Capsule())
             .onTapGesture { withAnimation(Motion.smooth, action) }
@@ -202,10 +202,10 @@ private struct RunButton: View {
                 Image(systemName: symbol).font(.system(size: 12, weight: .semibold))
                 Text(title).font(.app(9.5, .medium)).lineLimit(1)
             }
-            .foregroundStyle(primary ? .white : (hovering ? Palette.text : Palette.text2))
+            .foregroundStyle(primary ? Palette.onSilver : (hovering ? Palette.text : Palette.text2))
             .frame(width: 56, height: 46)
             .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(primary ? Palette.blue : (hovering ? Palette.hover : Palette.glass)))
+                .fill(primary ? Palette.silver : (hovering ? Palette.hover : Palette.glass)))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Palette.rim, lineWidth: primary ? 0 : 1))
         }
         .buttonStyle(.plain)

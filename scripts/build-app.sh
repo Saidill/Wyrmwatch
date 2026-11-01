@@ -15,10 +15,16 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$(swift build -c release --arch arm64 --show-bin-path)/ClaudeUsage" "$APP/Contents/MacOS/ClaudeUsage"
 
-# The icon is drawn by a script; only redraw it when the script changes.
-if [[ ! -f "$ICON" || "$ROOT/scripts/make-icon.swift" -nt "$ICON" ]]; then
-    swift "$ROOT/scripts/make-icon.swift" "$ROOT/.build/AppIcon.iconset"
-    iconutil -c icns "$ROOT/.build/AppIcon.iconset" -o "$ICON"
+# The icon is the app's own dragon, drawn by the binary; only redraw it when the drawing changes.
+if [[ ! -f "$ICON" || "$ROOT/Sources/ClaudeUsage/Views/Dragon.swift" -nt "$ICON" || "$ROOT/Sources/ClaudeUsage/App/IconRenderer.swift" -nt "$ICON" ]]; then
+    SET="$ROOT/.build/AppIcon.iconset"
+    rm -rf "$SET" && mkdir -p "$SET"
+    "$APP/Contents/MacOS/ClaudeUsage" --render-icon "$ROOT/.build/AppIcon-1024.png"
+    for size in 16 32 128 256 512; do
+        sips -z $size $size "$ROOT/.build/AppIcon-1024.png" --out "$SET/icon_${size}x${size}.png" >/dev/null
+        sips -z $((size * 2)) $((size * 2)) "$ROOT/.build/AppIcon-1024.png" --out "$SET/icon_${size}x${size}@2x.png" >/dev/null
+    done
+    iconutil -c icns "$SET" -o "$ICON"
 fi
 cp "$ICON" "$APP/Contents/Resources/AppIcon.icns"
 

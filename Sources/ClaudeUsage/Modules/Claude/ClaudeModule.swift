@@ -35,7 +35,7 @@ final class ClaudeModule: NotchModule {
     }
 
     func liveLeading() -> AnyView {
-        AnyView(ClaudeLiveWyrm(sessions: sessions))
+        AnyView(ClaudeLiveDragon(sessions: sessions))
     }
 
     func liveTrailing() -> AnyView {
@@ -58,12 +58,12 @@ final class ClaudeModule: NotchModule {
     }
 }
 
-/// Wyrm on the left of the live notch: working while a session runs, otherwise watching.
-private struct ClaudeLiveWyrm: View {
+/// Dragon on the left of the live notch: working while a session runs, otherwise watching.
+private struct ClaudeLiveDragon: View {
     @ObservedObject var sessions: SessionMonitor
 
     var body: some View {
-        WyrmView(mood: sessions.busyCount > 0 ? .working : .idle, size: 26)
+        DragonView(mood: sessions.busyCount > 0 ? .working : .idle, size: 26)
             .padding(.top, 2)
     }
 }
@@ -125,7 +125,7 @@ private struct ClaudeFinishedPop: View {
     var body: some View {
         HStack(spacing: 4) {
             // Room on the right for its fire.
-            WyrmView(mood: .happy, size: 44, fireRoom: 0.6)
+            DragonView(mood: .happy, size: 44, fireRoom: 0.6)
                 .overlay(alignment: .bottomLeading) {
                     Image(systemName: "checkmark")
                         .font(.system(size: 7, weight: .heavy))

@@ -3,6 +3,8 @@ import SwiftUI
 @main
 struct ClaudeUsageApp: App {
     init() {
+        // Build step: draw the app icon and quit before anything else starts.
+        IconRenderer.renderIfRequested()
         // Black theme: keep window chrome, tooltips and system controls dark too.
         NSApplication.shared.appearance = NSAppearance(named: .darkAqua)
         // The menu bar icon and the notch are AppKit windows, managed by the display mode.

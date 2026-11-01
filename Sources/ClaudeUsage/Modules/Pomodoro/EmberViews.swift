@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Colour of the Pomodoro's fire: the wyrm's blue flame while focusing, a paler cyan while resting.
+/// Colour of the Pomodoro's fire: the dragon's blue flame while focusing, a paler cyan while resting.
 func emberColor(_ phase: PomodoroTimer.Phase) -> Color {
-    phase.isBreak ? Palette.cyan : Palette.blue
+    phase.isBreak ? Palette.silverBright : Palette.silver
 }
 
 /// Time left as "24:59". Changes once a second, rolling digits; in the last 10 seconds it turns bright
@@ -110,7 +110,7 @@ struct EmberFuse: View {
                     Capsule().fill(Palette.line).frame(width: geo.size.width, height: thickness)
                 }
                 Capsule()
-                    .fill(LinearGradient(colors: [Palette.navy, color, Palette.cyan], startPoint: .leading, endPoint: .trailing))
+                    .fill(LinearGradient(colors: [Palette.track, color, Palette.silverBright], startPoint: .leading, endPoint: .trailing))
                     .frame(width: length, height: thickness)
                 HStack(spacing: 0) {
                     if anchor == .center { Ember(color: color, size: emberSize, still: timer.isPaused) }
@@ -137,7 +137,7 @@ struct EmberDots: View {
         HStack(spacing: size * 0.9) {
             ForEach(0..<max(total, 1), id: \.self) { i in
                 Circle()
-                    .fill(i < lit ? Palette.blue : Palette.line)
+                    .fill(i < lit ? Palette.silver : Palette.line)
                     .frame(width: size, height: size)
                     .scaleEffect(i < lit ? 1 : 0.8)
                     .animation(Motion.popIn, value: lit)
