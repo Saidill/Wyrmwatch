@@ -10,6 +10,8 @@ enum DragonMood: Equatable {
     case working
     /// A prompt just finished: rears back and roars fire.
     case happy
+    /// Keeping watch over a Pomodoro ember: head high and still, eye burning amber, slow deep breaths.
+    case guarding
 }
 
 private struct AnimationsPausedKey: EnvironmentKey {
@@ -55,6 +57,7 @@ struct DragonView: View {
         case .idle: return "Dragon, watching"
         case .working: return "Dragon, growling"
         case .happy: return "Dragon, roaring fire"
+        case .guarding: return "Dragon, guarding the ember"
         }
     }
 }
@@ -89,7 +92,7 @@ private struct DragonDrawing {
         let rimWidth = max(0.6, 0.014 * s)
 
         // MARK: Pose
-        let breathe = sin(t * 2 * .pi / (mood == .sleeping ? 3.6 : 2.6))
+        let breathe = sin(t * 2 * .pi / (mood == .sleeping ? 3.6 : mood == .guarding ? 4.2 : 2.6))
         var headAngle = 0.0, headDrop = 0.0, jaw = 0.0, roar = 0.0
         var wingSpread = 1.0, eyeGlow = 0.6, eyeOpen = 1.0
         switch mood {
@@ -104,6 +107,10 @@ private struct DragonDrawing {
             headAngle = -0.05 + sin(t * 6) * 0.02; jaw = 0.10 + sin(t * 5) * 0.04
             wingSpread = 1 + sin(t * 8) * 0.06
             eyeGlow = 0.85 + sin(t * 4) * 0.15
+        case .guarding:
+            headAngle = -0.06 + breathe * 0.012; jaw = 0.01
+            wingSpread = 1.04 + breathe * 0.02
+            eyeGlow = 0.92 + sin(t * 0.8) * 0.06
         case .happy:
             // A roar every 2.6 s: rear back, open wide, breathe fire, settle.
             let ph = t.truncatingRemainder(dividingBy: 2.6)
