@@ -29,7 +29,7 @@ private struct FocusRunning: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 16) {
                 RoundButton(systemName: timer.isPaused ? "play.fill" : "pause.fill", diameter: 42,
-                            help: timer.isPaused ? "Lanjut" : "Pause") { timer.toggle() }
+                            help: timer.isPaused ? "Resume" : "Pause") { timer.toggle() }
                     .probe("focus.button")
                 VStack(alignment: .leading, spacing: 6) {
                     Text(subtitle)
@@ -38,8 +38,8 @@ private struct FocusRunning: View {
                         .lineLimit(1)
                         .truncationMode(.tail)
                     HStack(spacing: 6) {
-                        TextAction(title: "+5 mnt") { timer.addFiveMinutes() }
-                        TextAction(title: "Lewati") { timer.skip() }
+                        TextAction(title: "+5 min") { timer.addFiveMinutes() }
+                        TextAction(title: "Skip") { timer.skip() }
                         TextAction(title: "Stop") { timer.stopToSetup() }
                     }
                 }
@@ -51,7 +51,7 @@ private struct FocusRunning: View {
                     .opacity(timer.isPaused ? 0.6 : 1)
                     .probe("focus.time")
             }
-            FocusProgress(timer: timer)
+            TickScale(timer: timer)
                 .probe("focus.progress")
         }
     }
@@ -59,27 +59,12 @@ private struct FocusRunning: View {
     private var subtitle: String {
         let task = timer.task.trimmingCharacters(in: .whitespacesAndNewlines)
         let head = switch timer.phase {
-        case .focus: "Fokus \(timer.sessionNumber)/\(timer.sessionsTarget)"
-        case .shortBreak: "Istirahat"
-        case .longBreak: "Istirahat panjang"
+        case .focus: "Focus \(timer.sessionNumber)/\(timer.sessionsTarget)"
+        case .shortBreak: "Break"
+        case .longBreak: "Long break"
         }
-        let paused = timer.isPaused ? " · dijeda" : ""
+        let paused = timer.isPaused ? " · paused" : ""
         return (task.isEmpty ? head : "\(head) · \(task)") + paused
-    }
-}
-
-/// Time used so far as a 4 pt silver bar; moves once a second while running.
-private struct FocusProgress: View {
-    @ObservedObject var timer: PomodoroTimer
-
-    var body: some View {
-        if let end = timer.endDate {
-            TimelineView(.periodic(from: end.addingTimeInterval(-100_000), by: 1)) { context in
-                ThinBar(fraction: 1 - timer.fractionLeft(at: context.date))
-            }
-        } else {
-            ThinBar(fraction: 1 - timer.fractionLeft())
-        }
     }
 }
 
@@ -112,9 +97,9 @@ private struct FocusSetup: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 6) {
-                NotchChip(title: "Klasik 25/5", selected: timer.preset == .classic) { timer.apply(.classic) }
+                NotchChip(title: "Classic 25/5", selected: timer.preset == .classic) { timer.apply(.classic) }
                     .frame(width: 104)
-                NotchChip(title: "Dalam 50/10", selected: timer.preset == .long) { timer.apply(.long) }
+                NotchChip(title: "Deep 50/10", selected: timer.preset == .long) { timer.apply(.long) }
                     .frame(width: 104)
                 NotchChip(title: "Custom", selected: timer.preset == nil) {}
                     .frame(width: 80)
@@ -128,7 +113,7 @@ private struct FocusSetup: View {
             }
             .probe("focus.steppers")
             HStack(spacing: 10) {
-                TextField("Tugas (opsional)", text: $timer.task)
+                TextField("Task (optional)", text: $timer.task)
                     .textFieldStyle(.plain)
                     .font(.app(12))
                     .foregroundStyle(Palette.text)
@@ -138,7 +123,7 @@ private struct FocusSetup: View {
                     .background(Capsule().fill(Palette.button))
                     .onSubmit { timer.start() }
                 Button { timer.start() } label: {
-                    Label("Mulai", systemImage: "play.fill")
+                    Label("Start", systemImage: "play.fill")
                         .font(.app(12, .semibold))
                         .foregroundStyle(Palette.onSilver)
                         .padding(.horizontal, 16)
@@ -153,13 +138,13 @@ private struct FocusSetup: View {
     }
 
     @ViewBuilder private var steppers: some View {
-        MinuteStepper(label: "Fokus", unit: "mnt", value: $timer.focusMinutes, range: PomodoroTimer.focusRange, step: 5)
-        MinuteStepper(label: "Istirahat", unit: "mnt", value: $timer.shortBreakMinutes, range: PomodoroTimer.breakRange, step: 1)
-        MinuteStepper(label: "Sesi", unit: "", value: $timer.sessionsTarget, range: PomodoroTimer.sessionsRange, step: 1)
+        MinuteStepper(label: "Focus", unit: "min", value: $timer.focusMinutes, range: PomodoroTimer.focusRange, step: 5)
+        MinuteStepper(label: "Break", unit: "min", value: $timer.shortBreakMinutes, range: PomodoroTimer.breakRange, step: 1)
+        MinuteStepper(label: "Sessions", unit: "", value: $timer.sessionsTarget, range: PomodoroTimer.sessionsRange, step: 1)
     }
 }
 
-/// "Fokus  [−] 25 mnt [+]".
+/// "Focus  [−] 25 min [+]".
 private struct MinuteStepper: View {
     let label: String
     let unit: String

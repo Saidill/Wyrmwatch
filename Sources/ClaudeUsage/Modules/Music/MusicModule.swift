@@ -88,31 +88,17 @@ private struct MusicLiveCover: View {
 }
 
 /// Four bars bouncing to an imagined beat. Decorative only: reading real audio would need screen-recording
-/// permission. Still when paused or out of sight, and at most 30 fps.
+/// permission. Still when paused or out of sight.
 struct MusicVisualizer: View {
     let playing: Bool
     var color: Color = Palette.silver
     @Environment(\.animationsPaused) private var paused
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: paused || !playing)) { context in
-            let t = context.date.timeIntervalSinceReferenceDate
-            Canvas { ctx, size in
-                let bar: CGFloat = 2.5, gap: CGFloat = 2
-                let speeds: [Double] = [5.1, 7.3, 6.2, 8.4]
-                for i in 0..<4 {
-                    let wave = playing
-                        ? 0.5 + 0.5 * sin(t * speeds[i] + Double(i) * 1.3) * cos(t * speeds[(i + 2) % 4] * 0.37)
-                        : 0.1
-                    let h = max(2, size.height * (0.2 + 0.8 * abs(wave)))
-                    let x = CGFloat(i) * (bar + gap)
-                    ctx.fill(Path(roundedRect: CGRect(x: x, y: (size.height - h) / 2, width: bar, height: h), cornerRadius: bar / 2),
-                             with: .color(color))
-                }
-            }
-        }
-        .frame(width: 4 * 2.5 + 3 * 2, height: 12)
-        .drawingGroup()
+        // Core Animation layers: the bounce costs the app nothing per frame.
+        LayerVisualizer(running: playing && !paused, color: NSColor(color))
+            .frame(width: VisualizerHost.size.width, height: VisualizerHost.size.height)
+            .allowsHitTesting(false)
     }
 }
 

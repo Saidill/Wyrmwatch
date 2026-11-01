@@ -58,6 +58,7 @@ struct NotchView: View {
     }
 
     var body: some View {
+        let _ = Perf.count("notch view redraw")
         let state = model.state(on: screen.display)
         let size = screen.size(for: state, contentHeight: model.contentHeight)
         let flare = NotchShape.flare(for: state, virtual: screen.isVirtual)

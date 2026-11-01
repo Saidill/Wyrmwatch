@@ -2,16 +2,17 @@ import SwiftUI
 
 /// Pages of the open notch, picked in the header's tab bar.
 enum NotchTab: String, CaseIterable, Identifiable {
-    case home, focus, music, claude
+    case home, focus, music, claude, settings
     var id: String { rawValue }
     static let storageKey = "notchTab"
 
     var title: String {
         switch self {
         case .home: return "Home"
-        case .focus: return "Fokus"
-        case .music: return "Musik"
+        case .focus: return "Focus"
+        case .music: return "Music"
         case .claude: return "Claude"
+        case .settings: return "Settings"
         }
     }
 
@@ -22,6 +23,7 @@ enum NotchTab: String, CaseIterable, Identifiable {
         case .focus: FocusIcon().stroke(style: style)
         case .music: MusicIcon().stroke(style: style)
         case .claude: ClaudeIcon().stroke(style: style)
+        case .settings: SettingsIcon().stroke(style: style)
         }
     }
 }
@@ -42,6 +44,7 @@ struct ExpandedPanel: View {
     @EnvironmentObject var limits: PlanLimitClient
 
     var body: some View {
+        let _ = Perf.count("panel redraw")
         VStack(spacing: 10) {
             HStack(spacing: 0) {
                 left
@@ -88,14 +91,14 @@ struct ExpandedPanel: View {
         }
     }
 
-    /// "Min 1 Nov · 18.52".
+    /// "Sun 1 Nov · 18:52".
     static func stamp(_ date: Date) -> String {
         let day = DateFormatter()
-        day.locale = Locale(identifier: "id_ID")
+        day.locale = Locale(identifier: "en_GB")
         day.dateFormat = "EEE d MMM"
         let time = DateFormatter()
-        time.locale = Locale(identifier: "id_ID")
-        time.dateFormat = "HH.mm"
+        time.locale = Locale(identifier: "en_GB")
+        time.dateFormat = "HH:mm"
         return "\(day.string(from: date)) · \(time.string(from: date))"
     }
 
@@ -118,22 +121,27 @@ struct ExpandedPanel: View {
             MusicPage(bridge: AppModels.music.bridge)
         case .claude:
             PopoverView(inNotch: true)
+        case .settings:
+            ScrollView(.vertical, showsIndicators: false) { SettingsView() }
+                .frame(height: 220)
+                .probe("settings.page")
         }
     }
 }
 
-/// Four icon tabs (17 pt icons on 38 × 26 buttons); the active capsule glides between them.
+/// Five icon tabs (17 pt icons on 36 × 26 buttons); the active capsule glides between them.
 private struct TabBar: View {
     @Binding var selection: NotchTab
     @Namespace private var glide
 
     var body: some View {
-        HStack(spacing: 2) {
+        // Five 36 × 26 buttons fit beside the camera on a MacBook notch.
+        HStack(spacing: 1) {
             ForEach(NotchTab.allCases) { tab in
                 tab.icon
                     .frame(width: 17, height: 17)
                     .foregroundStyle(selection == tab ? Palette.text : Palette.text2)
-                    .frame(width: 38, height: 26)
+                    .frame(width: 36, height: 26)
                     .background {
                         if selection == tab {
                             Capsule().fill(Palette.track).matchedGeometryEffect(id: "tab", in: glide)

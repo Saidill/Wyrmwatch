@@ -4,18 +4,19 @@ A macOS notch app for focused work: Claude Code usage, a Pomodoro timer, Apple M
 
 ## In the notch
 
-Hover the notch (or click it) to open it. The header is split by the camera: the dragon with the date and time on the left, four tabs on the right (Home, Focus, Music, Claude). The notch grows to fit each tab.
+Hover the notch (or click it) to open it. The header is split by the camera: the dragon with the date and time on the left, five tabs on the right (Home, Focus, Music, Claude, Settings). The notch grows to fit each tab.
 
-- **Home**: one row with everything. The album cover with a soft glow, the song with a visualizer, a seek bar and the controls (playlist, previous, play/pause, next, favourite). To the right: the Pomodoro (time left, pause, stop, or the 25/5 · 50/10 · Atur chips when it isn't running) and your Claude session limit. No music playing? There's a **Putar musik** button instead.
-- **Focus**: start a Pomodoro with a preset (Klasik 25/5, Dalam 50/10) or your own lengths, the number of sessions (1–8) and an optional task. While it runs: big digits, "Fokus 2/4 · your task", +5 min, pause, skip and stop. It keeps time through sleep and restarts.
+- **Home**: one row with everything. The album cover with a soft glow, the song with a visualizer, a seek bar and the controls (playlist, previous, play/pause, next, favourite). To the right: the Pomodoro (time left, pause, stop, or the 25/5 · 50/10 · Set up chips when it isn't running) and your Claude session limit. No music playing? There's a **Play music** button instead.
+- **Focus**: start a Pomodoro with a preset (Classic 25/5, Deep 50/10) or your own lengths, the number of sessions (1–8) and an optional task. While it runs: big digits, "Focus 2/4 · your task", a dial-like tick scale, +5 min, pause, skip and stop. It keeps time through sleep and restarts.
 - **Music**: the cover and the playlist being played. Click a song to play it.
-- **Claude**: session and week limits with the forecast, then Now (running sessions, click to jump to their terminal), Recent (click to resume) and Usage (tokens). The ⚙︎ there opens Settings.
+- **Claude**: session and week limits with the forecast, then Now (running sessions, click to jump to their terminal), Recent (click to resume) and Usage (tokens).
+- **Settings**: display mode, modules, Pomodoro, Music, Claude alerts and system options.
 
-When it's closed, the notch shows what matters in a slim "live" strip: the small dragon while Claude works, the cover and a visualizer while music plays, the time left during a Pomodoro (taking turns with the music every 6 seconds). Short cards drop out of it when a Claude session finishes, a Pomodoro phase ends or the song changes.
+When it's closed, the notch shows what matters in a slim "live" strip: the small dragon while Claude works, the cover and a visualizer while music plays, the time left with a small ring during a Pomodoro (taking turns with the music every 6 seconds). Short cards drop out of it when a Claude session finishes, a Pomodoro phase ends or the song changes.
 
 On a screen without a notch (an external monitor), the app draws one: a small black pill at the top that opens the same way. Display modes are Auto, Notch, Menu bar and All screens. In Menu bar mode the app lives in a popover under a menu bar icon instead.
 
-The look is plain black with silver accents. Red is only for the dragon, and amber or rose only for usage warnings. Nothing animates unless it's on screen, and Reduce Motion (or Settings → System → Always reduce motion) turns all repeating animation off.
+The look is plain black with silver accents. Red is only for the dragon, and amber or rose only for usage warnings. Repeating animations (the dragon, the visualizer) run in Core Animation, so the app does no work per frame: about 0.2% CPU closed or live and under 2% open on an M-series Mac (`scripts/measure-perf.sh`). Nothing animates unless it's on screen, and Reduce Motion (or Settings → System → Always reduce motion) turns all repeating animation off.
 
 ## Claude in the background
 
@@ -96,3 +97,7 @@ swift build                 # compile
 ```
 
 No Xcode project is needed. It's a plain Swift package.
+
+## Credits
+
+The dragon is [Spiked dragon head](https://game-icons.net/1x1/delapouite/spiked-dragon-head.html) by Delapouite, from [game-icons.net](https://game-icons.net), licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). It is tinted red and animated in the app.

@@ -22,7 +22,6 @@ final class PomodoroModule: NotchModule {
 
     func liveLeading() -> AnyView { AnyView(PomodoroLiveDragon(timer: timer)) }
     func liveTrailing() -> AnyView { AnyView(PomodoroLiveTime(timer: timer)) }
-    func liveAccent() -> AnyView? { AnyView(EmberFuse(timer: timer)) }
     /// The menu bar popover's Focus card: the compact row, opening the full setup only when asked.
     func expandedCard() -> AnyView? { AnyView(FocusCard(timer: timer)) }
     func setVisible(_ visible: Bool) {}
@@ -47,8 +46,8 @@ final class PomodoroModule: NotchModule {
             pop(event)
         } else {
             switch event {
-            case .focusDone: Notifier.shared.notify(title: "Fokus selesai", body: "Waktunya istirahat.")
-            case .breakDone: Notifier.shared.notify(title: "Istirahat selesai", body: "Siap fokus lagi?")
+            case .focusDone: Notifier.shared.notify(title: "Focus done", body: "Time for a break.")
+            case .breakDone: Notifier.shared.notify(title: "Break over", body: "Ready to focus again?")
             }
         }
     }
@@ -61,7 +60,7 @@ private struct PomodoroLiveDragon: View {
     @ObservedObject var timer: PomodoroTimer
 
     var body: some View {
-        DragonView(mood: timer.phase.isBreak ? .sleeping : .guarding, size: 26)
+        DragonView(mood: timer.phase.isBreak ? .sleeping : .guarding, size: 26, animated: false)
             .padding(.top, 2)
             .opacity(timer.isPaused ? 0.6 : 1)
             .transformEnvironment(\.animationsPaused) { paused in paused = paused || timer.isPaused }
@@ -73,8 +72,12 @@ private struct PomodoroLiveTime: View {
     @ObservedObject var timer: PomodoroTimer
 
     var body: some View {
-        PomodoroDigits(timer: timer, size: 11, color: Palette.silverBright)
-            .opacity(timer.isPaused ? 0.6 : 1)
+        HStack(spacing: 4) {
+            PhaseRing(timer: timer, diameter: 10)
+            PomodoroDigits(timer: timer, size: 10.5, color: Palette.silverBright, rolling: false)
+                .fixedSize()
+        }
+        .opacity(timer.isPaused ? 0.6 : 1)
     }
 }
 
@@ -108,17 +111,17 @@ private struct FocusDonePop: View {
         HStack(spacing: 4) {
             DragonView(mood: .happy, size: 44, fireRoom: 0.6)
             VStack(alignment: .leading, spacing: 6) {
-                Text("Fokus selesai")
+                Text("Focus done")
                     .font(.app(13, .medium))
                     .foregroundStyle(Palette.text)
                 EmberDots(lit: lit, total: timer.sessionsTarget)
             }
             Spacer(minLength: 6)
-            PopButton(title: "Mulai istirahat") {
+            PopButton(title: "Start break") {
                 timer.start()
                 NotchWindowController.shared.dismissPop()
             }
-            PopButton(title: "Lewati", primary: false) {
+            PopButton(title: "Skip", primary: false) {
                 timer.skip()
                 NotchWindowController.shared.dismissPop()
             }
@@ -141,16 +144,16 @@ private struct BreakDonePop: View {
     var body: some View {
         HStack(spacing: 10) {
             DragonView(mood: awake ? .guarding : .sleeping, size: 40)
-            Text("Siap fokus lagi?")
+            Text("Ready to focus again?")
                 .font(.app(13, .medium))
                 .foregroundStyle(Palette.text)
                 .lineLimit(1)
             Spacer(minLength: 6)
-            PopButton(title: "Fokus") {
+            PopButton(title: "Focus") {
                 timer.start()
                 NotchWindowController.shared.dismissPop()
             }
-            PopButton(title: "Nanti", primary: false) { NotchWindowController.shared.dismissPop() }
+            PopButton(title: "Later", primary: false) { NotchWindowController.shared.dismissPop() }
         }
         .contentShape(Rectangle())
         .onTapGesture { NotchWindowController.shared.expand() }
@@ -170,7 +173,7 @@ private struct FocusCard: View {
         VStack(alignment: .leading, spacing: 12) {
             if setup && !timer.isActive {
                 FocusPage(timer: timer)
-                NotchChip(title: "Tutup") { withAnimation(Motion.page) { setup = false } }
+                NotchChip(title: "Close") { withAnimation(Motion.page) { setup = false } }
                     .frame(width: 80)
             } else {
                 FocusMini(timer: timer) { withAnimation(Motion.page) { setup = true } }

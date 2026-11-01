@@ -12,6 +12,8 @@ struct PomodoroDigits: View {
     var size: CGFloat = 11
     var weight: Font.Weight = .medium
     var color: Color = Palette.text2
+    /// Roll the digits on each tick (off in the live notch, where it's too small to see and costs a redraw).
+    var rolling = true
     @Environment(\.reduceMotion) private var reduceMotion
 
     var body: some View {
@@ -32,9 +34,9 @@ struct PomodoroDigits: View {
             .font(.app(size, weight))
             .monospacedDigit()
             .foregroundStyle(final ? Palette.text : color)
-            .contentTransition(.numericText(countsDown: true))
-            .animation(Motion.smooth, value: seconds)
-            .keyframeAnimator(initialValue: 1.0, trigger: final && !reduceMotion ? seconds : 0) { view, scale in
+            .contentTransition(rolling ? .numericText(countsDown: true) : .identity)
+            .animation(rolling ? Motion.smooth : nil, value: seconds)
+            .keyframeAnimator(initialValue: 1.0, trigger: final && rolling && !reduceMotion ? seconds : 0) { view, scale in
                 view.scaleEffect(scale)
             } keyframes: { _ in
                 CubicKeyframe(1.06, duration: 0.15)
@@ -43,86 +45,71 @@ struct PomodoroDigits: View {
     }
 }
 
-/// A glowing ember. It flickers gently (opacity 0.75–1 over 2 s) unless still.
-struct Ember: View {
-    var color: Color
-    var size: CGFloat = 4
-    var still = false
-    @Environment(\.animationsPaused) private var paused
-
-    var body: some View {
-        // A slow 2 s flicker needs no more than 15 fps.
-        TimelineView(.animation(minimumInterval: 1.0 / 15, paused: paused || still)) { context in
-            let t = context.date.timeIntervalSinceReferenceDate
-            let flicker = still ? 1 : 0.875 + 0.125 * sin(t * .pi)
-            Canvas { ctx, canvas in
-                let r = canvas.width / 2
-                let center = CGPoint(x: r, y: r)
-                // Soft halo, then a hot core.
-                ctx.fill(Path(ellipseIn: CGRect(origin: .zero, size: canvas)),
-                         with: .radialGradient(Gradient(colors: [color.opacity(0.55), color.opacity(0)]),
-                                               center: center, startRadius: 0, endRadius: r))
-                let core = r * 0.45
-                ctx.fill(Path(ellipseIn: CGRect(x: r - core, y: r - core, width: core * 2, height: core * 2)),
-                         with: .color(.white.opacity(0.9)))
-            }
-            .opacity(flicker)
-        }
-        .frame(width: size * 2.5, height: size * 2.5)
-        .drawingGroup()
-        .allowsHitTesting(false)
-    }
-}
-
-/// The burning fuse of blue fire. In the live notch it is drawn out from the centre and burns down towards it
-/// from both ends; across the Focus page it runs from the left and burns down from the right.
-struct EmberFuse: View {
-    enum Anchor { case center, leading }
+/// A small ring that empties as the phase runs (the live notch). Moves once a second; still while paused.
+struct PhaseRing: View {
     @ObservedObject var timer: PomodoroTimer
-    var anchor: Anchor = .center
-    var thickness: CGFloat = 1.5
-    @Environment(\.reduceMotion) private var reduceMotion
-    @State private var drawn = false
+    var diameter: CGFloat = 11
 
     var body: some View {
         Group {
             if let end = timer.endDate {
                 TimelineView(.periodic(from: end.addingTimeInterval(-100_000), by: 1)) { context in
-                    fuse(timer.fractionLeft(at: context.date))
+                    ring(timer.fractionLeft(at: context.date))
                 }
             } else {
-                fuse(timer.fractionLeft())
+                ring(timer.fractionLeft())
             }
         }
-        // Paused: everything dims and stands still.
-        .opacity(timer.isPaused ? 0.6 : 1)
-        .onAppear { withAnimation(Motion.adapt(Motion.fuse, reduceMotion)) { drawn = true } }
+        .frame(width: diameter, height: diameter)
     }
 
-    private func fuse(_ fraction: Double) -> some View {
-        GeometryReader { geo in
-            let color = emberColor(timer.phase)
-            let length = max(geo.size.width * fraction * (drawn ? 1 : 0), 0)
-            let emberSize = 2.5 * max(thickness / 1.5, 1)
-            ZStack(alignment: anchor == .center ? .center : .leading) {
-                // The spent fuse stays as a faint track on the page.
-                if anchor == .leading {
-                    Capsule().fill(Palette.line).frame(width: geo.size.width, height: thickness)
+    private func ring(_ left: Double) -> some View {
+        ZStack {
+            Circle().stroke(Palette.track, lineWidth: 1.6)
+            Circle()
+                .trim(from: 0, to: left)
+                .stroke(Palette.silver, style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+        }
+        .opacity(timer.isPaused ? 0.6 : 1)
+    }
+}
+
+/// The Focus page's progress: a row of fine ticks like a watch dial. Ticks already passed are silver,
+/// the one being worked through is brighter and taller, the rest wait on the track colour.
+/// Drawn in one Canvas, once a second.
+struct TickScale: View {
+    @ObservedObject var timer: PomodoroTimer
+    var ticks = 60
+
+    var body: some View {
+        Group {
+            if let end = timer.endDate {
+                TimelineView(.periodic(from: end.addingTimeInterval(-100_000), by: 1)) { context in
+                    scale(1 - timer.fractionLeft(at: context.date))
                 }
-                Capsule()
-                    .fill(LinearGradient(colors: [Palette.track, color, Palette.silverBright], startPoint: .leading, endPoint: .trailing))
-                    .frame(width: length, height: thickness)
-                HStack(spacing: 0) {
-                    if anchor == .center { Ember(color: color, size: emberSize, still: timer.isPaused) }
-                    Spacer(minLength: 0)
-                    Ember(color: color, size: emberSize, still: timer.isPaused)
-                }
-                .frame(width: length + emberSize * 2.5)
-                .offset(x: anchor == .leading ? emberSize * 1.25 : 0)
-                .opacity(drawn ? 1 : 0)
+            } else {
+                scale(1 - timer.fractionLeft())
             }
-            .frame(width: geo.size.width, height: geo.size.height, alignment: anchor == .center ? .center : .leading)
-            .animation(Motion.smooth, value: timer.phase)
+        }
+        .frame(height: 14)
+        .opacity(timer.isPaused ? 0.6 : 1)
+    }
+
+    private func scale(_ done: Double) -> some View {
+        Canvas { ctx, size in
+            let step = size.width / CGFloat(ticks)
+            let current = min(Int(done * Double(ticks)), ticks - 1)
+            for i in 0..<ticks {
+                // Every fifth tick is a little taller, like the hour marks on a dial.
+                let major = i % 5 == 0
+                let isCurrent = i == current
+                let h: CGFloat = isCurrent ? size.height : (major ? size.height * 0.7 : size.height * 0.45)
+                let x = step * (CGFloat(i) + 0.5) - 0.75
+                let rect = CGRect(x: x, y: (size.height - h) / 2, width: 1.5, height: h)
+                let color: Color = isCurrent ? Palette.silverBright : (i < current ? Palette.silver : Palette.track)
+                ctx.fill(Path(roundedRect: rect, cornerRadius: 0.75), with: .color(color))
+            }
         }
     }
 }

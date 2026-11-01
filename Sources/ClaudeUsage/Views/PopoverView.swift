@@ -23,6 +23,7 @@ struct PopoverView: View {
     @State private var window: NSWindow?
 
     var body: some View {
+        let _ = Perf.count("claude page redraw")
         Group {
             if inNotch {
                 claudePage
@@ -64,15 +65,15 @@ struct PopoverView: View {
     }
 
     /// The Claude page in the open notch: session and week side by side with the forecast, then
-    /// Now / Recent / Usage (or Settings, from the gear), each scrolling in its own height.
+    /// Now / Recent / Usage, each scrolling in its own height.
     private var claudePage: some View {
         let session = limits.windows.first { $0.id == "five_hour" }
         let week = limits.windows.first { $0.id == "seven_day" }
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 16) {
-                ClaudeBar(title: "Sesi", window: session, reset: session?.resetsAt.map(formatReset))
+                ClaudeBar(title: "Session", window: session, reset: session?.resetsAt.map(formatReset))
                     .probe("claude.session")
-                ClaudeBar(title: "Minggu", window: week, reset: week?.resetsAt.map(formatReset))
+                ClaudeBar(title: "Week", window: week, reset: week?.resetsAt.map(formatReset))
                     .probe("claude.week")
             }
             if let forecast = limits.forecast {
@@ -82,28 +83,17 @@ struct PopoverView: View {
             } else if let error = limits.error, limits.windows.isEmpty {
                 Text(error).font(.app(11)).foregroundStyle(Palette.text2).lineLimit(1)
             }
-            HStack(spacing: 8) {
-                PillToggle(options: ["Now", "Recent", "Usage"], selection: Binding(
-                    get: { showSettings ? -1 : tab },
-                    set: { tab = $0; showSettings = false }), fill: true)
-                RoundButton(systemName: "gearshape.fill", diameter: 26, help: "Settings") {
-                    withAnimation(Motion.page) { showSettings.toggle() }
-                }
-            }
-            .probe("claude.tabs")
+            PillToggle(options: ["Now", "Recent", "Usage"], selection: $tab, fill: true)
+                .probe("claude.tabs")
             ScrollView(.vertical, showsIndicators: false) {
                 Group {
-                    if showSettings {
-                        SettingsView()
-                    } else {
-                        switch tab {
-                        case 1: recentCard
-                        case 2: tokensCard
-                        default: sessionsCard
-                        }
+                    switch tab {
+                    case 1: recentCard
+                    case 2: tokensCard
+                    default: sessionsCard
                     }
                 }
-                .id(showSettings ? -1 : tab)
+                .id(tab)
                 .transition(.opacity.combined(with: .offset(y: 5)))
             }
             .frame(height: 120)

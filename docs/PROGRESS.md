@@ -189,3 +189,20 @@ Hanya polanya yang dipelajari: notch hitam, Home berisi player + timer, tab yang
 **Masih terbuka**: anggaran CPU live/expanded, rename ke Notchwyrm, tempat acara kalender berikutnya (sekarang tooltip), dan bahasa UI campuran.
 
 **Koreksi**: `feat/notch-home` sempat ter-merge ke `main` (13dc967) padahal self-test gagal 1 ("dragon moves in the menu bar header"). Penyebabnya, skrip runner self-test lokal mengembalikan exit code 0 walau ada FAIL, jadi rantai `&&` tidak berhenti. Skrip sudah diperbaiki (gagal kalau report tidak `ALL PASSED`). Kegagalan itu menunjukkan bug nyata: popover menu bar lebih tinggi dari layar, karena kartu Fokus penuh ditambah Now Playing, sehingga header terdorong keluar. Diperbaiki di `fix/popover-height`: popover kini memakai kartu Fokus ringkas (sama dengan kolom kanan Home), dan setup penuh hanya muncul lewat "Atur". Self-test `ALL PASSED`.
+
+## Naga baru, performa stabil, bahasa Inggris (`perf/stable-cpu`)
+
+**Performa** (diukur dengan `scripts/measure-perf.sh`, sekarang juga menghitung perubahan publisher dan redraw)
+- Temuan: SwiftUI hanya me-redraw 1–3 kali per 15 detik, jadi biaya CPU datang dari animasi berulang SwiftUI (TimelineView/Canvas). Setiap frame membuat panel ikut dirender ulang. Live Pomodoro 14% walau semua animasi dimatikan, karena sumbu dan animasi angka per detik.
+- Perbaikan: naga diam di notch live, sumbu dihapus, angka live tanpa animasi per detik, dan visualizer serta naga animasi dipindah ke **Core Animation** (`CALayer`, `CABasicAnimation`, `CAEmitterLayer` untuk api), yang berjalan di render server.
+- Hasil: closed 0,19%, live Pomodoro 0,55%, live Claude 0,19%, live musik 0,17%, expanded (musik) 1,57%, expanded idle 0,70%. Memori 27–40 MB. **Semua dalam anggaran PRD.**
+
+**Naga**: memakai ikon "Spiked dragon head" (Delapouite, game-icons.net, CC BY 3.0, atribusi di README) yang diwarnai merah, dengan animasi halus (napas, glow, mata, api partikel, "z"). Naga gambar tangan dihapus.
+
+**Pomodoro**: garis sumbu di notch live (yang menimpa naga) diganti cincin progres kecil di samping waktu. Halaman Focus memakai skala tick seperti piringan jam (tick ke-5 lebih tinggi, tick aktif lebih terang), bukan garis polos.
+
+**Lainnya**: tab Settings kembali (tab ke-5, ikon gear custom, tombol 36 × 26 supaya 5 tab muat), ⚙︎ di halaman Claude dihapus, dan semua teks UI berbahasa Inggris.
+
+**Self-test**: `ALL PASSED`. Cek "dragon moves" kini memeriksa animasi Core Animation yang aktif. Reduce Motion memastikan tidak ada animasi.
+
+**Cek manual**: hover naga di header, api saat sesi Claude selesai (pop), dan CPU di Activity Monitor saat musik diputar.

@@ -233,12 +233,13 @@ enum SelfTest {
         if let w = notch.window { snapshot(w, "12-pomodoro-last-seconds") }
 
         let before = (timer.todaySessions, timer.completedInCycle)
+        notch.model.registry.popQueue.clear()
         timer.runForTesting(phase: .focus, secondsLeft: 1.2)
         await wait(2.2)
         check(timer.phase == .shortBreak || timer.phase == .longBreak, "focus ending moves on to a break")
         check(timer.todaySessions == before.0 + 1, "finished focus counts in today's stats")
         check(timer.completedInCycle == min(before.1 + 1, timer.sessionsTarget), "one more ember lit")
-        check(notch.model.pop?.kind == .pomodoro, "focus done pops")
+        check(pomodoroPopped(), "focus done pops")
         if let w = notch.window { snapshot(w, "13-pomodoro-focus-done") }
         notch.dismissPop()
         await wait(0.6)
@@ -247,9 +248,11 @@ enum SelfTest {
         timer.runForTesting(phase: .shortBreak, secondsLeft: 3 * 60)
         await wait(0.8)
         if let w = notch.window { snapshot(w, "14-pomodoro-break") }
+        notch.model.registry.popQueue.clear()
         timer.runForTesting(phase: .shortBreak, secondsLeft: 1.2)
         await wait(2.2)
-        check(timer.phase == .focus && notch.model.pop?.kind == .pomodoro, "break ending pops and goes back to focus")
+        check(timer.phase == .focus, "break ending goes back to focus")
+        check(pomodoroPopped(), "break ending pops")
         if let w = notch.window { snapshot(w, "15-pomodoro-break-done") }
         notch.dismissPop()
 
@@ -488,6 +491,12 @@ enum SelfTest {
 
     // MARK: Helpers
 
+    /// A Pomodoro pop is showing or next in line (a real Claude pop may have arrived during the test).
+    private static func pomodoroPopped() -> Bool {
+        let queue = NotchWindowController.shared.model.registry.popQueue
+        return queue.current?.kind == .pomodoro || queue.pending.contains { $0.kind == .pomodoro }
+    }
+
     /// The app's own saved settings starting with `prefix` (not the registered defaults).
     private static func savedSettings(prefix: String) -> [String: Any] {
         let domain = UserDefaults.standard.persistentDomain(forName: Bundle.main.bundleIdentifier ?? "") ?? [:]
@@ -573,36 +582,18 @@ enum SelfTest {
     }
 
     /// Captures the window twice, half a second apart, and checks that the header avatar (the dragon) changed.
+    /// Whether a dragon in the window is animating: its Core Animation layers carry running animations.
     private static func dragonMoves(in window: NSWindow) async -> Bool {
-        func capture() -> NSBitmapImageRep? {
-            guard let view = window.contentView, let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return nil }
-            view.cacheDisplay(in: view.bounds, to: rep)
-            return rep
+        await wait(0.3)
+        func hosts(_ view: NSView) -> [DragonHost] {
+            (view as? DragonHost).map { [$0] } ?? view.subviews.flatMap(hosts)
         }
-        guard let a = capture() else { return false }
-        await wait(0.5)
-        guard let b = capture(), a.pixelsWide == b.pixelsWide, a.pixelsHigh == b.pixelsHigh else { return false }
-        // Where the dragon sits, in points from the window's top left: the left of the open notch's header band,
-        // or the avatar at the top left of the menu bar popover.
-        let notch = NotchWindowController.shared
-        let region: CGRect
-        if window === notch.window {
-            let band = notch.screens.first?.screen.notch.height ?? 32
-            let left = (window.frame.width - (ExpandedPanel.width + 20)) / 2 + 10 + 18
-            region = CGRect(x: left, y: 0, width: 36, height: band)
-        } else {
-            region = CGRect(x: 10, y: 10, width: 50, height: 50)
+        guard let root = window.contentView else { return false }
+        let animating = hosts(root).filter { host in
+            (host.layer?.sublayers ?? []).contains { !($0.animationKeys() ?? []).isEmpty }
         }
-        let scale = CGFloat(a.pixelsWide) / window.frame.width
-        var changed = 0
-        for y in Int(region.minY * scale)..<min(a.pixelsHigh, Int(region.maxY * scale)) {
-            for x in Int(region.minX * scale)..<min(a.pixelsWide, Int(region.maxX * scale))
-            where a.colorAt(x: x, y: y) != b.colorAt(x: x, y: y) {
-                changed += 1
-            }
-        }
-        log("   \(changed) pixels changed around the dragon")
-        return changed > 20
+        log("   \(hosts(root).count) dragon layer views, \(animating.count) animating")
+        return !animating.isEmpty
     }
 
     /// Every tab of the open notch: 600 wide, the height following the page, nothing overlapping or spilling out,
@@ -647,7 +638,7 @@ enum SelfTest {
             AppModels.music.bridge.injectForTesting(track: nil, playing: false)
             UserDefaults.standard.set(NotchTab.home.rawValue, forKey: NotchTab.storageKey)
             await wait(0.8)
-            check(LayoutProbe.frames["home.startMusic"] != nil, "\(label): Home offers Putar musik when nothing plays")
+            check(LayoutProbe.frames["home.startMusic"] != nil, "\(label): Home offers Play music when nothing plays")
             verify("Home with no music", "tab-home-nomusic-\(label)")
         }
         notch.close()
