@@ -22,7 +22,6 @@ final class PomodoroModule: NotchModule {
 
     func liveLeading() -> AnyView { AnyView(PomodoroLiveDragon(timer: timer)) }
     func liveTrailing() -> AnyView { AnyView(PomodoroLiveTime(timer: timer)) }
-    func liveAccent() -> AnyView? { AnyView(EmberFuse(timer: timer)) }
     /// The menu bar popover's Focus card: the compact row, opening the full setup only when asked.
     func expandedCard() -> AnyView? { AnyView(FocusCard(timer: timer)) }
     func setVisible(_ visible: Bool) {}
@@ -61,7 +60,7 @@ private struct PomodoroLiveDragon: View {
     @ObservedObject var timer: PomodoroTimer
 
     var body: some View {
-        DragonView(mood: timer.phase.isBreak ? .sleeping : .guarding, size: 26)
+        DragonView(mood: timer.phase.isBreak ? .sleeping : .guarding, size: 26, animated: false)
             .padding(.top, 2)
             .opacity(timer.isPaused ? 0.6 : 1)
             .transformEnvironment(\.animationsPaused) { paused in paused = paused || timer.isPaused }
@@ -73,8 +72,12 @@ private struct PomodoroLiveTime: View {
     @ObservedObject var timer: PomodoroTimer
 
     var body: some View {
-        PomodoroDigits(timer: timer, size: 11, color: Palette.silverBright)
-            .opacity(timer.isPaused ? 0.6 : 1)
+        HStack(spacing: 4) {
+            PhaseRing(timer: timer, diameter: 10)
+            PomodoroDigits(timer: timer, size: 10.5, color: Palette.silverBright, rolling: false)
+                .fixedSize()
+        }
+        .opacity(timer.isPaused ? 0.6 : 1)
     }
 }
 

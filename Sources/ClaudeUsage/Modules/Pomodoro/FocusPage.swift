@@ -51,7 +51,7 @@ private struct FocusRunning: View {
                     .opacity(timer.isPaused ? 0.6 : 1)
                     .probe("focus.time")
             }
-            FocusProgress(timer: timer)
+            TickScale(timer: timer)
                 .probe("focus.progress")
         }
     }
@@ -65,21 +65,6 @@ private struct FocusRunning: View {
         }
         let paused = timer.isPaused ? " · dijeda" : ""
         return (task.isEmpty ? head : "\(head) · \(task)") + paused
-    }
-}
-
-/// Time used so far as a 4 pt silver bar; moves once a second while running.
-private struct FocusProgress: View {
-    @ObservedObject var timer: PomodoroTimer
-
-    var body: some View {
-        if let end = timer.endDate {
-            TimelineView(.periodic(from: end.addingTimeInterval(-100_000), by: 1)) { context in
-                ThinBar(fraction: 1 - timer.fractionLeft(at: context.date))
-            }
-        } else {
-            ThinBar(fraction: 1 - timer.fractionLeft())
-        }
     }
 }
 

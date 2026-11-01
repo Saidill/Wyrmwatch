@@ -63,7 +63,7 @@ private struct ClaudeLiveDragon: View {
     @ObservedObject var sessions: SessionMonitor
 
     var body: some View {
-        DragonView(mood: sessions.busyCount > 0 ? .working : .idle, size: 26)
+        DragonView(mood: sessions.busyCount > 0 ? .working : .idle, size: 26, animated: false)
             .padding(.top, 2)
     }
 }

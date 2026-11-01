@@ -95,7 +95,8 @@ struct MusicVisualizer: View {
     @Environment(\.animationsPaused) private var paused
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: paused || !playing)) { context in
+        // A decorative bounce reads fine at 15 fps.
+        TimelineView(.animation(minimumInterval: 1.0 / 15, paused: paused || !playing)) { context in
             let t = context.date.timeIntervalSinceReferenceDate
             Canvas { ctx, size in
                 let bar: CGFloat = 2.5, gap: CGFloat = 2
@@ -112,7 +113,6 @@ struct MusicVisualizer: View {
             }
         }
         .frame(width: 4 * 2.5 + 3 * 2, height: 12)
-        .drawingGroup()
     }
 }
 
