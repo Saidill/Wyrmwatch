@@ -34,10 +34,10 @@ enum Palette {
 
     static let confetti: [Color] = [.white, silver, steel, Color(hex: 0xB9BEC6)]
 
-    /// Base colour while usage is comfortable, then amber, then rose as it gets close to the limit.
-    static func level(_ percent: Double, base: Color) -> Color {
+    /// Base colour while usage is comfortable, then amber from `warn`, then rose from 90% as it gets close to the limit.
+    static func level(_ percent: Double, base: Color, warn: Double = 70) -> Color {
         switch percent {
-        case ..<70: return base
+        case ..<warn: return base
         case ..<90: return amber
         default: return rose
         }

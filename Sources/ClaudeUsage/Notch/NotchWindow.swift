@@ -7,18 +7,31 @@ import SwiftUI
 final class NotchModel: ObservableObject {
     enum State: Equatable { case closed, live, pop, expanded }
 
+    let registry: ModuleRegistry
     @Published var expanded = false
-    /// The session that just finished, while its pop is showing.
-    @Published var popped: LiveSession?
     /// Size of the hardware notch on this screen.
     @Published var notch = CGSize(width: 185, height: 32)
     /// Height of the full app content, measured by the view, so the shape fits it exactly.
     @Published var contentHeight: CGFloat = 300
+    private var subscriptions: Set<AnyCancellable> = []
 
-    func state(busy: Bool) -> State {
+    init(registry: ModuleRegistry) {
+        self.registry = registry
+        // The state follows the active module and the pop queue.
+        registry.objectWillChange.merge(with: registry.popQueue.objectWillChange)
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &subscriptions)
+    }
+
+    /// The module that owns the live notch, if any.
+    var live: (any NotchModule)? { registry.active }
+    /// The pop showing right now, if any.
+    var pop: NotchPop? { registry.popQueue.current }
+
+    var state: State {
         if expanded { return .expanded }
-        if popped != nil { return .pop }
-        return busy ? .live : .closed
+        if pop != nil { return .pop }
+        return live != nil ? .live : .closed
     }
 
     /// Outer size of the black shape (including the little flares at its top corners) in each state.
@@ -48,7 +61,8 @@ final class NotchWindowController {
     /// The window never resizes (that's what made things lag); the shape animates inside it.
     static let windowSize = CGSize(width: 420, height: 640)
 
-    let model = NotchModel()
+    let model = NotchModel(registry: AppModels.registry)
+    private var popQueue: PopQueue { model.registry.popQueue }
     private var panel: NotchPanel?
     var window: NSWindow? { panel }
     /// The self-test can't move the real pointer, so it keeps the notch open itself.
@@ -59,7 +73,6 @@ final class NotchWindowController {
     private var pointerTimer: Timer?
     /// When the pointer left the open panel; it closes once it has been away long enough.
     private var leftAt: Date?
-    private var popTask: Task<Void, Never>?
     private var hovering = false
 
     private init() {}
@@ -70,6 +83,7 @@ final class NotchWindowController {
             panel?.orderOut(nil)
             stopMonitoring()
             close()
+            popQueue.clear()
             return
         }
         model.notch = notch
@@ -105,11 +119,13 @@ final class NotchWindowController {
         panel.contentView = host
         self.panel = panel
 
-        // Pop down when a session finishes.
-        AppModels.sessions.$finishCount.dropFirst().sink { [weak self] _ in
-            Task { @MainActor in self?.sessionFinished() }
-        }.store(in: &subscriptions)
-        model.$expanded.combineLatest(model.$popped).sink { [weak self] _ in
+        // Pops show only while the notch is on screen and not open; a pop stays while the pointer is on it.
+        popQueue.canShow = { [weak self] in
+            guard let self else { return false }
+            return self.panel?.isVisible == true && !self.model.expanded
+        }
+        popQueue.isHovering = { [weak self] in self?.hovering ?? false }
+        model.$expanded.combineLatest(popQueue.$current.map { $0 != nil }).sink { [weak self] _ in
             Task { @MainActor in self?.updateClickThrough() }
         }.store(in: &subscriptions)
         return panel
@@ -117,33 +133,15 @@ final class NotchWindowController {
 
     // MARK: Pop
 
-    private func sessionFinished() {
-        guard panel?.isVisible == true, let session = AppModels.sessions.lastFinished, !model.expanded else { return }
-        model.popped = session
-        schedulePopHide()
-    }
-
-    private func schedulePopHide() {
-        popTask?.cancel()
-        popTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(5))
-            guard !Task.isCancelled, let self else { return }
-            // Stay open while the pointer is on it.
-            if self.hovering { self.schedulePopHide() } else { self.model.popped = nil }
-        }
-    }
-
     /// Jump button on the pop.
     func jump(to session: LiveSession) {
         TerminalLauncher.focus(session)
-        popTask?.cancel()
-        model.popped = nil
+        popQueue.dismiss()
     }
 
     /// Clicking the pop opens the full app.
     func expand() {
-        popTask?.cancel()
-        model.popped = nil
+        popQueue.clear()
         open()
     }
 
@@ -170,7 +168,7 @@ final class NotchWindowController {
     /// The area that counts as "on the notch" right now, in screen coordinates.
     func activeRect() -> NSRect {
         guard let panel else { return .zero }
-        let state = model.state(busy: AppModels.sessions.busyCount > 0)
+        let state = model.state
         let size = model.size(for: state)
         let rect = NSRect(x: panel.frame.midX - size.width / 2, y: panel.frame.maxY - size.height,
                           width: size.width, height: size.height)
@@ -192,7 +190,7 @@ final class NotchWindowController {
             leftAt = nil
             guard !hovering else { return }
             hovering = true
-            guard !model.expanded, model.popped == nil else { return }
+            guard !model.expanded, model.pop == nil else { return }
             // Open once the pointer has rested on the notch for a moment, so passing through doesn't open it,
             // and never while a button is held (dragging a tab or window along the top).
             openTask?.cancel()
@@ -216,6 +214,8 @@ final class NotchWindowController {
     }
 
     func open() {
+        // Nothing pops while open; events are marked inside the panel instead.
+        popQueue.clear()
         model.expanded = true
         leftAt = nil
         updateClickThrough()
@@ -234,6 +234,6 @@ final class NotchWindowController {
 
     /// Clicks pass through to whatever is under the window unless something is open.
     private func updateClickThrough() {
-        panel?.ignoresMouseEvents = !(model.expanded || model.popped != nil)
+        panel?.ignoresMouseEvents = !(model.expanded || model.pop != nil)
     }
 }
