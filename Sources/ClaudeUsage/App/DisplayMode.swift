@@ -1,14 +1,15 @@
 import AppKit
 
-/// Where the app lives: in the menu bar (good with an external monitor) or in the MacBook notch.
+/// Where the app lives: in the menu bar, in the MacBook notch, or in a notch drawn on screens without one.
 enum DisplayMode: String, CaseIterable, Identifiable {
-    case auto, menuBar, notch
+    case auto, notch, menuBar, allScreens
     var id: String { rawValue }
     var title: String {
         switch self {
         case .auto: return "Auto"
-        case .menuBar: return "Menu bar"
         case .notch: return "Notch"
+        case .menuBar: return "Menu bar"
+        case .allScreens: return "All screens"
         }
     }
 }
@@ -24,10 +25,14 @@ final class DisplayModeController: ObservableObject {
             update()
         }
     }
-    /// True when the app is shown in the notch rather than the menu bar.
+    /// True when the app is shown in a notch (real or virtual) rather than the menu bar.
     @Published private(set) var isNotch = false
     /// The built-in screen with a notch, if there is one.
     @Published private(set) var notchScreen: NSScreen?
+    /// Self-test only: draw virtual notches even on a screen that has a real one.
+    var forceVirtualForTesting = false {
+        didSet { update() }
+    }
 
     private init() {
         setting = UserDefaults.standard.string(forKey: Settings.displayModeKey).flatMap(DisplayMode.init) ?? .auto
@@ -35,40 +40,43 @@ final class DisplayModeController: ObservableObject {
                                                object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.update() }
         }
-        (isNotch, notchScreen) = Self.resolve(setting)
+        notchScreen = NSScreen.screens.first { $0.notchSize != nil }
+        isNotch = !resolve(setting).isEmpty
         // The notch window refers back to `shared`, so build it once this initializer has returned.
         DispatchQueue.main.async { self.update() }
     }
 
     /// Flips between the menu bar and the notch (the header button).
     func toggle() {
-        setting = isNotch ? .menuBar : .notch
+        setting = isNotch ? .menuBar : (notchScreen != nil ? .notch : .auto)
     }
 
     private func update() {
-        let (notch, notched) = Self.resolve(setting)
-        notchScreen = notched
+        let targets = resolve(setting)
+        notchScreen = NSScreen.screens.first { $0.notchSize != nil }
+        let notch = !targets.isEmpty
         if notch != isNotch { isNotch = notch }
         StatusItemController.shared.setVisible(!notch)
-        NotchWindowController.shared.show(on: notch ? notched : nil)
+        NotchWindowController.shared.show(on: targets)
     }
 
-    private static func resolve(_ setting: DisplayMode) -> (notch: Bool, screen: NSScreen?) {
-        let notched = NSScreen.screens.first { $0.notchSize != nil }
-        let notch: Bool = switch setting {
-        case .menuBar: false
-        case .notch: notched != nil
-        // Notch while the laptop screen is the only one; menu bar once an external monitor is connected.
-        case .auto: notched != nil && NSScreen.screens.count == 1
+    /// Which screens get a notch, and whether it is the real one or drawn by the app.
+    private func resolve(_ setting: DisplayMode) -> [NotchTarget] {
+        let screens = NSScreen.screens
+        func target(_ screen: NSScreen) -> NotchTarget {
+            NotchTarget(screen: screen, isVirtual: forceVirtualForTesting || screen.notchSize == nil)
         }
-        return (notch, notched)
-    }
-}
-
-extension NSScreen {
-    /// Size of the camera notch, or nil on screens without one.
-    var notchSize: CGSize? {
-        guard safeAreaInsets.top > 0, let left = auxiliaryTopLeftArea, let right = auxiliaryTopRightArea else { return nil }
-        return CGSize(width: right.minX - left.maxX, height: safeAreaInsets.top)
+        switch setting {
+        case .menuBar:
+            return []
+        case .notch:
+            // Only the real notch; with no notched screen there is nowhere to go but the menu bar.
+            return screens.first { $0.notchSize != nil }.map { [target($0)] } ?? []
+        case .auto:
+            // The screen with the menu bar: its own notch, or a virtual one on an external monitor.
+            return screens.first.map { [target($0)] } ?? []
+        case .allScreens:
+            return screens.map(target)
+        }
     }
 }

@@ -10,8 +10,10 @@ struct NotchShape: Shape {
         set { flare = newValue.first; radius = newValue.second }
     }
 
-    static func flare(for state: NotchModel.State) -> CGFloat {
-        state == .closed || state == .live ? 6 : 10
+    static func flare(for state: NotchModel.State, virtual: Bool = false) -> CGFloat {
+        // The closed virtual notch is a plain pill.
+        if virtual, state == .closed { return 0 }
+        return state == .closed || state == .live ? 6 : 10
     }
 
     static func radius(for state: NotchModel.State) -> CGFloat {
@@ -41,6 +43,7 @@ struct NotchShape: Shape {
 
 struct NotchView: View {
     @ObservedObject var model: NotchModel
+    @ObservedObject var screen: NotchScreen
     @EnvironmentObject var limits: PlanLimitClient
     @EnvironmentObject var usage: UsageTracker
 
@@ -50,9 +53,9 @@ struct NotchView: View {
     }
 
     var body: some View {
-        let state = model.state
-        let size = model.size(for: state)
-        let flare = NotchShape.flare(for: state)
+        let state = model.state(on: screen.display)
+        let size = screen.size(for: state, contentHeight: model.contentHeight)
+        let flare = NotchShape.flare(for: state, virtual: screen.isVirtual)
         let shape = NotchShape(flare: flare, radius: NotchShape.radius(for: state))
 
         VStack(spacing: 0) {
@@ -69,7 +72,7 @@ struct NotchView: View {
                         .onPreferenceChange(NotchContentHeightKey.self) { h in
                             if h > 0, abs(h - model.contentHeight) > 0.5 { model.contentHeight = h }
                         }
-                        .padding(.top, model.notch.height - 8)
+                        .padding(.top, screen.notch.height - 8)
                         // Eases in a beat after the shape starts opening, settling down from slightly smaller.
                         .opacity(state == .expanded ? 1 : 0)
                         .scaleEffect(state == .expanded ? 1 : 0.94, anchor: .top)
@@ -79,13 +82,13 @@ struct NotchView: View {
                         .environment(\.animationsPaused, state != .expanded)
 
                     if state == .live, let live = model.live {
-                        LiveRow(module: live, notch: model.notch)
+                        LiveRow(module: live, notch: screen.notch)
                             .transition(.opacity.animation(Motion.liveIn))
                     }
                     if state == .pop, let pop = model.pop {
                         pop.content
                             .padding(.horizontal, 18)
-                            .padding(.top, model.notch.height + 10)
+                            .padding(.top, screen.notch.height + 10)
                             .id(pop.id)
                             .transition(.asymmetric(
                                 insertion: .opacity.combined(with: .offset(y: -8)).animation(Motion.contentIn),
@@ -104,12 +107,12 @@ struct NotchView: View {
         .frame(width: NotchWindowController.windowSize.width, height: NotchWindowController.windowSize.height,
                alignment: .top)
         .preferredColorScheme(.dark)
-        .onChange(of: model.expanded) { _, open in
+        .onChange(of: state == .expanded) { _, open in
             guard open else { return }
             usage.refresh()
             Task { await limits.refreshIfStale() }
         }
-        .onChange(of: state, initial: true) { _, state in model.registry.setVisible(state != .closed) }
+        .onChange(of: model.state, initial: true) { _, state in model.registry.setVisible(state != .closed) }
     }
 }
 
