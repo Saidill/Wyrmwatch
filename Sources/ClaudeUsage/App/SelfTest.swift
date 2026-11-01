@@ -144,13 +144,18 @@ enum SelfTest {
             let menuBar = NSScreen.screens.first { $0.displayID == first.screen.display }.map { $0.frame.maxY - $0.visibleFrame.maxY } ?? 0
             check(first.screen.notch.width == 185 && abs(first.screen.notch.height - (menuBar >= 20 ? menuBar : 24)) < 0.5,
                   "virtual notch is 185 × menu bar height (\(first.screen.notch))")
-            let closed = first.screen.size(for: .closed, contentHeight: 300)
-            let state = notch.model.state(on: first.screen.display)
-            if state == .closed {
-                check(closed == NotchScreen.pill, "closed virtual notch is a 120 × 6 pill")
-                let zone = notch.activeRect()
-                check(zone.minY >= first.window.frame.maxY - 6.5, "pill hover zone stays at the very top")
-                snapshot(first.window, "7-virtual-closed")
+            notch.model.registry.mutedForTesting = true
+            await wait(0.6)
+            check(notch.model.state(on: first.screen.display) == .closed, "virtual notch closes with no module active")
+            check(first.screen.size(for: .closed, contentHeight: 300) == NotchScreen.pill, "closed virtual notch is a 120 × 6 pill")
+            let zone = notch.activeRect()
+            check(zone.minY >= first.window.frame.maxY - 6.5, "pill hover zone stays at the very top")
+            snapshot(first.window, "7-virtual-closed")
+            notch.model.registry.mutedForTesting = false
+            await wait(0.6)
+            if notch.model.live != nil {
+                check(notch.model.state(on: first.screen.display) == .live, "virtual notch goes live with an active module")
+                snapshot(first.window, "7-virtual-live")
             }
 
             notch.open(on: first.screen.display)
