@@ -84,7 +84,7 @@ Lebar 600 pt. Tingginya mengikuti isi tab, dianimasikan dengan `resize`. Window 
 
 1. **Header** setinggi notch, berupa grid 3 kolom: kiri | lebar notch fisik (kamera) | kanan.
     - Kiri: naga merah 22 pt + "Min 1 Nov · 18.52" (locale id_ID). Acara kalender berikutnya muncul sebagai tooltip di tanggal.
-    - Kanan: 4 tab ikon custom (Shape, bukan SF Symbols) Home, Fokus, Musik, Claude. Ikon 17 pt di tombol 38 × 26. Kapsul aktif `#2A2B2F` meluncur dengan `matchedGeometryEffect` + spring `resize`. Tab terakhir disimpan.
+    - Kanan: 5 tab ikon custom (Shape, bukan SF Symbols) Home, Focus, Music, Claude, Settings. Ikon 17 pt di tombol 36 × 26 (5 × 38 tidak muat di samping kamera). Kapsul aktif `#2A2B2F` meluncur dengan `matchedGeometryEffect` + spring `resize`. Tab terakhir disimpan.
 2. **Home**: satu baris setinggi 96 pt, kolom [96 | flex | 1 pt | 180], jarak 16.
     - Cover 96 pt radius 16, dengan glow dari cover itu sendiri yang di-blur (statis) di belakangnya.
     - Info: baris 1 [judul + artis (ellipsis) | visualizer silver], baris 2 [waktu 30 | progress 4 pt bisa digeser | durasi 30], baris 3 lima kolom sama lebar: playlist (ke tab Musik), previous, play/pause, next, favorit (hati Music.app).
@@ -94,7 +94,8 @@ Lebar 600 pt. Tingginya mengikuti isi tab, dianimasikan dengan `resize`. Window 
     - Tidak ada elemen yang overlap, dan teks panjang selalu ellipsis. Keduanya dicek di self-test lewat frame.
 3. **Fokus**: lihat modul Pomodoro.
 4. **Musik**: cover 120 pt + playlist (judul | durasi, lagu aktif putih, lainnya abu).
-5. **Claude**: dua kolom bar Sesi / Minggu + forecast, lalu Now / Recent / Usage. Tombol ⚙︎ di baris itu membuka Settings di tempat yang sama.
+5. **Claude**: dua kolom bar Session / Week + forecast, lalu Now / Recent / Usage.
+6. **Settings**: tab sendiri (dikembalikan atas permintaan), berisi Settings yang sudah ada, scroll di tinggi 220 pt.
 
 Popover menu bar (mode Menu bar) tetap memakai tata letak vertikal 344 pt.
 
@@ -172,11 +173,11 @@ Fitur yang sudah ada dipertahankan semua: limit sesi dan mingguan, forecast, daf
 
 ### 5. Maskot dan tema
 
-- **Naga merah** (`Views/Dragon.swift`, `DragonView`): kepala naga dalam profil, digambar di `Canvas`. Sisik merah bergradasi (`#F0454B` → `#C8202C` → `#6E0B14`), tanduk gading, sirip leher, tanduk hidung, mata amber dengan pupil celah.
-- Responsif: kepala terangkat dan mata menyala saat kursor di atasnya. Mood: tidur (mata tertutup, asap), siaga (napas, kedip), kerja (mata menyala, rahang bergerak, percikan), selesai (semburan api), fokus (diam berjaga).
-- Maks. 30 fps (15 fps untuk mood tenang), berhenti saat notch tertutup atau tidak terlihat. Naga yang sama juga menggambar ikon app (`--render-icon`, dipakai `build-app.sh`).
-- **Tema**: latar `#000`, teks `#F2F3F5`, sekunder `#8D9096`, track `#2A2B2F`, silver `#C9CDD3` (progress, visualizer), silver terang `#D5D8DD` (angka timer), tombol `#3A3D44` / `#24262B`, garis `#1C1D20`. Merah hanya untuk naga, amber/rose hanya untuk peringatan usage.
-- Tema dan maskot sebelumnya (kaca hitam, aksen biru, wyrm) dihapus.
+- **Naga**: ikon "Spiked dragon head" karya Delapouite dari game-icons.net (CC BY 3.0, atribusi di README dan `Views/Dragon.swift`). Path SVG ditanam di kode, diwarnai gradasi merah (`#F0454B` → `#C8202C` → `#8E1119`). Naga gambar tangan sebelumnya dihapus karena kurang bagus.
+- Animasi lewat Core Animation (`Views/CoreAnimationViews.swift`), jadi app tidak bekerja per frame. Napas (idle, tidur), glow berdenyut dan mata menyala (kerja), mata berkedip pelan (fokus), api partikel `CAEmitterLayer` (selesai), "z" melayang (tidur). Kepala sedikit terangkat saat di-hover.
+- Di notch live, naga diam (tanpa animasi). Ikon app memakai naga yang sama (`--render-icon`).
+- **Tema**: latar `#000`, teks `#F2F3F5`, sekunder `#8D9096`, track `#2A2B2F`, silver `#C9CDD3`, silver terang `#D5D8DD`, tombol `#3A3D44` / `#24262B`, garis `#1C1D20`. Merah hanya untuk naga, amber/rose hanya untuk peringatan usage.
+- **Bahasa**: semua teks UI berbahasa Inggris.
 
 ## Notch virtual di monitor eksternal
 
@@ -362,13 +363,13 @@ Semua pengembangan dilakukan di branch terpisah, di-commit otomatis per langkah,
 - Pop saat mode "Semua layar": di layar mana?
     - Keputusan sementara: pop tampil di semua panel; expanded hanya di layar tempat kursor berada.
 - Bahasa teks UI: PRD memakai contoh teks berbahasa Indonesia, sedangkan UI awal berbahasa Inggris.
-    - Keputusan (revisi 1 Nov 2026): halaman Fokus dan pop Pomodoro memakai label Indonesia sesuai permintaan ("Klasik", "Dalam", "Mulai", "Fokus n/N", "+5 mnt", "Lewati", "Fokus selesai", "Siap fokus lagi?"). Halaman lain masih berbahasa Inggris. Perlu diputuskan apakah seluruh UI diseragamkan.
+    - Keputusan akhir: **seluruh UI berbahasa Inggris** ("Classic 25/5", "Deep 50/10", "Start", "Focus n/N", "+5 min", "Skip", "Focus done", "Play music").
 - Preset "Custom" Pomodoro: di mana durasinya diatur?
     - Keputusan sementara: di Settings → Pomodoro (stepper menit). Chip "Custom" menyala otomatis kalau durasi tidak cocok dengan 25/5 atau 50/10.
 - Setelah satu fase selesai, apakah fase berikutnya mulai otomatis?
     - Keputusan sementara: **tidak**. Fase berikutnya disiapkan, dan pop memberi tombol untuk memulainya.
-- Di mana Settings dibuka di notch, setelah tabnya hilang?
-    - Keputusan sementara: tombol ⚙︎ di halaman Claude (sebaris dengan Now / Recent / Usage). Di mode menu bar tetap lewat ⚙︎ di header popover.
+- Di mana Settings dibuka di notch?
+    - Keputusan: tab Settings ke-5 (dikembalikan). Tombol ⚙︎ di halaman Claude dihapus.
 - Acara kalender berikutnya tidak punya tempat di header baru ("naga + tanggal · jam").
     - Keputusan sementara: tampil sebagai tooltip di tanggal. Perlu diputuskan apakah butuh baris sendiri.
 - Kalimat terpotong di permintaan ("jangan lupa iunutk …"): ditafsirkan sebagai "jangan lupa untuk ikon app", jadi ikon app kini naga merah.
