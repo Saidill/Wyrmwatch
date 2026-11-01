@@ -187,3 +187,5 @@ Hanya polanya yang dipelajari: notch hitam, Home berisi player + timer, tab yang
 - Ketik tugas di halaman Fokus.
 
 **Masih terbuka**: anggaran CPU live/expanded, rename ke Notchwyrm, tempat acara kalender berikutnya (sekarang tooltip), dan bahasa UI campuran.
+
+**Koreksi**: `feat/notch-home` sempat ter-merge ke `main` (13dc967) padahal self-test gagal 1 ("dragon moves in the menu bar header"). Penyebabnya, skrip runner self-test lokal mengembalikan exit code 0 walau ada FAIL, jadi rantai `&&` tidak berhenti. Skrip sudah diperbaiki (gagal kalau report tidak `ALL PASSED`). Kegagalan itu menunjukkan bug nyata: popover menu bar lebih tinggi dari layar, karena kartu Fokus penuh ditambah Now Playing, sehingga header terdorong keluar. Diperbaiki di `fix/popover-height`: popover kini memakai kartu Fokus ringkas (sama dengan kolom kanan Home), dan setup penuh hanya muncul lewat "Atur". Self-test `ALL PASSED`.
