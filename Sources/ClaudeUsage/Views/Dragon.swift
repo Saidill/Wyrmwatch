@@ -12,15 +12,16 @@ enum DragonMood: Equatable {
     case happy
 }
 
-private struct DragonPausedKey: EnvironmentKey {
+private struct AnimationsPausedKey: EnvironmentKey {
     static let defaultValue = false
 }
 
 extension EnvironmentValues {
-    /// Stops the dragon's animation while it's out of sight (e.g. the notch content when the notch is closed).
-    var dragonPaused: Bool {
-        get { self[DragonPausedKey.self] }
-        set { self[DragonPausedKey.self] = newValue }
+    /// Stops every repeating animation (dragon, ember, visualizer) while it's out of sight,
+    /// e.g. the notch content when the notch is closed.
+    var animationsPaused: Bool {
+        get { self[AnimationsPausedKey.self] }
+        set { self[AnimationsPausedKey.self] = newValue }
     }
 }
 
@@ -32,7 +33,7 @@ struct DragonView: View {
     var at: Double? = nil
     /// Extra width to the right (as a fraction of `size`) so the fire isn't cut off when it roars.
     var fireRoom: CGFloat = 0
-    @Environment(\.dragonPaused) private var paused
+    @Environment(\.animationsPaused) private var paused
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30, paused: paused || at != nil)) { timeline in

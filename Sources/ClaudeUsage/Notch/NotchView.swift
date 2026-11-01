@@ -45,14 +45,9 @@ struct NotchView: View {
     @EnvironmentObject var limits: PlanLimitClient
     @EnvironmentObject var usage: UsageTracker
 
-    /// Opening: an unhurried spring that settles softly, like the Dynamic Island.
-    private let openCurve = Animation.spring(response: 0.46, dampingFraction: 0.8)
-    /// Closing: a touch quicker and with no bounce, so it tucks away calmly.
-    private let closeCurve = Animation.spring(response: 0.36, dampingFraction: 1)
-
     /// Growing states use the opening curve, shrinking ones the closing curve.
     private func morph(to state: NotchModel.State) -> Animation {
-        state == .closed || state == .live ? closeCurve : openCurve
+        state == .closed || state == .live ? Motion.close : Motion.open
     }
 
     var body: some View {
@@ -80,20 +75,20 @@ struct NotchView: View {
                         .opacity(state == .expanded ? 1 : 0)
                         .scaleEffect(state == .expanded ? 1 : 0.94, anchor: .top)
                         .offset(y: state == .expanded ? 0 : -10)
-                        .animation(state == .expanded ? .easeOut(duration: 0.32).delay(0.07) : .easeIn(duration: 0.14),
+                        .animation(state == .expanded ? Motion.contentIn : Motion.contentOut,
                                    value: state)
                         .allowsHitTesting(state == .expanded)
-                        .environment(\.dragonPaused, state != .expanded)
+                        .environment(\.animationsPaused, state != .expanded)
 
                     if state == .live {
-                        liveRow.transition(.opacity.animation(.easeInOut(duration: 0.25)))
+                        liveRow.transition(.opacity.animation(Motion.liveIn))
                     }
                     if state == .pop, let session = model.popped {
                         PopContent(session: session, notchHeight: model.notch.height)
                             .transition(.asymmetric(
                                 insertion: .opacity.combined(with: .offset(y: -8))
-                                    .animation(.easeOut(duration: 0.3).delay(0.08)),
-                                removal: .opacity.animation(.easeIn(duration: 0.14))))
+                                    .animation(Motion.contentIn),
+                                removal: .opacity.animation(Motion.contentOut)))
                     }
                 }
                 .padding(.horizontal, flare)
@@ -188,7 +183,7 @@ private struct PopContent: View {
         .padding(.top, notchHeight + 10)
         .contentShape(Rectangle())
         .onTapGesture { NotchWindowController.shared.expand() }
-        .onAppear { withAnimation(.snappy(duration: 0.3, extraBounce: 0.15).delay(0.08)) { checked = true } }
+        .onAppear { withAnimation(Motion.popIn.delay(0.08)) { checked = true } }
     }
 }
 
