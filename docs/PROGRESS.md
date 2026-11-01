@@ -59,3 +59,31 @@ Ringkasan per milestone: apa yang dibuat dan apa yang perlu dicek manual.
 - Quit app saat timer berjalan, buka lagi: timer lanjut.
 - Rasakan haptic di trackpad saat fase selesai (Force Touch).
 - Sinkron Apple Music belum ada (dikerjakan di M4).
+
+## M4 · Apple Music (`feat/m4-apple-music`)
+
+**Hasil uji awal `current playlist` (via osascript dari terminal)**
+- Playlist library ("cok", 62 lagu, `user playlist`): terbaca. Nama, artis, dan durasi semua lagu diambil dalam satu perintah. `index of current track` cocok dengan posisi di playlist.
+- Notifikasi `com.apple.Music.playerInfo` membawa judul, artis, album, persistent ID, durasi, dan status, tapi **tidak** membawa posisi. Posisi dibaca sekali lewat AppleScript saat panel dibuka.
+- Radio / lagu katalog di luar library: **belum diuji** (lihat cek manual).
+
+**Dibuat**
+- `MusicBridge`: perubahan lagu dan play/pause lewat `DistributedNotificationCenter` (tanpa polling). AppleScript (`NSAppleScript` di antrean background) hanya untuk cover, posisi saat panel dibuka, kontrol, seek, playlist sekali ambil, dan memutar lagu ke-N. Tidak pernah menjalankan AppleScript kalau Music tidak terbuka (supaya tidak meluncurkannya). Error -1743 memunculkan tombol "Give access" yang membuka System Settings → Automation.
+- `ArtworkCache`: cache cover per lagu (40 item) + warna dominan dari gambar 8×8 untuk aksen tipis di kartu.
+- `MusicModule` (prioritas 4 saat musik diputar): cover 18 pt di kiri, visualizer 4 batang (Canvas, maks. 30 fps, berhenti saat pause atau tidak terlihat) di kanan. Pop ganti lagu 2,5 detik.
+- Kartu Now Playing: cover 56 pt, judul, artis, progress yang bisa digeser, previous/play-pause/next. Daftar lagu masuk dengan `Motion.slide` setelah hover 400 ms atau klik ikon daftar. Lagu aktif disorot (visualizer amber) dan di-scroll ke tengah, klik untuk memutar. Ada teks fallback kalau daftar kosong.
+- Sinkron Pomodoro ↔ Music (default nonaktif): fokus mulai = play, istirahat mulai atau fokus selesai = pause.
+- Settings → Music (pop ganti lagu, daftar saat hover) dan toggle sinkron di Pomodoro. Teks `NSAppleEventsUsageDescription` diperbarui.
+- Baris kartu: Pomodoro dan Now Playing berdampingan, lebar dan tinggi sama.
+- Self-test memakai data palsu (tanpa AppleScript, tanpa notifikasi asli): live, pop, kartu, daftar, daftar kosong, posisi lokal, sinkron Pomodoro. Pengaturan dipulihkan persis seperti sebelum tes.
+
+**Penyimpangan dari PRD**
+- Cover tidak memakai `matchedGeometryEffect` antara live dan expanded. Isi expanded selalu ada di hierarki (hanya disembunyikan), jadi dua view dengan id yang sama akan bentrok. Penggantinya: crossfade cover ±0,3 detik (`Motion.smooth`) saat lagu berganti.
+- Daftar lagu memakai `LazyVStack` untuk seluruh playlist (baris hanya dibuat saat terlihat), bukan jendela manual 50 lagu. Data sudah diambil sekaligus dalam satu perintah, jadi hasilnya setara.
+
+**Cek manual**
+- App sendiri akan meminta izin Automation → Music saat pertama kali dijalankan (izin terminal tidak ikut). Klik Allow.
+- Ganti lagu di Music.app: notch berubah < 0,5 detik dan pop muncul.
+- Klik lagu di daftar: langsung diputar. Geser progress: posisi pindah.
+- Putar radio atau lagu katalog di luar library: daftar menampilkan "Song list isn't available for this source." (atau isi kalau Music menyediakannya).
+- Tolak izin di System Settings → Automation: kartu menampilkan tombol "Give access".
