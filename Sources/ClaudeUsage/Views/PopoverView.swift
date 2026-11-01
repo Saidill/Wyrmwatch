@@ -23,6 +23,7 @@ struct PopoverView: View {
     @State private var window: NSWindow?
 
     var body: some View {
+        let _ = Perf.count("claude page redraw")
         Group {
             if inNotch {
                 claudePage

@@ -1,3 +1,4 @@
+import Combine
 import AppKit
 import Darwin
 
@@ -6,6 +7,10 @@ import Darwin
 @MainActor
 enum Perf {
     static var isRequested: Bool { CommandLine.arguments.contains("--perf") }
+    /// How often things changed during a measurement: publishers firing, and the notch view redrawing.
+    static var counts: [String: Int] = [:]
+    static func count(_ name: String) { if isRequested { counts[name, default: 0] += 1 } }
+    private static var watchers: Set<AnyCancellable> = []
 
     static func startIfRequested() {
         let args = CommandLine.arguments
@@ -26,14 +31,25 @@ enum Perf {
         // Let the launch work finish first (reading a week of Claude Code history).
         try? await Task.sleep(for: .seconds(20))
 
+        let sources: [(String, ObservableObjectPublisher)] = [
+            ("sessions", AppModels.sessions.objectWillChange), ("usage", AppModels.usage.objectWillChange),
+            ("limits", AppModels.limits.objectWillChange), ("pomodoro", AppModels.pomodoro.timer.objectWillChange),
+            ("music", AppModels.music.bridge.objectWillChange), ("registry", registry.objectWillChange),
+            ("model", notch.model.objectWillChange)]
+        for (name, publisher) in sources {
+            publisher.sink { _ in MainActor.assumeIsolated { count(name) } }.store(in: &watchers)
+        }
         var lines = ["state                  cpu %   memory MB   (15 s each, after 2 s to settle; includes one 15 s usage scan)"]
         func measure(_ name: String) async {
             try? await Task.sleep(for: .seconds(2))
+            counts = [:]
             let (cpu0, t0) = (cpuSeconds(), Date())
             try? await Task.sleep(for: .seconds(15))
             let cpu = (cpuSeconds() - cpu0) / Date().timeIntervalSince(t0) * 100
             let line = String(format: "%@%6.2f   %8.1f", name.padding(toLength: 22, withPad: " ", startingAt: 0), cpu, memoryMB())
             lines.append(line)
+            lines.append("    changes: " + counts.sorted { $0.value > $1.value }.map { "\($0.key) \($0.value)" }.joined(separator: ", "))
+            counts = [:]
             print(line)
         }
 

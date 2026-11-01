@@ -42,6 +42,7 @@ struct ExpandedPanel: View {
     @EnvironmentObject var limits: PlanLimitClient
 
     var body: some View {
+        let _ = Perf.count("panel redraw")
         VStack(spacing: 10) {
             HStack(spacing: 0) {
                 left
