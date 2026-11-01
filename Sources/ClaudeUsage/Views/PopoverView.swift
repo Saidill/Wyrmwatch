@@ -13,7 +13,7 @@ struct PopoverView: View {
     @State private var range = 0 // 0 = today, 1 = week
     @State private var hoveredBar: Int?
     @State private var refreshTurns = 0.0
-    /// Clicking the dragon makes it hop for a moment.
+    /// Clicking the wyrm makes it hop for a moment.
     @State private var petted = false
     /// Measured height of the current tab's content; the popover shrinks to fit it.
     @State private var contentHeight: CGFloat = 300
@@ -139,7 +139,7 @@ struct PopoverView: View {
         let greeting = Greeting.now
         return HStack(spacing: 8) {
             Button { pet() } label: {
-                DragonView(mood: dragonMood, size: 34)
+                WyrmView(mood: wyrmMood, size: 34)
                     .padding(.top, 4)
                     .frame(width: 38, height: 38)
                     .background(Circle().fill(Palette.glass))
@@ -193,8 +193,8 @@ struct PopoverView: View {
         }
     }
 
-    /// The dragon mirrors what Claude is doing.
-    private var dragonMood: DragonMood {
+    /// The wyrm mirrors what Claude is doing.
+    private var wyrmMood: WyrmMood {
         if petted || sessions.celebrating { return .happy }
         if sessions.busyCount > 0 { return .working }
         return sessions.sessions.isEmpty ? .sleeping : .idle
@@ -266,7 +266,7 @@ struct PopoverView: View {
             }
             if sessions.sessions.isEmpty {
                 HStack(spacing: 10) {
-                    DragonView(mood: .sleeping, size: 30)
+                    WyrmView(mood: .sleeping, size: 30)
                     Text("Start `claude` in a terminal and it shows up here.")
                         .font(.app(12))
                         .foregroundStyle(Palette.text2)

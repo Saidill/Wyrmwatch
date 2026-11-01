@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Colour of the Pomodoro's fire: amber while focusing, cold silver-blue while resting.
+/// Colour of the Pomodoro's fire: the wyrm's blue flame while focusing, a paler cyan while resting.
 func emberColor(_ phase: PomodoroTimer.Phase) -> Color {
-    phase.isBreak ? Palette.frost : Palette.amber
+    phase.isBreak ? Palette.cyan : Palette.blue
 }
 
 /// Time left as "24:59". Changes once a second, rolling digits; in the last 10 seconds it turns bright
@@ -166,7 +166,7 @@ struct EmberDots: View {
         HStack(spacing: size * 0.9) {
             ForEach(0..<PomodoroTimer.sessionsPerCycle, id: \.self) { i in
                 Circle()
-                    .fill(i < lit ? Palette.amber : Palette.line)
+                    .fill(i < lit ? Palette.blue : Palette.line)
                     .frame(width: size, height: size)
                     .scaleEffect(i < lit ? 1 : 0.8)
                     .animation(Motion.popIn, value: lit)

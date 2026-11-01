@@ -57,7 +57,7 @@ private struct PlaylistRow: View {
         HStack(spacing: 8) {
             Group {
                 if current {
-                    MusicVisualizer(playing: true, color: Palette.amber)
+                    MusicVisualizer(playing: true, color: Palette.blue)
                         .scaleEffect(0.75)
                 } else {
                     Text("\(item.index)")

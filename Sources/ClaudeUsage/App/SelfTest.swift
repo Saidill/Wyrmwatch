@@ -29,7 +29,7 @@ enum SelfTest {
         // A real pointer resting on the notch would hold pops open; the timing checks must not depend on it.
         notch.model.registry.popQueue.isHovering = { false }
         await wait(1.5) // let the app finish launching
-        renderDragons()
+        renderWyrms()
 
         for round in 1...3 {
             log("— Round \(round)")
@@ -43,7 +43,7 @@ enum SelfTest {
             check(popoverWindow()?.isVisible == true, "popover opens from the menu bar icon")
             if round == 1, let w = popoverWindow() {
                 snapshot(w, "1-menubar-popover")
-                check(await dragonMoves(in: w), "dragon moves in the menu bar header")
+                check(await wyrmMoves(in: w), "wyrm moves in the menu bar header")
             }
 
             // Header button inside the popover: switch to the notch while the popover is open.
@@ -62,7 +62,7 @@ enum SelfTest {
             check(notch.window?.ignoresMouseEvents == false, "open notch takes clicks")
             if round == 1, let w = notch.window {
                 snapshot(w, "2-notch-open")
-                check(await dragonMoves(in: w), "dragon moves in the open notch header")
+                check(await wyrmMoves(in: w), "wyrm moves in the open notch header")
             }
 
             // Header button inside the notch: back to the menu bar while the notch is open.
@@ -367,7 +367,7 @@ enum SelfTest {
         info.battery.update(nil)
     }
 
-    /// With Reduce Motion forced on, nothing repeats: the dragon in the open notch holds still.
+    /// With Reduce Motion forced on, nothing repeats: the wyrm in the open notch holds still.
     private static func checkReduceMotion() async {
         let notch = NotchWindowController.shared
         log("— Reduce Motion")
@@ -377,7 +377,7 @@ enum SelfTest {
         check(MotionPreference.shared.reduce, "forcing Reduce Motion turns it on")
         notch.open()
         await wait(1.0)
-        if let w = notch.window { check(!(await dragonMoves(in: w)), "no repeating animation with Reduce Motion") }
+        if let w = notch.window { check(!(await wyrmMoves(in: w)), "no repeating animation with Reduce Motion") }
         notch.close()
         await wait(0.6)
         restoreSettings(saved, prefix: "motion.")
@@ -528,20 +528,20 @@ enum SelfTest {
         return nil
     }
 
-    /// Every dragon mood, large and at the sizes the app uses, on black.
-    private static func renderDragons() {
-        let moods: [DragonMood] = [.sleeping, .idle, .working, .happy]
+    /// Every wyrm mood, large and at the sizes the app uses, on black.
+    private static func renderWyrms() {
+        let moods: [WyrmMood] = [.sleeping, .idle, .working, .happy]
         // The roar, frame by frame (one cycle is 2.6 s): building up, full fire, settling.
         let roar = [0.15, 0.4, 0.9, 1.5, 1.85].map { 2600.0 + $0 }
         let sheet = VStack(alignment: .leading, spacing: 24) {
-            HStack(spacing: 24) { ForEach(moods.indices, id: \.self) { DragonView(mood: moods[$0], size: 160, at: 2600.5) } }
-            HStack(spacing: 0) { ForEach(roar.indices, id: \.self) { DragonView(mood: .happy, size: 100, at: roar[$0], fireRoom: 0.6) } }
+            HStack(spacing: 24) { ForEach(moods.indices, id: \.self) { WyrmView(mood: moods[$0], size: 160, at: 2600.5) } }
+            HStack(spacing: 0) { ForEach(roar.indices, id: \.self) { WyrmView(mood: .happy, size: 100, at: roar[$0], fireRoom: 0.6) } }
             HStack(spacing: 24) {
                 ForEach(moods.indices, id: \.self) { i in
                     HStack(spacing: 12) {
-                        DragonView(mood: moods[i], size: 44, at: 2601)
-                        DragonView(mood: moods[i], size: 34, at: 2601)
-                        DragonView(mood: moods[i], size: 26, at: 2601)
+                        WyrmView(mood: moods[i], size: 44, at: 2601)
+                        WyrmView(mood: moods[i], size: 34, at: 2601)
+                        WyrmView(mood: moods[i], size: 26, at: 2601)
                     }
                     .frame(width: 160)
                 }
@@ -553,12 +553,12 @@ enum SelfTest {
         renderer.scale = 2
         guard let image = renderer.nsImage, let tiff = image.tiffRepresentation,
               let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else { return }
-        try? png.write(to: out.appendingPathComponent("0-dragons.png"))
-        log("saved 0-dragons.png")
+        try? png.write(to: out.appendingPathComponent("0-wyrms.png"))
+        log("saved 0-wyrms.png")
     }
 
-    /// Captures the window twice, half a second apart, and checks that the header avatar (the dragon) changed.
-    private static func dragonMoves(in window: NSWindow) async -> Bool {
+    /// Captures the window twice, half a second apart, and checks that the header avatar (the wyrm) changed.
+    private static func wyrmMoves(in window: NSWindow) async -> Bool {
         func capture() -> NSBitmapImageRep? {
             guard let view = window.contentView, let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return nil }
             view.cacheDisplay(in: view.bounds, to: rep)
@@ -580,7 +580,7 @@ enum SelfTest {
                 changed += 1
             }
         }
-        log("   \(changed) pixels changed around the dragon")
+        log("   \(changed) pixels changed around the wyrm")
         return changed > 20
     }
 

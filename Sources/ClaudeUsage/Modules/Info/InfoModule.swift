@@ -96,7 +96,7 @@ struct InfoStrip: View {
                     HStack(spacing: 4) {
                         Image(systemName: "calendar")
                             .font(.system(size: 9.5, weight: .semibold))
-                            .foregroundStyle(Palette.amber)
+                            .foregroundStyle(Palette.blue)
                         Text(event.title)
                             .foregroundStyle(Palette.text2)
                             .lineLimit(1)

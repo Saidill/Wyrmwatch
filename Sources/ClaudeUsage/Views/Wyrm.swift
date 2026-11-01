@@ -1,16 +1,16 @@
 import SwiftUI
 
 /// What the dragon is up to; it follows what Claude is doing.
-enum DragonMood: Equatable {
+enum WyrmMood: Equatable {
     /// Nothing running: head down, eye shut, smoke curling from its nostril.
     case sleeping
     /// Sessions open, all done: head up, eye glowing, watching.
     case idle
     /// Claude is working: leaning in and growling, embers in its jaw, eye burning brighter.
     case working
-    /// A prompt just finished: rears back and roars fire.
+    /// A prompt just finished: rears back and breathes blue fire.
     case happy
-    /// Keeping watch over a Pomodoro ember: head high and still, eye burning amber, slow deep breaths.
+    /// Keeping watch over a Pomodoro ember: head high and still, eye burning cyan, slow deep breaths.
     case guarding
 }
 
@@ -27,9 +27,10 @@ extension EnvironmentValues {
     }
 }
 
-/// A fierce dragon head in profile (gunmetal scales, silver horns, a glowing eye), drawn and animated in a Canvas.
-struct DragonView: View {
-    var mood: DragonMood
+/// The Notchwyrm mascot: a dragon head in profile (navy scales, blue horns, a glowing cyan eye, blue fire),
+/// drawn and animated in a Canvas.
+struct WyrmView: View {
+    var mood: WyrmMood
     var size: CGFloat = 28
     /// Draws one fixed moment instead of animating (the self-test uses it to show each frame).
     var at: Double? = nil
@@ -40,7 +41,7 @@ struct DragonView: View {
     var body: some View {
         TimelineView(.animation(minimumInterval: frameInterval, paused: paused || at != nil)) { timeline in
             Canvas { ctx, canvasSize in
-                DragonDrawing(mood: mood, t: at ?? timeline.date.timeIntervalSinceReferenceDate, detailed: size >= 26)
+                WyrmDrawing(mood: mood, t: at ?? timeline.date.timeIntervalSinceReferenceDate, detailed: size >= 26)
                     .draw(in: &ctx, side: canvasSize.height)
             }
         }
@@ -63,22 +64,22 @@ struct DragonView: View {
         case .sleeping: return "Sleeping dragon"
         case .idle: return "Dragon, watching"
         case .working: return "Dragon, growling"
-        case .happy: return "Dragon, roaring fire"
+        case .happy: return "Dragon, breathing blue fire"
         case .guarding: return "Dragon, guarding the ember"
         }
     }
 }
 
 /// The drawing itself, in a unit square scaled to `side`. The dragon faces right.
-private struct DragonDrawing {
-    let mood: DragonMood
+private struct WyrmDrawing {
+    let mood: WyrmMood
     let t: Double
     let detailed: Bool
 
-    private let ember = Color(hex: 0xFFB547)
-    private let flameOuter = Color(hex: 0xFF6A2B)
-    private let flameCore = Color(hex: 0xFFF1C9)
-    private let mouthDark = Color(hex: 0x2A0E06)
+    private let ember = Color(hex: 0x7FE3FF)
+    private let flameOuter = Color(hex: 0x4FA3FF)
+    private let flameCore = Color(hex: 0xE8FBFF)
+    private let mouthDark = Color(hex: 0x061226)
 
     func draw(in ctx: inout GraphicsContext, side s: CGFloat) {
         let unit = CGAffineTransform(scaleX: s, y: s)
@@ -92,9 +93,9 @@ private struct DragonDrawing {
             .linearGradient(Gradient(colors: [top, bottom]), startPoint: CGPoint(x: 0.5 * s, y: y0 * s),
                             endPoint: CGPoint(x: 0.5 * s, y: y1 * s))
         }
-        let scales = vertical(Color(hex: 0x50565F), Color(hex: 0x17191D), 0.25, 0.85)
-        let membrane = vertical(Color(hex: 0x30343B), Color(hex: 0x111215), 0.0, 0.8)
-        let horn = vertical(Color(hex: 0xEDEFF2), Color(hex: 0x6E747E), 0.08, 0.45)
+        let scales = vertical(Color(hex: 0x3274C8), Color(hex: 0x0B1E3F), 0.25, 0.85)
+        let membrane = vertical(Color(hex: 0x153468), Color(hex: 0x07152E), 0.0, 0.8)
+        let horn = vertical(Color(hex: 0xD8F6FF), Color(hex: 0x4FA3FF), 0.08, 0.45)
         let rim = vertical(.white.opacity(0.65), .white.opacity(0.04), 0.25, 0.7)
         let rimWidth = max(0.6, 0.014 * s)
 
@@ -316,7 +317,7 @@ private struct DragonDrawing {
         let brow = shape({ b in
             b.move(to: p(0.60, 0.305)); b.addLine(to: p(0.74, 0.345))
         }, headT)
-        ctx.stroke(brow, with: .color(Color(hex: 0xC9CDD3)), style: StrokeStyle(lineWidth: rimWidth * 1.5, lineCap: .round))
+        ctx.stroke(brow, with: .color(Color(hex: 0x7FE3FF)), style: StrokeStyle(lineWidth: rimWidth * 1.5, lineCap: .round))
 
         // MARK: Breath
         let nose = onHead(p(0.905, 0.42))
@@ -331,7 +332,7 @@ private struct DragonDrawing {
                 puff.addFilter(.blur(radius: (0.012 + phase * 0.02) * s))
                 puff.opacity = sin(phase * .pi) * 0.55
                 puff.fill(Path(ellipseIn: CGRect(x: (c.x - d / 2) * s, y: (c.y - d / 2) * s, width: d * s, height: d * s)),
-                          with: .color(Color(hex: 0xA9AEB6)))
+                          with: .color(Color(hex: 0x9FC9F0)))
             }
         }
         if mood == .working || roar > 0.05 {

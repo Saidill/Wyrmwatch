@@ -27,6 +27,11 @@ enum Palette {
     /// Cold silver-blue: the Pomodoro fuse while resting.
     static let frost = Color(hex: 0x9FB6CF)
 
+    // The wyrm's colours, also the app's accent. Amber and rose are kept for usage warnings only.
+    static let navy = Color(hex: 0x0B1E3F)
+    static let blue = Color(hex: 0x4FA3FF)
+    static let cyan = Color(hex: 0x7FE3FF)
+
     /// Polished-metal fill for bars and the selected tab.
     static let silverGradient = LinearGradient(colors: [Color(hex: 0xFAFAFC), Color(hex: 0xA7ACB4)],
                                                startPoint: .top, endPoint: .bottom)
