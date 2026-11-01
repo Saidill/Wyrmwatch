@@ -63,7 +63,7 @@ private struct PomodoroLiveDragon: View {
         DragonView(mood: timer.phase.isBreak ? .sleeping : .guarding, size: 26)
             .padding(.top, 2)
             .opacity(timer.isPaused ? 0.6 : 1)
-            .environment(\.animationsPaused, timer.isPaused)
+            .transformEnvironment(\.animationsPaused) { paused in paused = paused || timer.isPaused }
     }
 }
 

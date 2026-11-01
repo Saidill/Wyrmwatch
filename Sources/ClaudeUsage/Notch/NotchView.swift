@@ -46,10 +46,11 @@ struct NotchView: View {
     @ObservedObject var screen: NotchScreen
     @EnvironmentObject var limits: PlanLimitClient
     @EnvironmentObject var usage: UsageTracker
+    @ObservedObject private var motion = MotionPreference.shared
 
-    /// Growing states use the opening curve, shrinking ones the closing curve.
+    /// Growing states use the opening curve, shrinking ones the closing curve (a plain fade with Reduce Motion).
     private func morph(to state: NotchModel.State) -> Animation {
-        state == .closed || state == .live ? Motion.close : Motion.open
+        Motion.adapt(state == .closed || state == .live ? Motion.close : Motion.open, motion.reduce)
     }
 
     var body: some View {
@@ -75,11 +76,11 @@ struct NotchView: View {
                         .padding(.top, screen.notch.height - 8)
                         // Eases in a beat after the shape starts opening, settling down from slightly smaller.
                         .opacity(state == .expanded ? 1 : 0)
-                        .scaleEffect(state == .expanded ? 1 : 0.94, anchor: .top)
-                        .offset(y: state == .expanded ? 0 : -10)
-                        .animation(state == .expanded ? Motion.contentIn : Motion.contentOut, value: state)
+                        .scaleEffect(state == .expanded || motion.reduce ? 1 : 0.94, anchor: .top)
+                        .offset(y: state == .expanded || motion.reduce ? 0 : -10)
+                        .animation(Motion.adapt(state == .expanded ? Motion.contentIn : Motion.contentOut, motion.reduce), value: state)
                         .allowsHitTesting(state == .expanded)
-                        .environment(\.animationsPaused, state != .expanded)
+                        .environment(\.animationsPaused, state != .expanded || motion.reduce)
 
                     if state == .live, let live = model.live {
                         LiveRow(module: live, notch: screen.notch)
@@ -107,6 +108,7 @@ struct NotchView: View {
         .frame(width: NotchWindowController.windowSize.width, height: NotchWindowController.windowSize.height,
                alignment: .top)
         .preferredColorScheme(.dark)
+        .followsReduceMotion()
         .onChange(of: state == .expanded) { _, open in
             guard open else { return }
             usage.refresh()

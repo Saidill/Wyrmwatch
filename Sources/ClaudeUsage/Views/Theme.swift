@@ -267,16 +267,18 @@ struct LimitBar: View {
 
 /// A soft band of light that sweeps across its container.
 private struct Shimmer: View {
-    @State private var phase: CGFloat = -1
+    @Environment(\.animationsPaused) private var paused
 
     var body: some View {
-        GeometryReader { geo in
-            LinearGradient(colors: [.clear, .white.opacity(0.6), .clear], startPoint: .leading, endPoint: .trailing)
-                .frame(width: geo.size.width * 0.6)
-                .offset(x: phase * geo.size.width * 1.6)
-        }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: false)) { phase = 1 }
+        // A highlight sweeping across every 1.2 s; it stops with everything else when out of sight.
+        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: paused)) { context in
+            let t = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1.2) / 1.2
+            let phase = paused ? -1 : -1 + 2 * (t * t * (3 - 2 * t))
+            GeometryReader { geo in
+                LinearGradient(colors: [.clear, .white.opacity(0.6), .clear], startPoint: .leading, endPoint: .trailing)
+                    .frame(width: geo.size.width * 0.6)
+                    .offset(x: phase * geo.size.width * 1.6)
+            }
         }
     }
 }
@@ -362,6 +364,7 @@ struct ConfettiView: View {
 
     @State private var start: Date?
     @State private var pieces: [Piece] = []
+    @Environment(\.reduceMotion) private var reduceMotion
     private let lifetime = 2.4
 
     var body: some View {
@@ -388,6 +391,7 @@ struct ConfettiView: View {
     }
 
     private func burst() {
+        guard !reduceMotion else { return }
         pieces = (0..<30).map { _ in
             let angle = Double.random(in: -Double.pi * 0.9 ... -Double.pi * 0.1)
             let speed = Double.random(in: 90...220)

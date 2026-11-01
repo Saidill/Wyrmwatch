@@ -124,6 +124,7 @@ enum SelfTest {
         await checkPomodoro()
         await checkMusic()
         await checkInfo()
+        await checkReduceMotion()
         await checkVirtualNotch()
 
         display.setting = original
@@ -361,6 +362,25 @@ enum SelfTest {
 
         info.calendar.injectForTesting(nil)
         info.battery.update(nil)
+    }
+
+    /// With Reduce Motion forced on, nothing repeats: the dragon in the open notch holds still.
+    private static func checkReduceMotion() async {
+        let notch = NotchWindowController.shared
+        log("— Reduce Motion")
+        let saved = savedSettings(prefix: "motion.")
+        UserDefaults.standard.set(true, forKey: MotionPreference.forceKey)
+        await wait(0.3)
+        check(MotionPreference.shared.reduce, "forcing Reduce Motion turns it on")
+        notch.open()
+        await wait(1.0)
+        if let w = notch.window { check(!(await dragonMoves(in: w)), "no repeating animation with Reduce Motion") }
+        notch.close()
+        await wait(0.6)
+        restoreSettings(saved, prefix: "motion.")
+        await wait(0.3)
+        check(MotionPreference.shared.reduce == NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
+              "Reduce Motion back to the system setting")
     }
 
     /// A stand-in album cover: a soft two-colour gradient.

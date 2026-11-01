@@ -11,6 +11,7 @@ struct PomodoroDigits: View {
     @ObservedObject var timer: PomodoroTimer
     var size: CGFloat = 11
     var color: Color = Palette.text2
+    @Environment(\.reduceMotion) private var reduceMotion
 
     var body: some View {
         if let end = timer.endDate {
@@ -32,7 +33,7 @@ struct PomodoroDigits: View {
             .foregroundStyle(final ? Palette.text : color)
             .contentTransition(.numericText(countsDown: true))
             .animation(Motion.smooth, value: seconds)
-            .keyframeAnimator(initialValue: 1.0, trigger: final ? seconds : 0) { view, scale in
+            .keyframeAnimator(initialValue: 1.0, trigger: final && !reduceMotion ? seconds : 0) { view, scale in
                 view.scaleEffect(scale)
             } keyframes: { _ in
                 CubicKeyframe(1.06, duration: 0.15)
@@ -74,6 +75,7 @@ struct Ember: View {
 /// then burning down towards the centre from both ends, with an ember at each end.
 struct EmberFuse: View {
     @ObservedObject var timer: PomodoroTimer
+    @Environment(\.reduceMotion) private var reduceMotion
     @State private var drawn = false
 
     var body: some View {
@@ -88,7 +90,7 @@ struct EmberFuse: View {
         }
         // Paused: everything dims and stands still.
         .opacity(timer.isPaused ? 0.6 : 1)
-        .onAppear { withAnimation(Motion.fuse) { drawn = true } }
+        .onAppear { withAnimation(Motion.adapt(Motion.fuse, reduceMotion)) { drawn = true } }
     }
 
     private func fuse(_ fraction: Double) -> some View {
