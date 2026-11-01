@@ -88,18 +88,21 @@ private struct PopButton: View {
     let title: String
     var primary = true
     let action: () -> Void
+    @State private var hovering = false
 
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.app(11, .medium))
-                .foregroundStyle(primary ? Palette.onSilver : Palette.text2)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Capsule().fill(primary ? AnyShapeStyle(Palette.silverGradient) : AnyShapeStyle(Palette.glass)))
-                .overlay(Capsule().strokeBorder(Palette.rim, lineWidth: primary ? 0 : 1))
+                .font(.app(11.5, .medium))
+                .foregroundStyle(primary ? Palette.onSilver : Palette.text)
+                .lineLimit(1)
+                .padding(.horizontal, 12)
+                .frame(height: 28)
+                .background(Capsule().fill(primary ? Palette.silver : (hovering ? Palette.buttonHi : Palette.button)))
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        .onHover { h in withAnimation(Motion.quick) { hovering = h } }
     }
 }
 
