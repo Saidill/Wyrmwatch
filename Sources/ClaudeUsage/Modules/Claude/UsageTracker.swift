@@ -53,8 +53,9 @@ final class UsageTracker: ObservableObject {
 
     init() {
         refresh()
-        // The popover also refreshes when it opens, so a slow timer is enough.
-        timer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
+        // Token counts are only shown when the notch or popover is open, and both refresh on opening,
+        // so a slow background timer is enough (it was 15 s, which kept the CPU busy during long sessions).
+        timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
     }
@@ -93,7 +94,9 @@ final class UsageTracker: ObservableObject {
         private var records: [String: UsageRecord] = [:]
         private var busy = false
         private let retention: TimeInterval = 8 * 24 * 3600
-        private let usageMarker = Data("\"usage\"".utf8)
+        private let usageMarker = Data("\"usage\":{".utf8)
+        private let assistantMarker = Data("\"type\":\"assistant\"".utf8)
+        private static let chunkSize = 4 << 20
 
         private let isoFrac: ISO8601DateFormatter = {
             let f = ISO8601DateFormatter()
@@ -129,15 +132,30 @@ final class UsageTracker: ObservableObject {
                 guard size > offset, let handle = try? FileHandle(forReadingFrom: url) else { continue }
                 defer { try? handle.close() }
 
+                // Read in chunks rather than whole files: transcripts with screenshots run to tens of megabytes.
                 do {
                     try handle.seek(toOffset: offset)
-                    guard let data = try handle.readToEnd(),
-                          let lastNewline = data.lastIndex(of: UInt8(ascii: "\n")) else { continue }
-                    let complete = data[data.startIndex...lastNewline]
-                    for line in complete.split(separator: UInt8(ascii: "\n")) {
-                        parse(Data(line), fallbackKey: "\(path):\(offset)")
+                    var carry = Data()
+                    var position = offset
+                    var done = false
+                    while !done {
+                        // Release each chunk's temporary objects right away, so memory stays flat on big files.
+                        try autoreleasepool {
+                            guard let chunk = try handle.read(upToCount: Self.chunkSize), !chunk.isEmpty else {
+                                done = true
+                                return
+                            }
+                            carry.append(chunk)
+                            guard let lastNewline = carry.lastIndex(of: UInt8(ascii: "\n")) else { return }
+                            let complete = carry[carry.startIndex...lastNewline]
+                            for line in complete.split(separator: UInt8(ascii: "\n")) {
+                                parse(line, fallbackKey: "\(path):\(position)")
+                            }
+                            position += UInt64(complete.count)
+                            carry = Data(carry[carry.index(after: lastNewline)...])
+                        }
                     }
-                    offsets[path] = offset + UInt64(complete.count)
+                    offsets[path] = position
                 } catch {
                     continue
                 }
@@ -147,7 +165,10 @@ final class UsageTracker: ObservableObject {
         }
 
         private func parse(_ line: Data, fallbackKey: String) {
-            guard line.range(of: usageMarker) != nil,
+            // Only assistant replies carry token usage. Checking both markers first skips the (often huge)
+            // tool-output lines that merely mention "usage", without parsing them as JSON.
+            guard line.range(of: assistantMarker) != nil,
+                  line.range(of: usageMarker) != nil,
                   let obj = try? JSONSerialization.jsonObject(with: line) as? [String: Any],
                   obj["type"] as? String == "assistant",
                   let message = obj["message"] as? [String: Any],
