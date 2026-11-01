@@ -127,3 +127,32 @@ Ringkasan per milestone: apa yang dibuat dan apa yang perlu dicek manual.
 **Catatan**: kalau `--perf` dihentikan paksa, ia bisa meninggalkan `motion.forceReduce` dan state Pomodoro di UserDefaults. Hapus dengan `defaults delete com.saidilhalim.claudeusage motion.forceReduce`.
 
 **Self-test M6**: 3 kegagalan sebelumnya ("song pop goes away…", "charger pop goes away…", "no pop without a new plug-in") ternyata karena faktor lingkungan. Kursor sungguhan berada di atas notch, dan pop ditahan saat hover. Self-test kini mengabaikan hover asli untuk antrean pop, dan hasilnya `ALL PASSED`. M6 (tanpa rename) di-merge ke `feat/notch-hub`, lalu `feat/notch-hub` ke `main`.
+
+## Revisi desain 1 Nov 2026 (`feat/wyrm`, `feat/expanded-redesign`)
+
+**Alur Git baru**: branch pendek per fitur dari `main`, merge ke `main` + push setelah `swift build` dan `--selftest` lulus (lihat CLAUDE.md). `feat/notch-hub` (M1–M6) sudah di-merge ke `main`.
+
+**Maskot**
+- Versi ular ramping (wyrm bergelombang) sempat dibuat, lalu dibatalkan atas permintaan karena kepala naga lebih disukai.
+- Kepala naga kini memakai palet navy `#0B1E3F` / biru `#4FA3FF` / cyan `#7FE3FF` dengan api biru (`Views/Wyrm.swift`, `WyrmView`). Mood: sleeping, idle, working, happy (api biru), guarding (fokus). Maks. 30 fps (15 untuk mood tenang), berhenti saat notch tertutup.
+- Sumbu, bara, titik sesi, sorotan playlist, dan ikon kalender kini biru. Amber dan rose hanya untuk peringatan usage.
+
+**Panel expanded baru (600 × ±200 pt, sama di semua halaman)**
+- Header di pita sebelah kamera: kepala naga, tanggal, jam, acara berikutnya | tab bar Fokus / Musik / Claude / Settings (tab terakhir disimpan).
+- Fokus: mode Atur (Klasik 25/5, Dalam 50/10, Custom; stepper Fokus 5–90 step 5, Istirahat 1–30, Sesi 1–8; field tugas; Mulai) dan mode Jalan (angka besar, "Fokus n/N · tugas", titik sesi, sumbu api biru selebar panel, +5 mnt, Pause, Lewati, Stop). Ring bulat dihapus.
+- Musik: tiga kolom (cover 120 pt | judul, artis · album, progress, shuffle/prev/play/next/repeat | playlist scroll sendiri, lagu aktif biru). Shuffle dan repeat dibaca dan diatur lewat AppleScript.
+- Claude: Plan limits | Sessions / Recent / Usage.
+- Settings: tab Settings yang sudah ada.
+- Baterai dan pop "Charging" dihapus. Info hanya untuk acara kalender berikutnya.
+- Pop kini 320 × (tinggi notch + 58), pas satu baris. Sebelumnya 340 × +70 dengan ruang kosong.
+- Popover menu bar: kartu Fokus dan Now Playing ditumpuk vertikal, dan halaman Fokus menyesuaikan lebar.
+- Label halaman Fokus dan pop Pomodoro dalam bahasa Indonesia, sesuai permintaan. Halaman lain masih Inggris (dicatat di PRD).
+
+**Self-test**: snapshot setiap halaman (`16-focus-setup`, `16-focus-running`, `19-music-page`, `20-claude-page`, `20-settings-page`), ukuran panel sama di semua tab, +5 mnt, Stop → Atur, pengaturan tersimpan, jumlah sesi menentukan istirahat panjang. Hasil: `ALL PASSED`.
+
+**Cek manual**
+- Ketik tugas di field halaman Fokus (panel notch harus menerima ketikan), lalu Enter untuk mulai.
+- Shuffle dan repeat di halaman Musik sinkron dengan Music.app.
+- Proporsi pop di notch asli dan virtual.
+
+**Masih terbuka**: anggaran CPU live/expanded (lihat bagian M6), rename ke Notchwyrm, dan keputusan bahasa UI.
