@@ -11,7 +11,7 @@ App Claude Usage yang sudah ada dikembangkan menjadi Notchwyrm: satu notch app p
 - Satu tempat di notch untuk fokus kerja: timer, status Claude, dan musik, tanpa membuka app lain.
 - Tampilan dan perilaku yang sama di layar MacBook maupun monitor eksternal (lewat notch virtual).
 - Animasi terasa premium tapi ringan: CPU di bawah 1% saat idle dan di bawah 5% saat animasi berjalan.
-- Modul Pomodoro punya identitas visual sendiri yang menyatu dengan maskot kepala naga biru.
+- Modul Pomodoro punya identitas visual sendiri yang menyatu dengan maskot naga merah.
 
 **Bukan tujuan (versi ini)**
 
@@ -36,7 +36,7 @@ Keputusannya: disatukan dan dikembangkan di repo yang sudah ada (sebelumnya `cla
 | Kurva open spring(0.46, 0.8), close spring(0.36, 1) | `NotchView` | Jadi standar semua modul |
 | Mode Auto / Menu bar / Notch | `DisplayMode.swift` | Ditambah notch virtual |
 | Usage, limit, sesi, forecast, notifikasi | `PlanLimitClient`, `SessionMonitor`, `UsageTracker`, dll. | Dipindah ke modul Claude |
-| Maskot kepala naga (sleep, working, happy, guarding) | `Views/Wyrm.swift` (`WyrmView`) | Dipakai juga oleh Pomodoro |
+| Maskot naga merah (sleeping, idle, working, happy, guarding) | `Views/Dragon.swift` (`DragonView`) | Dipakai juga oleh Pomodoro dan ikon app |
 | Tema hitam frosted dan silver | `Views/Theme.swift` | Jadi design system semua modul |
 
 **Kenapa disatukan**
@@ -44,7 +44,7 @@ Keputusannya: disatukan dan dikembangkan di repo yang sudah ada (sebelumnya `cla
 1. Notch hanya satu. Dua app yang sama-sama memasang panel di level `.statusBar + 1` akan berebut hover, klik, dan animasi.
 2. Logika layar (deteksi notch, ganti monitor, click-through) sudah ada dan teruji lewat `--selftest`. Membuat ulang di app baru berarti menduplikasi kode yang sudah jalan.
 3. Satu proses, satu timer pointer, satu login item. Lebih hemat RAM dan energi dibanding dua app.
-4. Maskot kepala naga dan palet navy/biru/cyan jadi identitas yang konsisten untuk semua modul.
+4. Naga merah dan tema hitam-silver jadi identitas yang konsisten untuk semua modul.
 
 **Konsekuensi**
 
@@ -58,9 +58,9 @@ Notch punya empat state, sama seperti sekarang. Bedanya, isi state live dan pop 
 | State | Kapan | Ukuran (lebar × tinggi) | Isi |
 | --- | --- | --- | --- |
 | Closed | Tidak ada modul aktif | Lebar notch × tinggi notch | Hitam polos, menyatu dengan notch fisik |
-| Live | Ada modul aktif | Lebar notch + 100 pt × tinggi notch | Kiri: ikon/visual modul. Kanan: angka atau indikator |
+| Live | Ada modul aktif | Lebar notch + 100 pt × tinggi notch | Claude: naga kecil di kiri. Musik: cover + visualizer. Pomodoro: waktu silver. Kalau Pomodoro dan musik sama-sama aktif, keduanya bergantian tiap 6 detik |
 | Pop | Event sesaat (sesi Claude selesai, Pomodoro selesai, lagu berganti) | 320 × tinggi notch + 58 pt | Satu baris: gambar 44 pt, dua baris teks, satu aksi utama |
-| Expanded | Hover 180 ms atau klik | 600 × ±200 pt (tinggi notch + 172), sama untuk semua halaman | Header + satu halaman (Fokus, Musik, Claude, Settings) |
+| Expanded | Hover 180 ms atau klik | 600 × (tinggi notch + 10 + tinggi halaman + 16). Tinggi mengikuti isi tab (Home 96 pt, Musik 120 pt) | Header dibelah kamera + satu halaman (Home, Fokus, Musik, Claude) |
 
 **Prioritas modul di state live** (yang teratas menang)
 
@@ -78,24 +78,31 @@ Notch punya empat state, sama seperti sekarang. Bedanya, isi state live dan pop 
 - Lagu berganti hanya memunculkan pop singkat (2,5 detik) dan bisa dimatikan di Settings.
 - Saat expanded, pop tidak muncul. Event cukup ditandai di dalam panel.
 
-**Isi state expanded**
+**Isi state expanded** (pola Boring Notch / DynamicNotch: hanya polanya yang dipelajari, tidak ada kode yang disalin karena keduanya GPL v3)
 
-Panel lebar dan pendek (600 × ±200 pt). Ukurannya sama untuk semua halaman, jadi ganti halaman tidak menggeser bentuk notch.
+Lebar 600 pt. Tingginya mengikuti isi tab, dianimasikan dengan `resize`. Window tetap berukuran 640 × 330 dan tidak pernah di-resize.
 
-1. **Header** di pita sebelah kamera (setinggi notch). Kiri: kepala naga, tanggal, jam, dan di bawahnya acara kalender berikutnya (kalau ada). Kanan: tab bar ikon Fokus, Musik, Claude, Settings.
-2. **Halaman** (150 pt) di bawah header, sesuai tab yang dipilih (disimpan):
-    - Fokus: lihat modul Pomodoro.
-    - Musik: tiga kolom, lihat modul Apple Music.
-    - Claude: Plan limits di kiri | tab Sessions / Recent / Usage di kanan, scroll di kolomnya sendiri.
-    - Settings: tab Settings yang sudah ada, scroll vertikal.
+1. **Header** setinggi notch, berupa grid 3 kolom: kiri | lebar notch fisik (kamera) | kanan.
+    - Kiri: naga merah 22 pt + "Min 1 Nov · 18.52" (locale id_ID). Acara kalender berikutnya muncul sebagai tooltip di tanggal.
+    - Kanan: 4 tab ikon custom (Shape, bukan SF Symbols) Home, Fokus, Musik, Claude. Ikon 17 pt di tombol 38 × 26. Kapsul aktif `#2A2B2F` meluncur dengan `matchedGeometryEffect` + spring `resize`. Tab terakhir disimpan.
+2. **Home**: satu baris setinggi 96 pt, kolom [96 | flex | 1 pt | 180], jarak 16.
+    - Cover 96 pt radius 16, dengan glow dari cover itu sendiri yang di-blur (statis) di belakangnya.
+    - Info: baris 1 [judul + artis (ellipsis) | visualizer silver], baris 2 [waktu 30 | progress 4 pt bisa digeser | durasi 30], baris 3 lima kolom sama lebar: playlist (ke tab Musik), previous, play/pause, next, favorit (hati Music.app).
+    - Garis 1 pt `#1C1D20`.
+    - Kolom kanan: baris 58 pt = ["Fokus n/N" + waktu 28 pt silver terang | tombol bulat 30 pt pause dan close]. Baris bawah rata bawah: "Claude · sesi" + persen + bar 4 pt.
+    - Musik mati: player diganti tombol "Putar musik" (membuka Music dan memutar). Pomodoro berhenti: chip 25/5, 50/10 (langsung mulai), Atur (ke tab Fokus).
+    - Tidak ada elemen yang overlap, dan teks panjang selalu ellipsis. Keduanya dicek di self-test lewat frame.
+3. **Fokus**: lihat modul Pomodoro.
+4. **Musik**: cover 120 pt + playlist (judul | durasi, lagu aktif putih, lainnya abu).
+5. **Claude**: dua kolom bar Sesi / Minggu + forecast, lalu Now / Recent / Usage. Tombol ⚙︎ di baris itu membuka Settings di tempat yang sama.
 
-Popover menu bar (mode Menu bar) tetap memakai tata letak vertikal 344 pt dengan kartu Fokus dan Now Playing ditumpuk.
+Popover menu bar (mode Menu bar) tetap memakai tata letak vertikal 344 pt.
 
 ## Spesifikasi modul
 
 ### 1. Pomodoro "Ember" (prioritas tertinggi)
 
-Konsepnya: setiap sesi fokus adalah bara yang dijaga naga. Sisa waktu digambarkan sebagai sumbu **api biru** yang memendek. Semua visual memakai palet maskot (navy `#0B1E3F`, biru `#4FA3FF`, cyan `#7FE3FF`), jadi terasa satu keluarga dengan app.
+Konsepnya: setiap sesi fokus adalah bara yang dijaga naga. Sisa waktu digambarkan sebagai sumbu silver yang memendek di live, dan sebagai progres 4 pt di halaman Fokus. Semua visual memakai tema hitam-silver dengan naga merah.
 
 **Perilaku**
 
@@ -109,19 +116,19 @@ Konsepnya: setiap sesi fokus adalah bara yang dijaga naga. Sisa waktu digambarka
 
 | Momen | Live (compact) | Animasi |
 | --- | --- | --- |
-| Mulai fokus | Kiri: naga mode "jaga" (mata cyan menyala, napas pelan). Kanan: sisa waktu `24:59` | Sumbu api biru setebal 1,5 pt tergambar dari tengah ke kedua sisi dalam 0,5 detik. Bara kecil muncul di ujungnya |
+| Mulai fokus | Kiri: naga mode "jaga" (mata menyala, napas pelan). Kanan: sisa waktu `24:59` silver | Sumbu silver setebal 1,5 pt tergambar dari tengah ke kedua sisi dalam 0,5 detik. Bara kecil muncul di ujungnya |
 | Berjalan | Sumbu memendek sesuai sisa waktu | Bara di ujung berkedip pelan (opasitas 0,75–1, siklus 2 detik). Digit berganti dengan `contentTransition(.numericText())` |
 | Pause | Sumbu dan angka meredup 40% | Tidak ada animasi berjalan sama sekali |
 | 10 detik terakhir | Angka putih terang | Angka sedikit membesar lalu kembali (scale 1 → 1,06 → 1) tiap detik |
-| Fokus selesai | Pop "Fokus selesai": naga menyemburkan api biru (mood `happy`), satu titik sesi menyala. Tombol "Mulai istirahat" dan "Lewati" | Titik bara baru menyala dengan efek scale-in. Haptic `.levelChange` dan suara pendek |
+| Fokus selesai | Pop "Fokus selesai": naga menyemburkan api (mood `happy`), satu titik sesi menyala. Tombol "Mulai istirahat" dan "Lewati" | Titik bara baru menyala dengan efek scale-in. Haptic `.levelChange` dan suara pendek |
 | Istirahat | Naga tidur dengan asap (mood `sleeping`). Sumbu berubah cyan | Asap memakai animasi di `Wyrm.swift` |
 | Istirahat selesai | Pop: "Siap fokus lagi?" dengan tombol "Fokus" dan "Nanti" | Naga bangun (transisi dari sleeping ke guarding) |
 
-**Halaman Fokus di state expanded** (dua mode, tanpa ring progres bulat)
+**Halaman Fokus di state expanded**
 
-- **Atur** (timer tidak berjalan): chip preset Klasik 25/5, Dalam 50/10, Custom (menyala otomatis kalau durasi tidak cocok preset). Stepper Fokus (step 5 menit, 5–90), Istirahat (step 1 menit, 1–30), Sesi (1–8). Field tugas opsional dan tombol Mulai (Enter di field juga memulai). Pengaturan terakhir disimpan.
-- **Jalan**: angka besar `mm:ss`, baris "Fokus n/N · <tugas>", titik sesi (satu per sesi), sumbu api biru horizontal selebar panel dengan bara berkedip di ujung yang terbakar, tombol +5 mnt, Pause/Lanjut, Lewati, Stop.
-- Di popover menu bar, halaman yang sama tampil sebagai kartu. Stepper dan tombol otomatis ditumpuk kalau lebarnya tidak cukup.
+- **Jalan**: [tombol bulat 42 pt pause/lanjut | keterangan "Fokus n/N · tugas" + tombol +5 mnt, Lewati, Stop | waktu 50 pt silver terang], progres 4 pt silver di bawahnya.
+- **Atur** (timer tidak berjalan): chip Klasik 25/5, Dalam 50/10, Custom. Stepper Fokus (5–90, step 5), Istirahat (1–30), Sesi (1–8). Field tugas opsional, tombol Mulai. Pengaturan terakhir disimpan.
+- Di popover menu bar, halaman yang sama tampil sebagai kartu, dan stepper otomatis ditumpuk kalau sempit.
 
 ### 2. Claude Usage
 
@@ -140,11 +147,13 @@ Fitur yang sudah ada dipertahankan semua: limit sesi dan mingguan, forecast, daf
 
 - Live: cover album kecil (18 pt, sudut 5 pt) di kiri, visualizer 4 batang di kanan.
 - Pop saat lagu berganti: cover, judul, dan artis selama 2,5 detik (bisa dimatikan).
-- **Halaman Musik** di state expanded, horizontal tiga kolom: cover 120 pt | judul, "artis · album", progress yang bisa digeser dengan waktu berjalan dan sisa, kontrol shuffle / previous / play-pause / next / repeat (off → all → one) | playlist yang di-scroll vertikal di kolomnya sendiri.
-    - Lagu yang sedang diputar disorot biru dan otomatis di-scroll ke tengah.
+- Kontrol pemutar ada di Home (previous, play/pause, next, favorit, progress yang bisa digeser).
+- **Halaman Musik**: cover 120 pt + playlist (judul | durasi) yang di-scroll vertikal di kolomnya sendiri.
+    - Lagu yang sedang diputar berwarna putih (lainnya abu) dan otomatis di-scroll ke tengah.
     - Klik lagu untuk langsung memutarnya.
     - Ditampilkan 50 lagu di sekitar lagu aktif, sisanya dimuat saat di-scroll (`LazyVStack`).
-    - Kalau daftar tidak tersedia (radio, lagu katalog di luar library), tampilkan teks "Song list isn't available for this source."
+    - Kalau daftar tidak tersedia (radio, lagu katalog di luar library), tampilkan teks "Daftar lagu tidak tersedia untuk sumber ini."
+- Cover memakai `matchedGeometryEffect` antara live dan Home.
 - Di popover menu bar tetap ada kartu Now Playing (cover 56 pt) dengan panel daftar lagu yang bergeser saat hover 400 ms.
 
 **Cara kerja yang hemat**
@@ -157,18 +166,17 @@ Fitur yang sudah ada dipertahankan semua: limit sesi dan mingguan, forecast, daf
 
 ### 4. Info dasar
 
-- InfoModule hanya untuk **acara kalender berikutnya** (dalam 24 jam, bukan acara seharian): judul dan "in 25m" / jam mulai, di header di bawah tanggal dan jam.
-- Kalender lewat EventKit. Kalau izin ditolak, baris kalender disembunyikan tanpa pesan error.
-- Tanggal dan jam bagian dari header, diperbarui sekali per menit.
-- Baterai dan pop "Charging" dihapus (keputusan 1 November 2026).
+- InfoModule hanya untuk **acara kalender berikutnya** (dalam 24 jam, bukan acara seharian), lewat EventKit. Kalau izin ditolak, tidak ada yang tampil.
+- Tanggal dan jam bagian dari header ("Min 1 Nov · 18.52"), diperbarui sekali per menit. Acara berikutnya tampil sebagai tooltip di tanggal.
+- Baterai dan pop "Charging" dihapus.
 
-### 5. Maskot
+### 5. Maskot dan tema
 
-- Kepala naga dalam profil, digambar di `Canvas` (`Views/Wyrm.swift`, `WyrmView`). Palet: sisik navy `#0B1E3F`, tanduk dan tepi biru `#4FA3FF`, mata cyan `#7FE3FF`, api biru.
-- Mood: tidur (`sleeping`, mata tertutup, asap), siaga (`idle`), kerja (`working`, menggeram), selesai (`happy`, menyemburkan api biru), fokus (`guarding`, diam berjaga, mata menyala).
-- Maksimal 30 fps (15 fps untuk mood tenang), berhenti saat notch tertutup lewat `animationsPaused`.
-- Amber dan rose hanya untuk peringatan usage Claude. Aksen lain biru.
-- Versi ular ramping (wyrm bergelombang) sempat dicoba, lalu dibatalkan karena kepala naga lebih disukai.
+- **Naga merah** (`Views/Dragon.swift`, `DragonView`): kepala naga dalam profil, digambar di `Canvas`. Sisik merah bergradasi (`#F0454B` → `#C8202C` → `#6E0B14`), tanduk gading, sirip leher, tanduk hidung, mata amber dengan pupil celah.
+- Responsif: kepala terangkat dan mata menyala saat kursor di atasnya. Mood: tidur (mata tertutup, asap), siaga (napas, kedip), kerja (mata menyala, rahang bergerak, percikan), selesai (semburan api), fokus (diam berjaga).
+- Maks. 30 fps (15 fps untuk mood tenang), berhenti saat notch tertutup atau tidak terlihat. Naga yang sama juga menggambar ikon app (`--render-icon`, dipakai `build-app.sh`).
+- **Tema**: latar `#000`, teks `#F2F3F5`, sekunder `#8D9096`, track `#2A2B2F`, silver `#C9CDD3` (progress, visualizer), silver terang `#D5D8DD` (angka timer), tombol `#3A3D44` / `#24262B`, garis `#1C1D20`. Merah hanya untuk naga, amber/rose hanya untuk peringatan usage.
+- Tema dan maskot sebelumnya (kaca hitam, aksen biru, wyrm) dihapus.
 
 ## Notch virtual di monitor eksternal
 
@@ -204,7 +212,9 @@ Prinsipnya: membuka pelan dan sedikit memantul, menutup cepat dan tenang, dan ti
 | `contentOut` | easeIn 0.14 detik | Isi hilang sebelum bentuk mengecil |
 | `smooth` | smooth 0.28 detik | Perubahan nilai (ring, progress, warna) |
 | `quick` | snappy 0.18 detik | Hover tombol, tekan |
-| `slide` | spring(response 0.4, damping 0.86) | Panel daftar lagu masuk dan keluar |
+| `slide` | spring(response 0.4, damping 0.86) | Panel daftar lagu di popover menu bar |
+| `resize` | spring(response 0.45, damping 0.78) | Tinggi notch mengikuti isi tab, kapsul tab meluncur |
+| `page` | easeOut 0.22 detik | Isi tab berganti (fade + geser 5 pt) |
 
 **Koreografi per transisi**
 
@@ -213,8 +223,10 @@ Prinsipnya: membuka pelan dan sedikit memantul, menutup cepat dan tenang, dan ti
 - Expanded → closed: isi hilang dengan `contentOut`, baru bentuk mengecil dengan `close`.
 - Ganti modul di live (misalnya musik ke Pomodoro): isi lama fade-out dan geser 6 pt ke atas, isi baru masuk dari bawah. Lebar notch tidak berubah, jadi tidak ada lompatan.
 - Ganti lagu: cover lama crossfade ke cover baru dalam ±0,3 detik (`smooth`).
-- Ganti halaman di expanded: crossfade dengan `smooth`. Ukuran panel tidak berubah.
-- Mode Atur ↔ Jalan di halaman Fokus: crossfade dengan geser 6 pt.
+- Ganti tab di expanded: isi lama fade, isi baru masuk dengan fade + geser 5 pt (`page`). Tinggi notch mengikuti isi baru dengan `resize`, dan kapsul tab meluncur dengan `resize`.
+- Cover: `matchedGeometryEffect` antara cover kecil di live dan cover 96 pt di Home.
+- Mode Atur ↔ Jalan di halaman Fokus: fade + geser 5 pt.
+- Live dengan Pomodoro dan musik aktif: bergantian tiap 6 detik (fade + geser 6 pt).
 
 **Aturan supaya tetap ringan**
 
@@ -319,7 +331,8 @@ Semua pengembangan dilakukan di branch terpisah, di-commit otomatis per langkah,
 
 - [ ] Semua fitur Claude yang sekarang tetap berfungsi setelah refactor
 - [ ] `--selftest` diperluas: setiap state setiap modul, di notch asli dan notch virtual
-- [ ] Panel expanded berukuran sama (600 × ±200) di semua halaman, dicek di self-test
+- [ ] Panel expanded selebar 600 pt di semua tab, tingginya mengikuti isi tab, window tidak pernah di-resize (dicek di self-test)
+- [ ] Tidak ada view yang overlap di setiap tab, di notch asli dan virtual (self-test membandingkan frame)
 - [ ] Mode Atur dan Jalan di halaman Fokus: +5 mnt menambah 5 menit, Stop kembali ke Atur, jumlah sesi menentukan kapan istirahat panjang
 - [ ] Timer Pomodoro meleset kurang dari 1 detik setelah Mac sleep 10 menit
 - [ ] Ganti lagu di Music.app terlihat di notch dalam waktu kurang dari 0,5 detik
@@ -354,3 +367,8 @@ Semua pengembangan dilakukan di branch terpisah, di-commit otomatis per langkah,
     - Keputusan sementara: di Settings → Pomodoro (stepper menit). Chip "Custom" menyala otomatis kalau durasi tidak cocok dengan 25/5 atau 50/10.
 - Setelah satu fase selesai, apakah fase berikutnya mulai otomatis?
     - Keputusan sementara: **tidak**. Fase berikutnya disiapkan, dan pop memberi tombol untuk memulainya.
+- Di mana Settings dibuka di notch, setelah tabnya hilang?
+    - Keputusan sementara: tombol ⚙︎ di halaman Claude (sebaris dengan Now / Recent / Usage). Di mode menu bar tetap lewat ⚙︎ di header popover.
+- Acara kalender berikutnya tidak punya tempat di header baru ("naga + tanggal · jam").
+    - Keputusan sementara: tampil sebagai tooltip di tanggal. Perlu diputuskan apakah butuh baris sendiri.
+- Kalimat terpotong di permintaan ("jangan lupa iunutk …"): ditafsirkan sebagai "jangan lupa untuk ikon app", jadi ikon app kini naga merah.

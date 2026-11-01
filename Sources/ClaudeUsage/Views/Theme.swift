@@ -76,6 +76,10 @@ enum Motion {
     static let fuse = Animation.easeOut(duration: 0.5)
     /// Side panels (the playlist) sliding in and out.
     static let slide = Animation.spring(response: 0.4, dampingFraction: 0.86)
+    /// The open notch growing or shrinking to fit the page, and the tab capsule gliding.
+    static let resize = Animation.spring(response: 0.45, dampingFraction: 0.78)
+    /// A page swapping in when the tab changes (fade, 5 pt shift).
+    static let page = Animation.easeOut(duration: 0.22)
     /// What springs become with Reduce Motion on.
     static let reduced = Animation.easeInOut(duration: 0.2)
 }

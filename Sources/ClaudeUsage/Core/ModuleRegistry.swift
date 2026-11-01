@@ -83,6 +83,15 @@ final class ModuleRegistry: ObservableObject {
         modules.forEach { $0.setVisible(visible) }
     }
 
+    /// What the live notch shows: the winner, or the Pomodoro and the music taking turns when both are on.
+    func liveRotation(fallback: any NotchModule) -> [any NotchModule] {
+        let candidates = enabledModules.filter { (onlyForTesting?.contains($0.id) ?? true) && $0.livePriority != nil }
+        let ids = Set(candidates.map(\.id))
+        guard ids.contains("pomodoro"), ids.contains("music") else { return [fallback] }
+        return candidates.filter { $0.id == "pomodoro" || $0.id == "music" }
+            .sorted { ($0.id == "pomodoro" ? 0 : 1) < ($1.id == "pomodoro" ? 0 : 1) }
+    }
+
     func resolve() {
         let candidates = enabledModules.filter { onlyForTesting?.contains($0.id) ?? true }
         let next = PriorityResolver.resolve(candidates, order: customOrder)

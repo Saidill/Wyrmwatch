@@ -1,28 +1,27 @@
-# Claude Usage
+# Claude Usage (becoming Notchwyrm)
 
-A small macOS menu bar app that keeps an eye on Claude Code for you, and gets you back to work faster.
+A macOS notch app for focused work: Claude Code usage, a Pomodoro timer, Apple Music and your next calendar event, all in the camera notch. A red dragon keeps watch. It is being renamed to **Notchwyrm**; until then the app is still called `ClaudeUsage`.
 
-The popover has three tabs:
+## In the notch
 
-- **Now**: your session (5-hour) and weekly plan limits, and every running Claude Code session. **Click a session to jump to it**: its Terminal or iTerm2 tab comes to the front, or its VS Code / Cursor window.
-- **Recent**: your last conversations, titled the way Claude Code titles them. **Click one to resume it** in a new Terminal window (`claude --resume`).
-- **Usage**: tokens today and over the last 7 days, by hour, by model, and split into input, output and cache.
+Hover the notch (or click it) to open it. The header is split by the camera: the dragon with the date and time on the left, four tabs on the right (Home, Focus, Music, Claude). The notch grows to fit each tab.
 
-It has two display modes. Switch with the button in the header, or in Settings → Display:
+- **Home**: one row with everything. The album cover with a soft glow, the song with a visualizer, a seek bar and the controls (playlist, previous, play/pause, next, favourite). To the right: the Pomodoro (time left, pause, stop, or the 25/5 · 50/10 · Atur chips when it isn't running) and your Claude session limit. No music playing? There's a **Putar musik** button instead.
+- **Focus**: start a Pomodoro with a preset (Klasik 25/5, Dalam 50/10) or your own lengths, the number of sessions (1–8) and an optional task. While it runs: big digits, "Fokus 2/4 · your task", +5 min, pause, skip and stop. It keeps time through sleep and restarts.
+- **Music**: the cover and the playlist being played. Click a song to play it.
+- **Claude**: session and week limits with the forecast, then Now (running sessions, click to jump to their terminal), Recent (click to resume) and Usage (tokens). The ⚙︎ there opens Settings.
 
-- **Menu bar**: the popover above, for when you work on an external monitor.
-- **Notch**: on a MacBook screen, the app lives in the camera notch instead. While Claude works, the notch widens a little, with a breathing dot on one side and your session limit on the other. When a prompt finishes, a card drops out of the notch with a **Jump** button. Hover the notch to open the whole app.
-- **Auto** (the default) uses the notch while the laptop screen is your only screen and switches to the menu bar as soon as you plug in a monitor. No restart needed.
+When it's closed, the notch shows what matters in a slim "live" strip: the small dragon while Claude works, the cover and a visualizer while music plays, the time left during a Pomodoro (taking turns with the music every 6 seconds). Short cards drop out of it when a Claude session finishes, a Pomodoro phase ends or the song changes.
 
-And in the background:
+On a screen without a notch (an external monitor), the app draws one: a small black pill at the top that opens the same way. Display modes are Auto, Notch, Menu bar and All screens. In Menu bar mode the app lives in a popover under a menu bar icon instead.
+
+The look is plain black with silver accents. Red is only for the dragon, and amber or rose only for usage warnings. Nothing animates unless it's on screen, and Reduce Motion (or Settings → System → Always reduce motion) turns all repeating animation off.
+
+## Claude in the background
 
 - **A sound when Claude finishes**, plus a notification, so you can look away while it works.
 - **Limit alerts**: a heads-up when your session or weekly limit passes 80% (adjustable), and a ping the moment your session limit resets.
-- **Limit forecast**: under the Session bar, where you're heading at your current pace ("At this pace, full at 3:40 PM" or "On pace to last until the reset"), worked out from the last 30 minutes. If you're on track to hit the limit within half an hour, you get a heads-up.
-
-The popover is black frosted glass with silver accents, whatever your system appearance, and everything moves with the same calm, smooth curves. A gunmetal dragon with silver horns and a glowing amber eye watches over things in the header, the notch and the "finished" card: it sleeps with smoke curling from its nostril when nothing is running, growls with embers in its jaw while Claude works, and rears back and roars fire when a prompt finishes. Click it to make it roar. Quit is in Settings → System. The menu bar icon is a small ring that fills up as you use your session limit. It shows a "working" ring while Claude is busy and a check mark when a session finishes.
-
-It's built to stay light: nothing animates unless something changes, past sessions are only read when you open the Recent tab, and token counts refresh every 15 seconds (and whenever you open the popover).
+- **Limit forecast**: where you're heading at your current pace ("At this pace, full at 15.40"), from the last 30 minutes.
 
 ## Requirements
 
@@ -46,7 +45,7 @@ If you change the code later, run `./scripts/build-app.sh --install`. It rebuild
 
 While you're working on it, run `./scripts/dev.sh` and leave it open: every time you save a file in `Sources/`, the app rebuilds and relaunches by itself, so you never have to quit and reopen it.
 
-To check that everything still works after a change, run the self-test. It switches between the menu bar and the notch several times, opens and closes each one, checks that they respond, and saves a picture of every screen plus a `report.txt` to the folder you give it:
+To check that everything still works after a change, run the self-test. It switches between the menu bar and the notch, opens every tab on the real and on a virtual notch, checks that no view overlaps another and that the notch follows each tab's height, runs the Pomodoro, Music and Info modules on made-up data, and saves a picture of every screen plus a `report.txt` to the folder you give it:
 
 ```bash
 ./scripts/build-app.sh && ./ClaudeUsage.app/Contents/MacOS/ClaudeUsage --selftest /tmp/claude-usage-test
@@ -63,6 +62,8 @@ Everything is read from files Claude Code already writes on your Mac. Nothing is
 | Plan limits and alerts | `GET https://api.anthropic.com/api/oauth/usage`, using the login token Claude Code keeps in your Keychain. Refreshed every minute and when you open the popover. When the token expires (after about 8 hours without Claude Code running), the app renews it and saves it back, so Claude Code stays logged in. |
 | Recent sessions | The newest transcripts in `~/.claude/projects`. Only the last 64 KB of each file is read, for its title and folder. |
 | Jump to session | Finds the app that owns the session's process. For Terminal and iTerm2 it selects the tab by its TTY using AppleScript; macOS asks once for permission. |
+| Music | Song changes and play/pause come from the system notification Music posts (`com.apple.Music.playerInfo`). The cover, position, playlist, favourite and controls use AppleScript, never while Music is closed; macOS asks once for permission. Radio and catalog songs outside your library have no readable playlist. |
+| Next calendar event | EventKit, after you allow calendar access. Refused? It simply doesn't show. |
 
 The plan-limits endpoint is **unofficial**: it's the same one Claude Code's `/usage` command uses, and Anthropic may change it. If it stops working, the app says so and everything else keeps working.
 
@@ -72,15 +73,19 @@ The Session and Week limits are shared, so they include your chats on claude.ai 
 
 ```
 Sources/ClaudeUsage/
-  ClaudeUsageApp.swift     app entry point and menu bar icon
-  SessionMonitor.swift     watches running sessions and detects when one finishes
-  UsageTracker.swift       reads transcripts and adds up tokens
-  PlanLimitClient.swift    fetches plan limits
-  Notifier.swift           finish sound and notifications
-  RecentSessions.swift     past sessions for the Recent tab
-  TerminalLauncher.swift   jump to a session's terminal, resume a past session
-  Views/                   popover, settings, colours and animated components
-scripts/build-app.sh       builds ClaudeUsage.app
+  App/            entry point, display modes, menu bar icon, self-test, --diagnose, --perf, --render-icon
+  Core/           NotchModule protocol, module registry, priority resolver, pop queue, layout probe
+  Notch/          notch window and shape, virtual notch, open panel (header, tabs, Home page)
+  Modules/
+    Claude/       sessions, usage, plan limits, notifications, jump/resume
+    Pomodoro/     timer, Focus page, fuse and dots
+    Music/        Music.app bridge, artwork cache, Music page, playlist
+    Info/         next calendar event
+  Views/          theme and motion, the dragon, shared controls, popover, settings
+scripts/
+  build-app.sh    builds ClaudeUsage.app (and the dragon app icon); --install puts it in /Applications
+  measure-perf.sh CPU and memory per notch state
+  dev.sh          rebuild and relaunch on every save
 ```
 
 ## Development

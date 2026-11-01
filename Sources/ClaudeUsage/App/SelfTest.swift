@@ -179,6 +179,13 @@ enum SelfTest {
             snapshot(first.window, "8-virtual-open")
             notch.close()
             await wait(0.6)
+            // Every tab again, on the virtual notch, with a song on.
+            AppModels.music.bridge.injectForTesting(
+                track: NowPlaying(id: "VIRT", title: "Wait for You", artist: "Elliott Yamin", album: "Wait for You", duration: 261),
+                playing: true, position: 40, artwork: testCover(hue: 0.02),
+                playlist: (1...30).map { PlaylistTrack(index: $0, title: "Song \($0)", artist: "", duration: 200) }, currentIndex: 4)
+            await checkTabs("virtual")
+            AppModels.music.bridge.injectForTesting(track: nil, playing: false)
 
             AppModels.claude.pop(LiveSession(pid: 1, sessionId: nil, cwd: nil, name: "virtual", status: "idle", kind: nil,
                                              startedAt: nil, statusUpdatedAt: nil))
@@ -330,25 +337,16 @@ enum SelfTest {
         bridge.injectForTesting(track: b, playing: true, position: 30, playlist: [], currentIndex: nil)
         await snapshotExpanded(tab: .music, "21-music-playlist-unavailable")
 
-        // Every page has the same size: switching never moves the shape.
-        if let screen = notch.screens.first?.screen {
-            let size = screen.size(for: .expanded, contentHeight: 0)
-            check(abs(size.width - (ExpandedPanel.width + 20)) < 0.5 && size.height < 230,
-                  "open notch is wide and short (\(Int(size.width)) × \(Int(size.height)))")
-            for tab in NotchTab.allCases {
-                UserDefaults.standard.set(tab.rawValue, forKey: NotchTab.storageKey)
-                notch.open()
-                await wait(0.5)
-                check(screen.size(for: notch.model.state(on: screen.display), contentHeight: 0) == size
-                      && notch.window?.frame.size == NotchWindowController.windowSize, "\(tab.title) page keeps the same size")
-            }
-            if let w = notch.window { snapshot(w, "20-settings-page") }
-            UserDefaults.standard.set(NotchTab.claude.rawValue, forKey: NotchTab.storageKey)
-            await wait(0.6)
-            if let w = notch.window { snapshot(w, "20-claude-page") }
-            notch.close()
-            await wait(0.6)
-        }
+        // Pomodoro and music both on: the live notch takes turns between them.
+        AppModels.pomodoro.timer.runForTesting(phase: .focus, secondsLeft: 600)
+        await wait(0.4)
+        let turns = registry.liveRotation(fallback: AppModels.music).map(\.id)
+        check(turns == ["pomodoro", "music"], "live notch alternates Pomodoro and music (\(turns))")
+        if let w = notch.window { snapshot(w, "17-live-alternating") }
+        AppModels.pomodoro.timer.stopToSetup()
+
+        bridge.injectForTesting(track: b, playing: true, position: 74, artwork: testCover(hue: 0.6), playlist: list, currentIndex: 43)
+        await checkTabs("real", variants: true)
 
         // Pomodoro sync: focus plays, a break pauses.
         defaults.set(true, forKey: PomodoroTimer.Keys.musicSync)
@@ -590,7 +588,7 @@ enum SelfTest {
         let region: CGRect
         if window === notch.window {
             let band = notch.screens.first?.screen.notch.height ?? 32
-            let left = (window.frame.width - (ExpandedPanel.width + 20)) / 2 + 10 + 16
+            let left = (window.frame.width - (ExpandedPanel.width + 20)) / 2 + 10 + 18
             region = CGRect(x: left, y: 0, width: 36, height: band)
         } else {
             region = CGRect(x: 10, y: 10, width: 50, height: 50)
@@ -605,6 +603,55 @@ enum SelfTest {
         }
         log("   \(changed) pixels changed around the dragon")
         return changed > 20
+    }
+
+    /// Every tab of the open notch: 600 wide, the height following the page, nothing overlapping or spilling out,
+    /// and a picture. With `variants`, Home is also checked with the Pomodoro running and with no music.
+    private static func checkTabs(_ label: String, variants: Bool = false) async {
+        let notch = NotchWindowController.shared
+        guard let screen = notch.screens.first?.screen else { return }
+        func verify(_ what: String, _ name: String) {
+            let overlaps = LayoutProbe.overlaps(prefix: "")
+            check(overlaps.isEmpty, "\(label): nothing overlaps on \(what)"
+                  + (overlaps.isEmpty ? "" : " — " + overlaps.map { "\($0.0)×\($0.1)" }.joined(separator: ", ")))
+            let outside = LayoutProbe.frames.filter { $0.value.minX < -0.5 || $0.value.maxX > ExpandedPanel.width + 0.5 }
+            check(outside.isEmpty, "\(label): \(what) stays inside the panel" + (outside.isEmpty ? "" : " — \(outside.keys.sorted())"))
+            check(!LayoutProbe.frames.isEmpty, "\(label): \(what) was measured")
+            if let w = notch.window { snapshot(w, name) }
+        }
+        var heights: [NotchTab: CGFloat] = [:]
+        for tab in NotchTab.allCases {
+            UserDefaults.standard.set(tab.rawValue, forKey: NotchTab.storageKey)
+            if !notch.model.expanded { notch.open(on: screen.display) }
+            await wait(1.0)
+            heights[tab] = notch.model.contentHeight
+            let size = screen.size(for: .expanded, contentHeight: notch.model.contentHeight)
+            check(abs(size.width - (ExpandedPanel.width + 20)) < 0.5 && notch.window?.frame.size == NotchWindowController.windowSize,
+                  "\(label): \(tab.title) is 600 wide and the window never resizes")
+            verify(tab.title, "tab-\(tab.rawValue)-\(label)")
+        }
+        check(abs((heights[.home] ?? 0) - 96) < 1, "\(label): Home page is 96 pt tall (\(Int(heights[.home] ?? 0)))")
+        check((heights[.music] ?? 0) > (heights[.home] ?? 0) + 10,
+              "\(label): the notch height follows the page (home \(Int(heights[.home] ?? 0)), music \(Int(heights[.music] ?? 0)))")
+        if variants {
+            let timer = AppModels.pomodoro.timer
+            UserDefaults.standard.set(NotchTab.home.rawValue, forKey: NotchTab.storageKey)
+            timer.task = "A long task name that has to be cut off with an ellipsis somewhere"
+            timer.runForTesting(phase: .focus, secondsLeft: 24 * 60 + 59)
+            await wait(0.8)
+            verify("Home with the Pomodoro running", "tab-home-focus-\(label)")
+            UserDefaults.standard.set(NotchTab.focus.rawValue, forKey: NotchTab.storageKey)
+            await wait(0.8)
+            verify("Focus while running", "tab-focus-running-\(label)")
+            timer.stopToSetup()
+            AppModels.music.bridge.injectForTesting(track: nil, playing: false)
+            UserDefaults.standard.set(NotchTab.home.rawValue, forKey: NotchTab.storageKey)
+            await wait(0.8)
+            check(LayoutProbe.frames["home.startMusic"] != nil, "\(label): Home offers Putar musik when nothing plays")
+            verify("Home with no music", "tab-home-nomusic-\(label)")
+        }
+        notch.close()
+        await wait(0.6)
     }
 
     /// Opens the notch on one page, saves a picture of it, and closes it again.

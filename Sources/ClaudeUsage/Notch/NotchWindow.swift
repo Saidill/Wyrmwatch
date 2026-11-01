@@ -11,7 +11,8 @@ final class NotchModel: ObservableObject {
     /// The screen whose notch is open, if any. Only one panel may be expanded at a time.
     @Published var expandedOn: CGDirectDisplayID?
     /// Height of the full app content, measured by the view, so the shape fits it exactly.
-    @Published var contentHeight: CGFloat = 300
+    /// Height of the open notch's page, measured by the view, so the shape fits it exactly.
+    @Published var contentHeight: CGFloat = 96
     private var subscriptions: Set<AnyCancellable> = []
 
     init(registry: ModuleRegistry) {
@@ -75,7 +76,8 @@ final class NotchScreen: ObservableObject {
         case .pop: return CGSize(width: 320 + flare * 2, height: notch.height + 58)
         // The same size on every page: wide rather than tall.
         case .expanded:
-            return CGSize(width: ExpandedPanel.width + flare * 2, height: notch.height + 8 + ExpandedPanel.pageHeight + 14)
+            return CGSize(width: ExpandedPanel.width + flare * 2,
+                          height: min(notch.height + 10 + contentHeight + 16, NotchWindowController.windowSize.height))
         }
     }
 }
@@ -97,7 +99,7 @@ struct NotchTarget {
 final class NotchWindowController {
     static let shared = NotchWindowController()
     /// The window never resizes (that's what made things lag); the shape animates inside it.
-    static let windowSize = CGSize(width: 640, height: 260)
+    static let windowSize = CGSize(width: 640, height: 330)
     /// Settings: open when the pointer rests on the notch (otherwise only a click opens it).
     static let openOnHoverKey = "notch.openOnHover"
 
