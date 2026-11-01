@@ -108,3 +108,22 @@ Ringkasan per milestone: apa yang dibuat dan apa yang perlu dicek manual.
 - Colok charger: pop "Charging" + persen selama 2 detik.
 - Buat acara 30 menit lagi di Calendar: muncul di baris info dalam beberapa detik.
 - Tolak akses Kalender di System Settings: baris kalender hilang tanpa pesan error.
+
+## M6 · Polishing (`feat/m6-polish`), rename belum
+
+**Sudah dibuat**
+- Reduce Motion (sistem + "Always reduce motion" di Settings): spring jadi fade 0,2 detik, semua animasi berulang berhenti. Diverifikasi self-test (0 piksel berubah).
+- Settings dalam 6 tab (Display, Modules, Pomodoro, Music, Claude, System). Modul bisa dimatikan dan diurutkan dengan drag. Opsi buka notch hanya dengan klik.
+- `--perf` + `scripts/measure-perf.sh`: CPU dan memori per state.
+- **Perbaikan CPU besar:** panel penuh kini hanya dibangun saat notch terbuka. Dulu panel tersembunyi ikut menggambar ulang naga setiap kali file sesi Claude berubah. CPU closed turun dari ±22% ke **0,1%**. Build lama di `main` juga memakan ±50% CPU saat ada sesi Claude aktif.
+
+**Hasil ukur terakhir (M-series, sesi Claude aktif)**: closed 0,1–0,3% ✅ · live Pomodoro 11% ❌ (tetap 10% tanpa animasi, jadi penyebabnya bukan animasi) · live Claude 7,6% ❌ · live music 5,4% ❌ · expanded 21–26% ❌ (budget < 2% live, < 5% expanded).
+
+**Sisa pekerjaan**
+1. Cari penyebab CPU di state live/expanded. Petunjuk dari `sample`: hampir tidak ada kode app di stack. Ada blur vImage dan rasterisasi CoreGraphics, jadi kemungkinan ada invalidasi berulang dari luar animasi (cek publish `SessionMonitor`/`UsageTracker`). Perlu Instruments.
+2. Rename ke Notchwyrm (folder target, executable, bundle id `com.saidilhalim.notchwyrm`, ikon, README, .gitignore, CLAUDE.md) + migrasi UserDefaults dari `com.saidilhalim.claudeusage`.
+3. Merge M6 ke `feat/notch-hub` dan ringkasan akhir.
+
+**Catatan**: kalau `--perf` dihentikan paksa, ia bisa meninggalkan `motion.forceReduce` dan state Pomodoro di UserDefaults. Hapus dengan `defaults delete com.saidilhalim.claudeusage motion.forceReduce`.
+
+**Self-test M6**: 3 kegagalan sebelumnya ("song pop goes away…", "charger pop goes away…", "no pop without a new plug-in") ternyata karena faktor lingkungan. Kursor sungguhan berada di atas notch, dan pop ditahan saat hover. Self-test kini mengabaikan hover asli untuk antrean pop, dan hasilnya `ALL PASSED`. M6 (tanpa rename) di-merge ke `feat/notch-hub`, lalu `feat/notch-hub` ke `main`.

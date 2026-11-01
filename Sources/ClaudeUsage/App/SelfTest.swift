@@ -26,6 +26,8 @@ enum SelfTest {
         let notch = NotchWindowController.shared
         let original = display.setting
         notch.holdOpenForTesting = true
+        // A real pointer resting on the notch would hold pops open; the timing checks must not depend on it.
+        notch.model.registry.popQueue.isHovering = { false }
         await wait(1.5) // let the app finish launching
         renderDragons()
 
@@ -124,6 +126,8 @@ enum SelfTest {
         await checkPomodoro()
         await checkMusic()
         await checkInfo()
+        await checkReduceMotion()
+        renderSettings()
         await checkVirtualNotch()
 
         display.setting = original
@@ -363,6 +367,46 @@ enum SelfTest {
         info.battery.update(nil)
     }
 
+    /// With Reduce Motion forced on, nothing repeats: the dragon in the open notch holds still.
+    private static func checkReduceMotion() async {
+        let notch = NotchWindowController.shared
+        log("— Reduce Motion")
+        let saved = savedSettings(prefix: "motion.")
+        UserDefaults.standard.set(true, forKey: MotionPreference.forceKey)
+        await wait(0.3)
+        check(MotionPreference.shared.reduce, "forcing Reduce Motion turns it on")
+        notch.open()
+        await wait(1.0)
+        if let w = notch.window { check(!(await dragonMoves(in: w)), "no repeating animation with Reduce Motion") }
+        notch.close()
+        await wait(0.6)
+        restoreSettings(saved, prefix: "motion.")
+        await wait(0.3)
+        check(MotionPreference.shared.reduce == NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
+              "Reduce Motion back to the system setting")
+    }
+
+    /// Each Settings tab, drawn on black (system switches and pickers may show as placeholders).
+    private static func renderSettings() {
+        let original = UserDefaults.standard.object(forKey: "settingsTab")
+        for tab in 0..<6 {
+            UserDefaults.standard.set(tab, forKey: "settingsTab")
+            let view = SettingsView()
+                .environmentObject(DisplayModeController.shared)
+                .frame(width: 344)
+                .padding(14)
+                .background(Color.black)
+                .preferredColorScheme(.dark)
+            let renderer = ImageRenderer(content: view)
+            renderer.scale = 2
+            guard let image = renderer.nsImage, let tiff = image.tiffRepresentation,
+                  let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else { continue }
+            try? png.write(to: out.appendingPathComponent("24-settings-\(tab).png"))
+        }
+        UserDefaults.standard.set(original, forKey: "settingsTab")
+        log("saved 24-settings-*.png")
+    }
+
     /// A stand-in album cover: a soft two-colour gradient.
     private static func testCover(hue: Double) -> NSImage {
         NSImage(size: NSSize(width: 120, height: 120), flipped: false) { rect in
@@ -379,6 +423,26 @@ enum SelfTest {
         check(PriorityResolver.resolve([c]) == nil, "resolver: nothing active means closed")
         check(PriorityResolver.resolve([FakeModule(id: "x", priority: 2), FakeModule(id: "y", priority: 2)])?.id == "x",
               "resolver: ties go to the first registered")
+        check(PriorityResolver.resolve([a, b], order: ["a", "b"])?.id == "a", "a custom order beats the built-in priorities")
+        check(PriorityResolver.resolve([a, b], order: ["b", "a"])?.id == "b", "custom order is followed both ways")
+
+        let registry = AppModels.registry
+        let savedModules = savedSettings(prefix: "modules.")
+        let savedPomodoro = savedSettings(prefix: "pomodoro.")
+        registry.onlyForTesting = ["pomodoro"]
+        AppModels.pomodoro.timer.runForTesting(phase: .focus, secondsLeft: 300, paused: true)
+        registry.resolve()
+        check(registry.active?.id == "pomodoro", "enabled module takes the live notch")
+        registry.setEnabled("pomodoro", false)
+        check(registry.active == nil, "a switched-off module never takes the live notch")
+        check(!registry.enabledModules.contains { $0.id == "pomodoro" }, "a switched-off module shows no card")
+        registry.setEnabled("pomodoro", true)
+        AppModels.pomodoro.timer.reset()
+        restoreSettings(savedPomodoro, prefix: "pomodoro.")
+        AppModels.pomodoro.timer.restore()
+        registry.onlyForTesting = nil
+        restoreSettings(savedModules, prefix: "modules.")
+        registry.setOrder(UserDefaults.standard.stringArray(forKey: "modules.order"))
 
         let queue = PopQueue()
         queue.enqueue(NotchPop(kind: .music) { EmptyView() })

@@ -110,6 +110,7 @@ struct MusicVisualizer: View {
             }
         }
         .frame(width: 4 * 2.5 + 3 * 2, height: 12)
+        .drawingGroup()
     }
 }
 
@@ -146,6 +147,7 @@ struct NowPlayingCard: View {
     @ObservedObject var bridge: MusicBridge
     @AppStorage(MusicModule.Keys.listOnHover) private var listOnHover = true
     @Environment(\.animationsPaused) private var paused
+    @Environment(\.reduceMotion) private var reduceMotion
     @State private var showList = false
     @State private var hoverTask: Task<Void, Never>?
 
@@ -174,7 +176,7 @@ struct NowPlayingCard: View {
                 }
             }
             .clipped()
-            .animation(Motion.slide, value: showList)
+            .animation(Motion.adapt(Motion.slide, reduceMotion), value: showList)
         }
         .card(fillHeight: true)
         .background(
@@ -204,7 +206,7 @@ struct NowPlayingCard: View {
 
     private func toggleList(_ show: Bool) {
         if show { bridge.loadPlaylist() }
-        withAnimation(Motion.slide) { showList = show }
+        withAnimation(Motion.adapt(Motion.slide, reduceMotion)) { showList = show }
     }
 
     @ViewBuilder

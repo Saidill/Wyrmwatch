@@ -11,6 +11,7 @@ struct PomodoroDigits: View {
     @ObservedObject var timer: PomodoroTimer
     var size: CGFloat = 11
     var color: Color = Palette.text2
+    @Environment(\.reduceMotion) private var reduceMotion
 
     var body: some View {
         if let end = timer.endDate {
@@ -32,7 +33,7 @@ struct PomodoroDigits: View {
             .foregroundStyle(final ? Palette.text : color)
             .contentTransition(.numericText(countsDown: true))
             .animation(Motion.smooth, value: seconds)
-            .keyframeAnimator(initialValue: 1.0, trigger: final ? seconds : 0) { view, scale in
+            .keyframeAnimator(initialValue: 1.0, trigger: final && !reduceMotion ? seconds : 0) { view, scale in
                 view.scaleEffect(scale)
             } keyframes: { _ in
                 CubicKeyframe(1.06, duration: 0.15)
@@ -49,7 +50,8 @@ struct Ember: View {
     @Environment(\.animationsPaused) private var paused
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: paused || still)) { context in
+        // A slow 2 s flicker needs no more than 15 fps.
+        TimelineView(.animation(minimumInterval: 1.0 / 15, paused: paused || still)) { context in
             let t = context.date.timeIntervalSinceReferenceDate
             let flicker = still ? 1 : 0.875 + 0.125 * sin(t * .pi)
             Canvas { ctx, canvas in
@@ -66,6 +68,7 @@ struct Ember: View {
             .opacity(flicker)
         }
         .frame(width: size * 2.5, height: size * 2.5)
+        .drawingGroup()
         .allowsHitTesting(false)
     }
 }
@@ -74,6 +77,7 @@ struct Ember: View {
 /// then burning down towards the centre from both ends, with an ember at each end.
 struct EmberFuse: View {
     @ObservedObject var timer: PomodoroTimer
+    @Environment(\.reduceMotion) private var reduceMotion
     @State private var drawn = false
 
     var body: some View {
@@ -88,7 +92,7 @@ struct EmberFuse: View {
         }
         // Paused: everything dims and stands still.
         .opacity(timer.isPaused ? 0.6 : 1)
-        .onAppear { withAnimation(Motion.fuse) { drawn = true } }
+        .onAppear { withAnimation(Motion.adapt(Motion.fuse, reduceMotion)) { drawn = true } }
     }
 
     private func fuse(_ fraction: Double) -> some View {

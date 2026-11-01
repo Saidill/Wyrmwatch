@@ -112,6 +112,7 @@ final class StatusItemController: NSObject {
         panel.hidesOnDeactivate = false
 
         let root = PopoverView()
+            .followsReduceMotion()
             .environmentObject(AppModels.sessions)
             .environmentObject(AppModels.usage)
             .environmentObject(AppModels.limits)

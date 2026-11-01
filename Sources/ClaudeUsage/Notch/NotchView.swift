@@ -46,10 +46,13 @@ struct NotchView: View {
     @ObservedObject var screen: NotchScreen
     @EnvironmentObject var limits: PlanLimitClient
     @EnvironmentObject var usage: UsageTracker
+    @ObservedObject private var motion = MotionPreference.shared
+    /// Whether the full app content is built. True at launch to measure it, then only around being open.
+    @State private var mounted = true
 
-    /// Growing states use the opening curve, shrinking ones the closing curve.
+    /// Growing states use the opening curve, shrinking ones the closing curve (a plain fade with Reduce Motion).
     private func morph(to state: NotchModel.State) -> Animation {
-        state == .closed || state == .live ? Motion.close : Motion.open
+        Motion.adapt(state == .closed || state == .live ? Motion.close : Motion.open, motion.reduce)
     }
 
     var body: some View {
@@ -63,7 +66,9 @@ struct NotchView: View {
                 shape.fill(.black)
 
                 ZStack(alignment: .top) {
-                    // The full app stays built (just hidden) so opening it is instant and its height is already known.
+                    // The full app is only built while open (and briefly at launch, to learn its height): kept hidden,
+                    // it still redrew on every session update, which cost a lot of CPU while closed.
+                    if mounted || state == .expanded {
                     PopoverView(inNotch: true)
                         .fixedSize(horizontal: false, vertical: true)
                         .background(GeometryReader { geo in
@@ -75,11 +80,12 @@ struct NotchView: View {
                         .padding(.top, screen.notch.height - 8)
                         // Eases in a beat after the shape starts opening, settling down from slightly smaller.
                         .opacity(state == .expanded ? 1 : 0)
-                        .scaleEffect(state == .expanded ? 1 : 0.94, anchor: .top)
-                        .offset(y: state == .expanded ? 0 : -10)
-                        .animation(state == .expanded ? Motion.contentIn : Motion.contentOut, value: state)
+                        .scaleEffect(state == .expanded || motion.reduce ? 1 : 0.94, anchor: .top)
+                        .offset(y: state == .expanded || motion.reduce ? 0 : -10)
+                        .animation(Motion.adapt(state == .expanded ? Motion.contentIn : Motion.contentOut, motion.reduce), value: state)
                         .allowsHitTesting(state == .expanded)
-                        .environment(\.animationsPaused, state != .expanded)
+                        .environment(\.animationsPaused, state != .expanded || motion.reduce)
+                    }
 
                     if state == .live, let live = model.live {
                         LiveRow(module: live, notch: screen.notch)
@@ -107,7 +113,21 @@ struct NotchView: View {
         .frame(width: NotchWindowController.windowSize.width, height: NotchWindowController.windowSize.height,
                alignment: .top)
         .preferredColorScheme(.dark)
+        .followsReduceMotion()
+        .task {
+            // Measured once; drop it until the notch opens.
+            try? await Task.sleep(for: .seconds(1.5))
+            if model.state(on: screen.display) != .expanded { mounted = false }
+        }
         .onChange(of: state == .expanded) { _, open in
+            if open {
+                mounted = true
+            } else {
+                // Keep it while it fades out and the shape closes, then let it go.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    if model.state(on: screen.display) != .expanded { mounted = false }
+                }
+            }
             guard open else { return }
             usage.refresh()
             Task { await limits.refreshIfStale() }
