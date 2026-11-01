@@ -10,6 +10,9 @@ enum SelfTest {
     private static var report: [String] = []
     private static var failures = 0
 
+    /// The app was started to run the self-test (no AppleScript to Music, no real Music notifications).
+    static let isRequested = CommandLine.arguments.contains("--selftest")
+
     static func startIfRequested() {
         let args = CommandLine.arguments
         guard let i = args.firstIndex(of: "--selftest") else { return }

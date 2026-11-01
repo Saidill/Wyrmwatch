@@ -38,7 +38,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>LSUIElement</key><true/>
     <key>NSHighResolutionCapable</key><true/>
-    <key>NSAppleEventsUsageDescription</key><string>Used to bring the terminal tab running a Claude session to the front.</string>
+    <key>NSAppleEventsUsageDescription</key><string>Used to bring the terminal tab running a Claude session to the front, and to show and control what is playing in Music.</string>
 </dict>
 </plist>
 PLIST

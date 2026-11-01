@@ -26,11 +26,13 @@ enum AppModels {
 
     static let claude = ClaudeModule(sessions: sessions, limits: limits)
     static let pomodoro = PomodoroModule(timer: PomodoroTimer())
+    static let music = MusicModule(bridge: MusicBridge(offline: SelfTest.isRequested), pomodoro: pomodoro.timer)
     /// Every notch module, in tie-break order.
     static let registry: ModuleRegistry = {
         let registry = ModuleRegistry()
         registry.register(pomodoro)
         registry.register(claude)
+        registry.register(music)
         return registry
     }()
 }
