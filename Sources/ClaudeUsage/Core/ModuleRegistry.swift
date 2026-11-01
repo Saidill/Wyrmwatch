@@ -12,7 +12,12 @@ final class ModuleRegistry: ObservableObject {
     private var listeners: [Task<Void, Never>] = []
     private var visible = false
     /// Self-test only: treat every module as inactive, so the closed notch can be checked while Claude is busy.
-    var mutedForTesting = false {
+    var mutedForTesting: Bool {
+        get { onlyForTesting?.isEmpty == true }
+        set { onlyForTesting = newValue ? [] : nil }
+    }
+    /// Self-test only: let just these modules win the live notch (nil = all).
+    var onlyForTesting: Set<String>? {
         didSet { resolve() }
     }
 
@@ -38,7 +43,7 @@ final class ModuleRegistry: ObservableObject {
     }
 
     func resolve() {
-        let next = mutedForTesting ? nil : PriorityResolver.resolve(modules)
+        let next = PriorityResolver.resolve(modules.filter { onlyForTesting?.contains($0.id) ?? true })
         if next?.id != active?.id { active = next }
     }
 }

@@ -151,7 +151,7 @@ struct NowPlayingCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            CardTitle(showList ? "Up from here" : "Now playing") {
+            CardTitle(showList ? "Playlist" : "Now playing") {
                 if bridge.track != nil {
                     Button { toggleList(!showList) } label: {
                         Image(systemName: showList ? "chevron.left" : "list.bullet")
@@ -176,7 +176,7 @@ struct NowPlayingCard: View {
             .clipped()
             .animation(Motion.slide, value: showList)
         }
-        .card()
+        .card(fillHeight: true)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color(nsColor: bridge.accent ?? .clear).opacity(0.10))
@@ -195,6 +195,7 @@ struct NowPlayingCard: View {
                 toggleList(false)
             }
         }
+        .onChange(of: bridge.showListForTesting) { _, show in toggleList(show) }
         // Read the position once when the panel comes into view; after that it is worked out locally.
         .onChange(of: paused) { _, hidden in
             if !hidden { bridge.refreshAll() } else { showList = false }

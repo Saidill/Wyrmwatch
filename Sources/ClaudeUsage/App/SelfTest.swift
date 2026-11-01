@@ -122,6 +122,7 @@ enum SelfTest {
         await wait(0.6)
         checkCore()
         await checkPomodoro()
+        await checkMusic()
         await checkVirtualNotch()
 
         display.setting = original
@@ -198,8 +199,7 @@ enum SelfTest {
         let notch = NotchWindowController.shared
         let timer = AppModels.pomodoro.timer
         log("— Pomodoro")
-        let keys = UserDefaults.standard.dictionaryRepresentation().keys.filter { $0.hasPrefix("pomodoro.") }
-        let saved = Dictionary(uniqueKeysWithValues: keys.map { ($0, UserDefaults.standard.object(forKey: $0)) })
+        let saved = savedSettings(prefix: "pomodoro.")
         let display = notch.screens.first?.screen.display ?? 0
 
         timer.runForTesting(phase: .focus, secondsLeft: 8 * 60 + 12)
@@ -259,12 +259,87 @@ enum SelfTest {
         await wait(0.6)
 
         timer.reset()
-        for key in keys { UserDefaults.standard.set(saved[key] ?? nil, forKey: key) }
-        for key in UserDefaults.standard.dictionaryRepresentation().keys where key.hasPrefix("pomodoro.") && !keys.contains(key) {
-            UserDefaults.standard.removeObject(forKey: key)
-        }
+        restoreSettings(saved, prefix: "pomodoro.")
         timer.restore()
         await wait(0.4)
+    }
+
+    /// Music, fed a made-up song and playlist (the self-test never scripts the real Music app).
+    private static func checkMusic() async {
+        let notch = NotchWindowController.shared
+        let bridge = AppModels.music.bridge
+        let registry = notch.model.registry
+        log("— Music")
+        let display = notch.screens.first?.screen.display ?? 0
+        let defaults = UserDefaults.standard
+        let savedPomodoro = savedSettings(prefix: "pomodoro.")
+        registry.onlyForTesting = ["music", "pomodoro"]
+
+        let list = (1...120).map { PlaylistTrack(index: $0, title: "Song number \($0)", artist: "Artist \($0 % 7)", duration: 200) }
+        let a = NowPlaying(id: "AAAA", title: "Wait for You", artist: "Elliott Yamin", album: "Wait for You", duration: 261)
+        bridge.injectForTesting(track: a, playing: true, position: 74, artwork: testCover(hue: 0.08), playlist: list, currentIndex: 42)
+        await wait(0.8)
+        check(notch.model.live?.id == "music", "playing music owns the live notch when nothing more important is on")
+        check(AppModels.music.livePriority == 4, "music live priority is 4")
+        if let w = notch.window { snapshot(w, "17-music-live") }
+
+        let b = NowPlaying(id: "BBBB", title: "A Much Longer Song Title Than Usual", artist: "Someone Else", album: "", duration: 200)
+        bridge.injectForTesting(track: b, playing: true, position: 0, artwork: testCover(hue: 0.6), playlist: list, currentIndex: 43)
+        await wait(0.7)
+        check(notch.model.pop?.kind == .music, "song change pops")
+        check(notch.model.state(on: display) == .pop, "notch shows the song pop")
+        if let w = notch.window { snapshot(w, "18-music-pop") }
+        await wait(2.6)
+        check(notch.model.pop == nil, "song pop goes away after 2.5 s")
+
+        bridge.injectForTesting(track: b, playing: false, position: 30, playlist: list, currentIndex: 43)
+        await wait(0.4)
+        check(notch.model.live == nil, "paused music leaves the live notch")
+        check(abs(bridge.currentPosition() - bridge.currentPosition(at: Date().addingTimeInterval(20))) < 0.01,
+              "paused position stands still")
+        bridge.injectForTesting(track: b, playing: true, position: 30, playlist: list, currentIndex: 43)
+        check(bridge.currentPosition(at: Date().addingTimeInterval(10)) > 39, "playing position is worked out locally")
+
+        notch.open()
+        await wait(1.0)
+        if let w = notch.window { snapshot(w, "19-music-card") }
+        bridge.showListForTesting = true
+        await wait(1.0)
+        if let w = notch.window { snapshot(w, "20-music-playlist") }
+        bridge.injectForTesting(track: b, playing: true, position: 30, playlist: [], currentIndex: nil)
+        await wait(0.6)
+        if let w = notch.window { snapshot(w, "21-music-playlist-unavailable") }
+        bridge.showListForTesting = false
+        notch.close()
+        await wait(0.6)
+
+        // Pomodoro sync: focus plays, a break pauses.
+        defaults.set(true, forKey: PomodoroTimer.Keys.musicSync)
+        let timer = AppModels.pomodoro.timer
+        bridge.injectForTesting(track: b, playing: false, position: 30)
+        timer.reset()
+        timer.runForTesting(phase: .focus, secondsLeft: 60, paused: true)
+        timer.start()
+        check(bridge.isPlaying, "focus starting plays music when synced")
+        timer.skip()
+        timer.start()
+        check(!bridge.isPlaying, "a break starting pauses music when synced")
+        timer.reset()
+
+        restoreSettings(savedPomodoro, prefix: "pomodoro.")
+        timer.restore()
+        bridge.injectForTesting(track: nil, playing: false)
+        registry.onlyForTesting = nil
+        await wait(0.6)
+    }
+
+    /// A stand-in album cover: a soft two-colour gradient.
+    private static func testCover(hue: Double) -> NSImage {
+        NSImage(size: NSSize(width: 120, height: 120), flipped: false) { rect in
+            NSGradient(starting: NSColor(hue: hue, saturation: 0.7, brightness: 0.9, alpha: 1),
+                       ending: NSColor(hue: hue + 0.15, saturation: 0.8, brightness: 0.4, alpha: 1))?.draw(in: rect, angle: -45)
+            return true
+        }
     }
 
     /// The module plumbing on its own: who wins the live notch, and in what order pops show.
@@ -303,6 +378,19 @@ enum SelfTest {
     }
 
     // MARK: Helpers
+
+    /// The app's own saved settings starting with `prefix` (not the registered defaults).
+    private static func savedSettings(prefix: String) -> [String: Any] {
+        let domain = UserDefaults.standard.persistentDomain(forName: Bundle.main.bundleIdentifier ?? "") ?? [:]
+        return domain.filter { $0.key.hasPrefix(prefix) }
+    }
+
+    /// Puts settings starting with `prefix` back exactly as they were, removing any the test added.
+    private static func restoreSettings(_ saved: [String: Any], prefix: String) {
+        let defaults = UserDefaults.standard
+        for key in savedSettings(prefix: prefix).keys where saved[key] == nil { defaults.removeObject(forKey: key) }
+        for (key, value) in saved { defaults.set(value, forKey: key) }
+    }
 
     private static func wait(_ seconds: Double) async {
         try? await Task.sleep(for: .seconds(seconds))

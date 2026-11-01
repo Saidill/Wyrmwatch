@@ -392,7 +392,8 @@ struct ModuleCardsRow: View {
         let cards = registry.modules.compactMap { module in module.expandedCard().map { (module.id, $0) } }
         if !cards.isEmpty {
             HStack(alignment: .top, spacing: 10) {
-                ForEach(cards, id: \.0) { $0.1.frame(maxWidth: .infinity) }
+                // Equal widths and equal heights, whatever each card holds.
+                ForEach(cards, id: \.0) { $0.1.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top) }
             }
             .fixedSize(horizontal: false, vertical: true)
         }

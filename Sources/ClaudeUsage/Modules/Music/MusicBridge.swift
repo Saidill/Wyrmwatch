@@ -43,6 +43,8 @@ final class MusicBridge: ObservableObject {
     /// The user hasn't let this app control Music (System Settings → Privacy → Automation).
     @Published private(set) var permissionDenied = false
 
+    /// Self-test only: asks the card to slide its playlist in.
+    @Published var showListForTesting = false
     /// Fires when the song changes (not on the first song seen).
     let trackChanged = PassthroughSubject<NowPlaying, Never>()
 
