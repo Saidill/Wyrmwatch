@@ -58,7 +58,7 @@ private struct PlaylistRow: View {
         HStack(spacing: 8) {
             Group {
                 if current {
-                    MusicVisualizer(playing: true, color: Palette.blue)
+                    MusicVisualizer(playing: true, color: Palette.silver)
                         .scaleEffect(0.75)
                 } else {
                     Text("\(item.index)")
@@ -71,7 +71,7 @@ private struct PlaylistRow: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(item.title)
                     .font(.app(11.5, current ? .semibold : .regular))
-                    .foregroundStyle(current ? Palette.blue : Palette.text2)
+                    .foregroundStyle(current ? Palette.silver : Palette.text2)
                     .lineLimit(1)
                 Text(item.artist)
                     .font(.app(10))
@@ -83,7 +83,7 @@ private struct PlaylistRow: View {
         .padding(.vertical, 4)
         .padding(.horizontal, 4)
         .background(RoundedRectangle(cornerRadius: 8, style: .continuous)
-            .fill(current ? Palette.blue.opacity(0.16) : hovering ? Palette.glass : .clear))
+            .fill(current ? Palette.silver.opacity(0.16) : hovering ? Palette.glass : .clear))
         .contentShape(Rectangle())
         .onTapGesture(perform: play)
         .onHover { h in withAnimation(Motion.quick) { hovering = h } }

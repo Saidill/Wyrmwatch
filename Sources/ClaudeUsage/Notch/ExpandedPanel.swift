@@ -25,7 +25,7 @@ enum NotchTab: String, CaseIterable, Identifiable {
     }
 }
 
-/// The open notch: a header in the band beside the camera (wyrm, date, time, next event | tab bar),
+/// The open notch: a header in the band beside the camera (dragon, date, time, next event | tab bar),
 /// and below it one page. Every page has the same size, so switching pages never moves the shape.
 struct ExpandedPanel: View {
     /// Height of the page area under the header band.
@@ -53,7 +53,7 @@ struct ExpandedPanel: View {
     private var header: some View {
         HStack(spacing: 0) {
             HStack(spacing: 8) {
-                WyrmView(mood: wyrmMood, size: 24)
+                DragonView(mood: dragonMood, size: 24)
                 TimelineView(.everyMinute) { context in
                     VStack(alignment: .leading, spacing: 0) {
                         HStack(spacing: 6) {
@@ -76,7 +76,7 @@ struct ExpandedPanel: View {
         }
     }
 
-    private var wyrmMood: WyrmMood {
+    private var dragonMood: DragonMood {
         let pomodoro = AppModels.pomodoro.timer
         if pomodoro.isRunning, pomodoro.phase == .focus { return .guarding }
         if sessions.celebrating { return .happy }
@@ -125,9 +125,9 @@ private struct TabBar: View {
             ForEach(NotchTab.allCases) { tab in
                 Image(systemName: tab.symbol)
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(selection == tab ? Palette.blue : Palette.text3)
+                    .foregroundStyle(selection == tab ? Palette.silver : Palette.text3)
                     .frame(width: 30, height: 22)
-                    .background(Capsule().fill(selection == tab ? Palette.blue.opacity(0.18) : .clear))
+                    .background(Capsule().fill(selection == tab ? Palette.silver.opacity(0.18) : .clear))
                     .contentShape(Capsule())
                     .onTapGesture { withAnimation(Motion.smooth) { selection = tab } }
                     .help(tab.title)

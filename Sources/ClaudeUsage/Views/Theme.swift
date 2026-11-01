@@ -5,41 +5,44 @@ import SwiftUI
 
 /// Black, silver and glass. Always dark, whatever the system appearance.
 enum Palette {
-    /// Black tint laid over the blurred window background.
-    static let bg = Color.black.opacity(0.62)
-    /// Card fill: a faint sheet of glass.
-    static let glass = Color.white.opacity(0.045)
-    /// Row highlight inside a card.
-    static let hover = Color.white.opacity(0.07)
-    static let line = Color.white.opacity(0.10)
-    static let text = Color(hex: 0xF2F2F4)
-    static let text2 = Color(hex: 0x9A9AA2)
-    static let text3 = Color(hex: 0x5E5E66)
+    /// Background: plain black, like the notch itself.
+    static let bg = Color.black
+    static let text = Color(hex: 0xF2F3F5)
+    static let text2 = Color(hex: 0x8D9096)
+    /// Faintest text (hints, counters).
+    static let text3 = Color(hex: 0x5F6268)
+    /// Dividers and card edges.
+    static let line = Color(hex: 0x1C1D20)
+    /// Empty part of bars and progress, and the active tab capsule.
+    static let track = Color(hex: 0x2A2B2F)
+    /// Card fill.
+    static let glass = Color(hex: 0x1C1D20)
+    /// Row highlight on hover.
+    static let hover = Color(hex: 0x2A2B2F)
+    /// Buttons: resting and pressed / hovered.
+    static let button = Color(hex: 0x24262B)
+    static let buttonHi = Color(hex: 0x3A3D44)
 
-    /// The main accent.
-    static let silver = Color(hex: 0xD4D7DD)
-    /// A darker, cooler second accent.
-    static let steel = Color(hex: 0x8E949E)
+    /// The accent: progress, visualizer.
+    static let silver = Color(hex: 0xC9CDD3)
+    /// The timer digits.
+    static let silverBright = Color(hex: 0xD5D8DD)
+    /// Muted accent (same as secondary text).
+    static let steel = Color(hex: 0x8D9096)
     /// Text or icons placed on a silver fill.
-    static let onSilver = Color(hex: 0x111114)
+    static let onSilver = Color(hex: 0x0E0F11)
+    /// The dragon's red; also the only bright colour besides the usage warnings.
+    static let dragon = Color(hex: 0xC8202C)
+    /// Usage warnings only.
     static let amber = Color(hex: 0xE3B26A)
     static let rose = Color(hex: 0xE07A72)
-    /// Cold silver-blue: the Pomodoro fuse while resting.
-    static let frost = Color(hex: 0x9FB6CF)
 
-    // The wyrm's colours, also the app's accent. Amber and rose are kept for usage warnings only.
-    static let navy = Color(hex: 0x0B1E3F)
-    static let blue = Color(hex: 0x4FA3FF)
-    static let cyan = Color(hex: 0x7FE3FF)
+    /// Silver fill for bars and the selected pill (static, never animated).
+    static let silverGradient = LinearGradient(colors: [silverBright, silver], startPoint: .top, endPoint: .bottom)
+    /// Card and button edge.
+    static let rim = LinearGradient(colors: [line, line], startPoint: .top, endPoint: .bottom)
 
-    /// Polished-metal fill for bars and the selected tab.
-    static let silverGradient = LinearGradient(colors: [Color(hex: 0xFAFAFC), Color(hex: 0xA7ACB4)],
-                                               startPoint: .top, endPoint: .bottom)
-    /// Hairline edge that catches light at the top, like the rim of a glass pane.
-    static let rim = LinearGradient(colors: [.white.opacity(0.18), .white.opacity(0.04)],
-                                    startPoint: .top, endPoint: .bottom)
-
-    static let confetti: [Color] = [.white, silver, steel, Color(hex: 0xB9BEC6)]
+    static let confetti: [Color] = [.white, silver, steel, dragon]
 
     /// Base colour while usage is comfortable, then amber from `warn`, then rose from 90% as it gets close to the limit.
     static func level(_ percent: Double, base: Color, warn: Double = 70) -> Color {

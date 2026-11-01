@@ -73,7 +73,7 @@ struct MusicPage: View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(on ? Palette.blue : Palette.text3)
+                .foregroundStyle(on ? Palette.silver : Palette.text3)
                 .frame(width: 26, height: 26)
                 .contentShape(Rectangle())
         }

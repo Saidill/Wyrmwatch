@@ -31,7 +31,7 @@ struct SettingsView: View {
             case 1:
                 ModulesSettings(registry: AppModels.registry)
             case 2:
-                section("Pomodoro", symbol: "flame.fill", color: Palette.blue) {
+                section("Pomodoro", symbol: "flame.fill", color: Palette.silver) {
                     row("Focus") { minutes($pomodoro.focusMinutes, 5...120, step: 5) }
                     row("Short break") { minutes($pomodoro.shortBreakMinutes, 1...30, step: 1) }
                     row("Long break (every 4)") { minutes($pomodoro.longBreakMinutes, 5...60, step: 5) }
