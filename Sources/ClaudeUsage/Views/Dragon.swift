@@ -10,17 +10,20 @@ enum DragonMood: Equatable {
     case working
     /// A prompt just finished: rears back and roars fire.
     case happy
+    /// Keeping watch over a Pomodoro ember: head high and still, eye burning amber, slow deep breaths.
+    case guarding
 }
 
-private struct DragonPausedKey: EnvironmentKey {
+private struct AnimationsPausedKey: EnvironmentKey {
     static let defaultValue = false
 }
 
 extension EnvironmentValues {
-    /// Stops the dragon's animation while it's out of sight (e.g. the notch content when the notch is closed).
-    var dragonPaused: Bool {
-        get { self[DragonPausedKey.self] }
-        set { self[DragonPausedKey.self] = newValue }
+    /// Stops every repeating animation (dragon, ember, visualizer) while it's out of sight,
+    /// e.g. the notch content when the notch is closed.
+    var animationsPaused: Bool {
+        get { self[AnimationsPausedKey.self] }
+        set { self[AnimationsPausedKey.self] = newValue }
     }
 }
 
@@ -32,20 +35,27 @@ struct DragonView: View {
     var at: Double? = nil
     /// Extra width to the right (as a fraction of `size`) so the fire isn't cut off when it roars.
     var fireRoom: CGFloat = 0
-    @Environment(\.dragonPaused) private var paused
+    @Environment(\.animationsPaused) private var paused
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: paused || at != nil)) { timeline in
+        TimelineView(.animation(minimumInterval: frameInterval, paused: paused || at != nil)) { timeline in
             Canvas { ctx, canvasSize in
                 DragonDrawing(mood: mood, t: at ?? timeline.date.timeIntervalSinceReferenceDate, detailed: size >= 26)
                     .draw(in: &ctx, side: canvasSize.height)
             }
         }
         .frame(width: size * (1 + fireRoom), height: size)
+        // Its own layer, so each frame redraws just the dragon and not the window around it.
+        .drawingGroup()
         .id(mood)
         .transition(.opacity)
         .animation(Motion.smooth, value: mood)
         .accessibilityLabel(label)
+    }
+
+    /// Slow, calm moods breathe fine at 15 fps; growling and roaring get 30.
+    private var frameInterval: Double {
+        mood == .working || mood == .happy ? 1.0 / 30 : 1.0 / 15
     }
 
     private var label: String {
@@ -54,6 +64,7 @@ struct DragonView: View {
         case .idle: return "Dragon, watching"
         case .working: return "Dragon, growling"
         case .happy: return "Dragon, roaring fire"
+        case .guarding: return "Dragon, guarding the ember"
         }
     }
 }
@@ -88,7 +99,7 @@ private struct DragonDrawing {
         let rimWidth = max(0.6, 0.014 * s)
 
         // MARK: Pose
-        let breathe = sin(t * 2 * .pi / (mood == .sleeping ? 3.6 : 2.6))
+        let breathe = sin(t * 2 * .pi / (mood == .sleeping ? 3.6 : mood == .guarding ? 4.2 : 2.6))
         var headAngle = 0.0, headDrop = 0.0, jaw = 0.0, roar = 0.0
         var wingSpread = 1.0, eyeGlow = 0.6, eyeOpen = 1.0
         switch mood {
@@ -103,6 +114,10 @@ private struct DragonDrawing {
             headAngle = -0.05 + sin(t * 6) * 0.02; jaw = 0.10 + sin(t * 5) * 0.04
             wingSpread = 1 + sin(t * 8) * 0.06
             eyeGlow = 0.85 + sin(t * 4) * 0.15
+        case .guarding:
+            headAngle = -0.06 + breathe * 0.012; jaw = 0.01
+            wingSpread = 1.04 + breathe * 0.02
+            eyeGlow = 0.92 + sin(t * 0.8) * 0.06
         case .happy:
             // A roar every 2.6 s: rear back, open wide, breathe fire, settle.
             let ph = t.truncatingRemainder(dividingBy: 2.6)

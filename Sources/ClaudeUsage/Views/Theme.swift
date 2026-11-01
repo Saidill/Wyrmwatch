@@ -24,6 +24,8 @@ enum Palette {
     static let onSilver = Color(hex: 0x111114)
     static let amber = Color(hex: 0xE3B26A)
     static let rose = Color(hex: 0xE07A72)
+    /// Cold silver-blue: the Pomodoro fuse while resting.
+    static let frost = Color(hex: 0x9FB6CF)
 
     /// Polished-metal fill for bars and the selected tab.
     static let silverGradient = LinearGradient(colors: [Color(hex: 0xFAFAFC), Color(hex: 0xA7ACB4)],
@@ -34,20 +36,40 @@ enum Palette {
 
     static let confetti: [Color] = [.white, silver, steel, Color(hex: 0xB9BEC6)]
 
-    /// Base colour while usage is comfortable, then amber, then rose as it gets close to the limit.
-    static func level(_ percent: Double, base: Color) -> Color {
+    /// Base colour while usage is comfortable, then amber from `warn`, then rose from 90% as it gets close to the limit.
+    static func level(_ percent: Double, base: Color, warn: Double = 70) -> Color {
         switch percent {
-        case ..<70: return base
+        case ..<warn: return base
         case ..<90: return amber
         default: return rose
         }
     }
 }
 
-/// One set of curves so everything moves the same calm way.
+/// One set of curves so everything moves the same calm way. Every module uses these; none makes its own.
 enum Motion {
+    /// The notch growing to live, pop or expanded: an unhurried spring that settles softly.
+    static let open = Animation.spring(response: 0.46, dampingFraction: 0.8)
+    /// The notch shrinking: a touch quicker and with no bounce, so it tucks away calmly.
+    static let close = Animation.spring(response: 0.36, dampingFraction: 1)
+    /// Content easing in a beat after the shape starts to grow.
+    static let contentIn = Animation.easeOut(duration: 0.32).delay(0.07)
+    /// Content fading out before the shape shrinks.
+    static let contentOut = Animation.easeIn(duration: 0.14)
+    /// The live row's sides fading in once the shape has widened.
+    static let liveIn = Animation.easeOut(duration: 0.25).delay(0.1)
+    /// Value changes: rings, progress, colours.
     static let smooth = Animation.smooth(duration: 0.28)
+    /// Button hover and press.
     static let quick = Animation.snappy(duration: 0.18, extraBounce: 0)
+    /// Small celebratory pop-in (a badge or ember lighting up).
+    static let popIn = Animation.snappy(duration: 0.3, extraBounce: 0.15)
+    /// The Pomodoro fuse drawing out from the centre when focus starts.
+    static let fuse = Animation.easeOut(duration: 0.5)
+    /// Side panels (the playlist) sliding in and out.
+    static let slide = Animation.spring(response: 0.4, dampingFraction: 0.86)
+    /// What springs become with Reduce Motion on.
+    static let reduced = Animation.easeInOut(duration: 0.2)
 }
 
 extension Color {
@@ -87,9 +109,10 @@ struct GlassBackground: NSViewRepresentable {
 }
 
 extension View {
-    func card() -> some View {
+    /// Glass card. `fillHeight` stretches it to the row's height (cards side by side).
+    func card(fillHeight: Bool = false) -> some View {
         padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: fillHeight ? .infinity : nil, alignment: .topLeading)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(Palette.glass)
@@ -113,7 +136,8 @@ struct CardTitle<Trailing: View>: View {
                 .font(.app(10.5, .semibold))
                 .tracking(1.2)
                 .foregroundStyle(Palette.text2)
-            Spacer()
+                .lineLimit(1)
+            Spacer(minLength: 4)
             trailing
         }
     }
@@ -243,16 +267,18 @@ struct LimitBar: View {
 
 /// A soft band of light that sweeps across its container.
 private struct Shimmer: View {
-    @State private var phase: CGFloat = -1
+    @Environment(\.animationsPaused) private var paused
 
     var body: some View {
-        GeometryReader { geo in
-            LinearGradient(colors: [.clear, .white.opacity(0.6), .clear], startPoint: .leading, endPoint: .trailing)
-                .frame(width: geo.size.width * 0.6)
-                .offset(x: phase * geo.size.width * 1.6)
-        }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: false)) { phase = 1 }
+        // A highlight sweeping across every 1.2 s; it stops with everything else when out of sight.
+        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: paused)) { context in
+            let t = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1.2) / 1.2
+            let phase = paused ? -1 : -1 + 2 * (t * t * (3 - 2 * t))
+            GeometryReader { geo in
+                LinearGradient(colors: [.clear, .white.opacity(0.6), .clear], startPoint: .leading, endPoint: .trailing)
+                    .frame(width: geo.size.width * 0.6)
+                    .offset(x: phase * geo.size.width * 1.6)
+            }
         }
     }
 }
@@ -338,6 +364,7 @@ struct ConfettiView: View {
 
     @State private var start: Date?
     @State private var pieces: [Piece] = []
+    @Environment(\.reduceMotion) private var reduceMotion
     private let lifetime = 2.4
 
     var body: some View {
@@ -364,6 +391,7 @@ struct ConfettiView: View {
     }
 
     private func burst() {
+        guard !reduceMotion else { return }
         pieces = (0..<30).map { _ in
             let angle = Double.random(in: -Double.pi * 0.9 ... -Double.pi * 0.1)
             let speed = Double.random(in: 90...220)

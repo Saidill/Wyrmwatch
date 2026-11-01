@@ -1,0 +1,29 @@
+# Aturan kerja untuk Claude di repo ini
+
+## Proyek
+
+- App ini sedang dikembangkan dari "Claude Usage" menjadi **Notchwyrm**: notch app produktivitas dengan modul Pomodoro, Claude Usage, Apple Music, dan info dasar.
+- Spesifikasi lengkap ada di `docs/PRD.md`. Baca dulu sebelum mulai, dan kerjakan milestone berurutan (1 sampai 6).
+- Rename teknis (target Swift, executable, `CFBundleName`, `CFBundleIdentifier` → `com.saidilhalim.notchwyrm`, ikon, README) dikerjakan di branch tersendiri, terpisah dari perubahan fitur, supaya rename tidak tercampur dalam satu diff.
+- Kalau ada keputusan yang tidak dijawab PRD, pilih opsi paling sederhana, catat di bagian "Pertanyaan terbuka" PRD, lalu lanjut.
+
+## Git
+
+- Kerja di branch pendek per fitur dari `main` (misalnya `feat/wyrm`, `fix/pop-timing`), jangan commit langsung ke `main`.
+- Setelah `swift build` dan `--selftest` lulus (`ALL PASSED`), merge branch fitur ke `main` (`git merge --no-ff`), lalu push `main` dan branch fiturnya ke `origin`.
+- Kalau self-test gagal, jangan merge. Perbaiki dulu di branch fitur.
+- Auto commit: setiap satu langkah selesai dan `swift build` lulus, langsung commit tanpa menunggu diminta.
+- Format pesan commit: Conventional Commits (`feat:`, `refactor:`, `fix:`, `docs:`, `chore:`), bahasa Inggris, satu baris ringkas, plus body kalau perlu.
+- Tanpa atribusi Claude: jangan tambahkan `Co-Authored-By: Claude`, link sesi Claude, atau "Generated with Claude Code" di commit maupun deskripsi PR.
+- Author commit: `saidilhalim <saidilhalim@mail.ugm.ac.id>`.
+
+## Build dan cek
+
+- `swift build` harus lulus sebelum commit.
+- Setelah perubahan di notch atau tampilan, jalankan self-test kalau bisa: `./scripts/build-app.sh && ./ClaudeUsage.app/Contents/MacOS/ClaudeUsage --selftest /tmp/claude-usage-test`.
+
+## Desain
+
+- Semua animasi memakai token di `Motion` (`Views/Theme.swift`), jangan membuat kurva baru.
+- Window notch tidak boleh di-resize. Yang dianimasikan hanya shape di dalamnya.
+- Animasi berulang wajib berhenti saat notch tertutup atau tidak terlihat.

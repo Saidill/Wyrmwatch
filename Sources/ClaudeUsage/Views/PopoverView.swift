@@ -69,6 +69,8 @@ struct PopoverView: View {
             VStack(spacing: 12) {
                 header
                 if !showSettings {
+                    InfoHeaderLine(registry: AppModels.registry)
+                    ModuleCardsRow(registry: AppModels.registry)
                     PillToggle(options: ["Now", "Recent", "Usage"], selection: $tab, fill: true)
                 }
             }
@@ -170,7 +172,7 @@ struct PopoverView: View {
                     Task { await limits.refresh() }
                 }
             }
-            if display.notchScreen != nil, !showSettings {
+            if !showSettings {
                 IconButton(systemName: display.isNotch ? "menubar.rectangle" : "rectangle.topthird.inset.filled",
                            help: display.isNotch ? "Show in the menu bar" : "Show in the notch") {
                     display.toggle()
@@ -382,6 +384,33 @@ struct PopoverView: View {
 }
 
 // MARK: - Session row
+
+/// Date, battery and next event under the header, unless Info is switched off.
+struct InfoHeaderLine: View {
+    @ObservedObject var registry: ModuleRegistry
+
+    var body: some View {
+        if registry.isEnabled("info") {
+            InfoStrip(battery: AppModels.info.battery, calendar: AppModels.info.calendar)
+        }
+    }
+}
+
+/// The modules' own cards side by side (Pomodoro, Now Playing), between the header and the Claude tabs.
+struct ModuleCardsRow: View {
+    @ObservedObject var registry: ModuleRegistry
+
+    var body: some View {
+        let cards = registry.enabledModules.compactMap { module in module.expandedCard().map { (module.id, $0) } }
+        if !cards.isEmpty {
+            HStack(alignment: .top, spacing: 10) {
+                // Equal widths and equal heights, whatever each card holds.
+                ForEach(cards, id: \.0) { $0.1.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top) }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
 
 struct SessionRow: View {
     let session: LiveSession
