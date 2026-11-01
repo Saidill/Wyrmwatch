@@ -109,9 +109,10 @@ struct GlassBackground: NSViewRepresentable {
 }
 
 extension View {
-    func card() -> some View {
+    /// Glass card. `fillHeight` stretches it to the row's height (cards side by side).
+    func card(fillHeight: Bool = false) -> some View {
         padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: fillHeight ? .infinity : nil, alignment: .topLeading)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(Palette.glass)
@@ -135,7 +136,8 @@ struct CardTitle<Trailing: View>: View {
                 .font(.app(10.5, .semibold))
                 .tracking(1.2)
                 .foregroundStyle(Palette.text2)
-            Spacer()
+                .lineLimit(1)
+            Spacer(minLength: 4)
             trailing
         }
     }

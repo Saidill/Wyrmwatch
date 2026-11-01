@@ -16,6 +16,9 @@ struct SettingsView: View {
     @ObservedObject private var pomodoro = AppModels.pomodoro.timer
     @AppStorage(PomodoroTimer.Keys.sound) private var pomodoroSound = true
     @AppStorage(PomodoroTimer.Keys.haptic) private var pomodoroHaptic = true
+    @AppStorage(PomodoroTimer.Keys.musicSync) private var pomodoroMusicSync = false
+    @AppStorage(MusicModule.Keys.popOnChange) private var musicPop = true
+    @AppStorage(MusicModule.Keys.listOnHover) private var musicListOnHover = true
 
     var body: some View {
         VStack(spacing: 12) {
@@ -66,6 +69,12 @@ struct SettingsView: View {
                 row("Long break (every 4)") { minutes($pomodoro.longBreakMinutes, 5...60, step: 5) }
                 row("Sound when a phase ends") { toggle($pomodoroSound) }
                 row("Haptic when a phase ends") { toggle($pomodoroHaptic) }
+                row("Play music while focusing, pause for breaks") { toggle($pomodoroMusicSync) }
+            }
+
+            section("Music", symbol: "music.note", color: Palette.silver) {
+                row("Pop up when the song changes") { toggle($musicPop) }
+                row("Show the playlist on hover") { toggle($musicListOnHover) }
             }
 
             section("Display", symbol: "macbook", color: Palette.silver) {

@@ -175,22 +175,27 @@ struct PomodoroCard: View {
                     .font(.app(10.5, .medium))
                     .foregroundStyle(emberColor(timer.phase))
             }
-            HStack(spacing: 12) {
-                EmberRing(timer: timer, size: 60)
-                VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                EmberRing(timer: timer, size: 54)
+                VStack(alignment: .leading, spacing: 6) {
                     EmberDots(lit: timer.completedInCycle)
-                    Text("\(timer.todaySessions) today · \(timer.todayMinutes)m")
+                    Text("\(timer.todaySessions) today")
+                        .font(.app(10.5))
+                        .foregroundStyle(Palette.text2)
+                    Text("\(timer.todayMinutes) min focus")
                         .font(.app(10.5))
                         .foregroundStyle(Palette.text3)
-                        .monospacedDigit()
-                        .lineLimit(1)
-                    HStack(spacing: 6) {
-                        IconButton(systemName: timer.isRunning ? "pause.fill" : "play.fill",
-                                   help: timer.isRunning ? "Pause" : "Start") { timer.toggle() }
-                        IconButton(systemName: "arrow.counterclockwise", help: "Reset") { timer.reset() }
-                        IconButton(systemName: "forward.end.fill", help: "Skip") { timer.skip() }
-                    }
                 }
+                .monospacedDigit()
+                .lineLimit(1)
+            }
+            HStack(spacing: 6) {
+                Spacer(minLength: 0)
+                IconButton(systemName: timer.isRunning ? "pause.fill" : "play.fill",
+                           help: timer.isRunning ? "Pause" : "Start") { timer.toggle() }
+                IconButton(systemName: "arrow.counterclockwise", help: "Reset") { timer.reset() }
+                IconButton(systemName: "forward.end.fill", help: "Skip") { timer.skip() }
+                Spacer(minLength: 0)
             }
             HStack(spacing: 4) {
                 presetChip("25/5", PomodoroTimer.Preset.classic)
@@ -200,7 +205,7 @@ struct PomodoroCard: View {
             .disabled(timer.isActive)
             .opacity(timer.isActive ? 0.5 : 1)
         }
-        .card()
+        .card(fillHeight: true)
     }
 
     private var phaseLabel: String {
@@ -215,9 +220,11 @@ struct PomodoroCard: View {
     private func presetChip(_ title: String, _ preset: PomodoroTimer.Preset?) -> some View {
         let selected = timer.preset == preset
         return Text(title)
-            .font(.app(10.5, .medium))
+            .font(.app(10, .medium))
             .foregroundStyle(selected ? Palette.onSilver : Palette.text2)
-            .padding(.horizontal, 8)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .padding(.horizontal, 2)
             .padding(.vertical, 4)
             .frame(maxWidth: .infinity)
             .background(Capsule().fill(selected ? AnyShapeStyle(Palette.silverGradient) : AnyShapeStyle(Palette.glass)))

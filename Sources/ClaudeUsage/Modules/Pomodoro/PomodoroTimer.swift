@@ -40,6 +40,8 @@ final class PomodoroTimer: ObservableObject {
 
     /// Fires when a phase runs out (not when it is skipped).
     let events = PassthroughSubject<Event, Never>()
+    /// Fires when a phase starts or resumes.
+    let starts = PassthroughSubject<Phase, Never>()
 
     private let defaults: UserDefaults
     private var timer: Timer?
@@ -116,6 +118,7 @@ final class PomodoroTimer: ObservableObject {
         endDate = Date().addingTimeInterval(left)
         save()
         schedule()
+        starts.send(phase)
     }
 
     func pause() {
