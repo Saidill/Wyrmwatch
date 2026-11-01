@@ -108,18 +108,56 @@ enum SelfTest {
             check(!zone.contains(NSPoint(x: panel.frame.midX, y: notchBottom - 12)), "pointer on a tab under the notch doesn't count")
         }
         if let w = notch.window { snapshot(w, AppModels.sessions.busyCount > 0 ? "3-notch-live" : "3-notch-closed") }
-        notch.model.popped = LiveSession(pid: 1, sessionId: nil, cwd: NSHomeDirectory() + "/ProjectCode/claude-usage-ui",
+        AppModels.claude.pop(LiveSession(pid: 1, sessionId: nil, cwd: NSHomeDirectory() + "/ProjectCode/claude-usage-ui",
                                          name: "claude-usage-ui", status: "idle", kind: nil, startedAt: nil,
-                                         statusUpdatedAt: nil)
+                                         statusUpdatedAt: nil))
         await wait(1.0)
+        check(notch.model.state == .pop, "finished pop shows")
+        check(notch.window?.ignoresMouseEvents == false, "pop takes clicks")
         if let w = notch.window { snapshot(w, "4-notch-finished-pop") }
-        notch.model.popped = nil
+        notch.model.registry.popQueue.clear()
         await wait(0.6)
+        checkCore()
 
         display.setting = original
         log(failures == 0 ? "ALL PASSED" : "\(failures) FAILED")
         try? report.joined(separator: "\n").write(to: out.appendingPathComponent("report.txt"), atomically: true, encoding: .utf8)
         NSApp.terminate(nil)
+    }
+
+    /// The module plumbing on its own: who wins the live notch, and in what order pops show.
+    private static func checkCore() {
+        let a = FakeModule(id: "a", priority: 4), b = FakeModule(id: "b", priority: 1), c = FakeModule(id: "c", priority: nil)
+        check(PriorityResolver.resolve([a, b, c])?.id == "b", "resolver picks the smallest priority")
+        check(PriorityResolver.resolve([c]) == nil, "resolver: nothing active means closed")
+        check(PriorityResolver.resolve([FakeModule(id: "x", priority: 2), FakeModule(id: "y", priority: 2)])?.id == "x",
+              "resolver: ties go to the first registered")
+
+        let queue = PopQueue()
+        queue.enqueue(NotchPop(kind: .music) { EmptyView() })
+        queue.enqueue(NotchPop(kind: .music) { EmptyView() })
+        queue.enqueue(NotchPop(kind: .claude) { EmptyView() })
+        queue.enqueue(NotchPop(kind: .pomodoro) { EmptyView() })
+        check(queue.current?.kind == .music && queue.pending.map(\.kind) == [.pomodoro, .claude, .music],
+              "pop queue keeps the showing pop and orders the rest Pomodoro, Claude, music")
+        queue.dismiss()
+        check(queue.current?.kind == .pomodoro, "pop queue moves on to the next pop")
+        queue.clear()
+        queue.canShow = { false }
+        queue.enqueue(NotchPop(kind: .claude) { EmptyView() })
+        check(queue.current == nil, "no pops while expanded")
+    }
+
+    @MainActor
+    private final class FakeModule: NotchModule {
+        let id: String
+        let livePriority: Int?
+        let pops = AsyncStream<NotchPop> { $0.finish() }
+        init(id: String, priority: Int?) { self.id = id; livePriority = priority }
+        func liveLeading() -> AnyView { AnyView(EmptyView()) }
+        func liveTrailing() -> AnyView { AnyView(EmptyView()) }
+        func expandedCard() -> AnyView? { nil }
+        func setVisible(_ visible: Bool) {}
     }
 
     // MARK: Helpers

@@ -23,6 +23,14 @@ enum AppModels {
     static let usage = UsageTracker()
     static let limits = PlanLimitClient()
     static let recent = RecentSessionStore()
+
+    static let claude = ClaudeModule(sessions: sessions, limits: limits)
+    /// Every notch module, in tie-break order.
+    static let registry: ModuleRegistry = {
+        let registry = ModuleRegistry()
+        registry.register(claude)
+        return registry
+    }()
 }
 
 enum MenuBarMode: String, CaseIterable, Identifiable {

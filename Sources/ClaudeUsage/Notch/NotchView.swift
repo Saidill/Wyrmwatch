@@ -41,22 +41,16 @@ struct NotchShape: Shape {
 
 struct NotchView: View {
     @ObservedObject var model: NotchModel
-    @EnvironmentObject var sessions: SessionMonitor
     @EnvironmentObject var limits: PlanLimitClient
     @EnvironmentObject var usage: UsageTracker
 
-    /// Opening: an unhurried spring that settles softly, like the Dynamic Island.
-    private let openCurve = Animation.spring(response: 0.46, dampingFraction: 0.8)
-    /// Closing: a touch quicker and with no bounce, so it tucks away calmly.
-    private let closeCurve = Animation.spring(response: 0.36, dampingFraction: 1)
-
     /// Growing states use the opening curve, shrinking ones the closing curve.
     private func morph(to state: NotchModel.State) -> Animation {
-        state == .closed || state == .live ? closeCurve : openCurve
+        state == .closed || state == .live ? Motion.close : Motion.open
     }
 
     var body: some View {
-        let state = model.state(busy: sessions.busyCount > 0)
+        let state = model.state
         let size = model.size(for: state)
         let flare = NotchShape.flare(for: state)
         let shape = NotchShape(flare: flare, radius: NotchShape.radius(for: state))
@@ -80,20 +74,22 @@ struct NotchView: View {
                         .opacity(state == .expanded ? 1 : 0)
                         .scaleEffect(state == .expanded ? 1 : 0.94, anchor: .top)
                         .offset(y: state == .expanded ? 0 : -10)
-                        .animation(state == .expanded ? .easeOut(duration: 0.32).delay(0.07) : .easeIn(duration: 0.14),
-                                   value: state)
+                        .animation(state == .expanded ? Motion.contentIn : Motion.contentOut, value: state)
                         .allowsHitTesting(state == .expanded)
-                        .environment(\.dragonPaused, state != .expanded)
+                        .environment(\.animationsPaused, state != .expanded)
 
-                    if state == .live {
-                        liveRow.transition(.opacity.animation(.easeInOut(duration: 0.25)))
+                    if state == .live, let live = model.live {
+                        LiveRow(module: live, notch: model.notch)
+                            .transition(.opacity.animation(Motion.liveIn))
                     }
-                    if state == .pop, let session = model.popped {
-                        PopContent(session: session, notchHeight: model.notch.height)
+                    if state == .pop, let pop = model.pop {
+                        pop.content
+                            .padding(.horizontal, 18)
+                            .padding(.top, model.notch.height + 10)
+                            .id(pop.id)
                             .transition(.asymmetric(
-                                insertion: .opacity.combined(with: .offset(y: -8))
-                                    .animation(.easeOut(duration: 0.3).delay(0.08)),
-                                removal: .opacity.animation(.easeIn(duration: 0.14))))
+                                insertion: .opacity.combined(with: .offset(y: -8)).animation(Motion.contentIn),
+                                removal: .opacity.animation(Motion.contentOut)))
                     }
                 }
                 .padding(.horizontal, flare)
@@ -113,99 +109,37 @@ struct NotchView: View {
             usage.refresh()
             Task { await limits.refreshIfStale() }
         }
+        .onChange(of: state, initial: true) { _, state in model.registry.setVisible(state != .closed) }
     }
+}
 
-    /// Working dot on the left of the notch, session limit on the right.
-    private var liveRow: some View {
-        HStack(spacing: 0) {
-            DragonView(mood: .working, size: 26)
-                .padding(.top, 2)
-                .frame(width: 50)
-            Spacer(minLength: model.notch.width)
-            HStack(spacing: 4) {
-                MiniRing(fraction: (limits.fiveHourPercent ?? 0) / 100)
-                Text(limits.fiveHourPercent.map { "\(Int($0.rounded()))%" } ?? "")
-                    .font(.app(10, .medium))
-                    .foregroundStyle(Palette.text2)
-                    .monospacedDigit()
+/// The active module either side of the camera: its visual on the left, its number on the right.
+/// Switching module swaps the content in place (old one up and out, new one up from below); the width stays.
+private struct LiveRow: View {
+    let module: any NotchModule
+    let notch: CGSize
+
+    var body: some View {
+        ZStack {
+            HStack(spacing: 0) {
+                module.liveLeading()
+                    .frame(width: 50)
+                Spacer(minLength: notch.width)
+                module.liveTrailing()
+                    .frame(width: 50)
             }
-            .frame(width: 50)
+            .id(module.id)
+            .transition(.asymmetric(insertion: .opacity.combined(with: .offset(y: 6)),
+                                    removal: .opacity.combined(with: .offset(y: -6))))
         }
-        // Exactly as wide as the live shape, so the dot and ring sit just either side of the notch.
-        .frame(width: model.notch.width + 100, height: model.notch.height)
+        .animation(Motion.smooth, value: module.id)
+        // Exactly as wide as the live shape, so the two sides sit just either side of the notch.
+        .frame(width: notch.width + 100, height: notch.height)
+        .clipped()
     }
 }
 
 private struct NotchContentHeightKey: PreferenceKey {
     static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
-}
-
-/// "Done" card that drops out of the notch when a session finishes.
-private struct PopContent: View {
-    let session: LiveSession
-    let notchHeight: CGFloat
-    @State private var checked = false
-
-    var body: some View {
-        HStack(spacing: 4) {
-            // Room on the right for its fire.
-            DragonView(mood: .happy, size: 44, fireRoom: 0.6)
-                .overlay(alignment: .bottomLeading) {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 7, weight: .heavy))
-                        .foregroundStyle(Palette.onSilver)
-                        .frame(width: 14, height: 14)
-                        .background(Circle().fill(Palette.silverGradient))
-                        .overlay(Circle().strokeBorder(.black, lineWidth: 1.5))
-                        .offset(x: 30)
-                }
-                .scaleEffect(checked ? 1 : 0.6)
-                .opacity(checked ? 1 : 0)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("\(session.displayName) finished")
-                    .font(.app(13, .medium))
-                    .foregroundStyle(Palette.text)
-                    .lineLimit(1)
-                Text(session.shortFolder.isEmpty ? "Waiting for you" : session.shortFolder)
-                    .font(.app(11))
-                    .foregroundStyle(Palette.text3)
-                    .lineLimit(1)
-            }
-            Spacer(minLength: 6)
-            Button { NotchWindowController.shared.jump(to: session) } label: {
-                Text("Jump")
-                    .font(.app(11, .medium))
-                    .foregroundStyle(Palette.onSilver)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Capsule().fill(Palette.silverGradient))
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 18)
-        .padding(.top, notchHeight + 10)
-        .contentShape(Rectangle())
-        .onTapGesture { NotchWindowController.shared.expand() }
-        .onAppear { withAnimation(.snappy(duration: 0.3, extraBounce: 0.15).delay(0.08)) { checked = true } }
-    }
-}
-
-/// Tiny session-limit ring for the live notch.
-private struct MiniRing: View {
-    let fraction: Double
-
-    var body: some View {
-        ZStack {
-            Circle().stroke(Palette.line, lineWidth: 2)
-            Circle()
-                .trim(from: 0, to: min(max(fraction, 0), 1))
-                .stroke(Palette.level(fraction * 100, base: Palette.silver),
-                        style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-        }
-        .frame(width: 12, height: 12)
-        .animation(Motion.smooth, value: fraction)
-    }
 }

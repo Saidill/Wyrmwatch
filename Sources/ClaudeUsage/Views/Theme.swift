@@ -34,20 +34,38 @@ enum Palette {
 
     static let confetti: [Color] = [.white, silver, steel, Color(hex: 0xB9BEC6)]
 
-    /// Base colour while usage is comfortable, then amber, then rose as it gets close to the limit.
-    static func level(_ percent: Double, base: Color) -> Color {
+    /// Base colour while usage is comfortable, then amber from `warn`, then rose from 90% as it gets close to the limit.
+    static func level(_ percent: Double, base: Color, warn: Double = 70) -> Color {
         switch percent {
-        case ..<70: return base
+        case ..<warn: return base
         case ..<90: return amber
         default: return rose
         }
     }
 }
 
-/// One set of curves so everything moves the same calm way.
+/// One set of curves so everything moves the same calm way. Every module uses these; none makes its own.
 enum Motion {
+    /// The notch growing to live, pop or expanded: an unhurried spring that settles softly.
+    static let open = Animation.spring(response: 0.46, dampingFraction: 0.8)
+    /// The notch shrinking: a touch quicker and with no bounce, so it tucks away calmly.
+    static let close = Animation.spring(response: 0.36, dampingFraction: 1)
+    /// Content easing in a beat after the shape starts to grow.
+    static let contentIn = Animation.easeOut(duration: 0.32).delay(0.07)
+    /// Content fading out before the shape shrinks.
+    static let contentOut = Animation.easeIn(duration: 0.14)
+    /// The live row's sides fading in once the shape has widened.
+    static let liveIn = Animation.easeOut(duration: 0.25).delay(0.1)
+    /// Value changes: rings, progress, colours.
     static let smooth = Animation.smooth(duration: 0.28)
+    /// Button hover and press.
     static let quick = Animation.snappy(duration: 0.18, extraBounce: 0)
+    /// Small celebratory pop-in (a badge or ember lighting up).
+    static let popIn = Animation.snappy(duration: 0.3, extraBounce: 0.15)
+    /// Side panels (the playlist) sliding in and out.
+    static let slide = Animation.spring(response: 0.4, dampingFraction: 0.86)
+    /// What springs become with Reduce Motion on.
+    static let reduced = Animation.easeInOut(duration: 0.2)
 }
 
 extension Color {
