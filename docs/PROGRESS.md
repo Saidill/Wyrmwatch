@@ -156,3 +156,34 @@ Ringkasan per milestone: apa yang dibuat dan apa yang perlu dicek manual.
 - Proporsi pop di notch asli dan virtual.
 
 **Masih terbuka**: anggaran CPU live/expanded (lihat bagian M6), rename ke Notchwyrm, dan keputusan bahasa UI.
+
+## Redesign ala Boring Notch / DynamicNotch (`feat/red-dragon-theme`, `feat/notch-home`)
+
+Hanya polanya yang dipelajari: notch hitam, Home berisi player + timer, tab yang meluncur. Tidak ada kode yang disalin, karena keduanya GPL v3.
+
+**Naga dan tema** (`feat/red-dragon-theme`)
+- Maskot lama (kepala naga biru) dan `Wyrm.swift` dihapus. Penggantinya `Views/Dragon.swift`: kepala naga merah bergaya ikon (sisik bergradasi, tanduk gading, sirip leher, tanduk hidung, mata amber). Responsif terhadap hover (kepala terangkat, mata menyala). Mood: tidur, siaga, kerja, selesai (api), fokus. Maks. 30 fps, berhenti saat tersembunyi.
+- Ikon app kini naga merah yang sama, digambar oleh binary (`--render-icon`) saat `build-app.sh`. `make-icon.swift` lama dihapus.
+- Tema baru sesuai spesifikasi: `#000`, teks `#F2F3F5`, sekunder `#8D9096`, track `#2A2B2F`, silver `#C9CDD3`, silver terang `#D5D8DD`, tombol `#3A3D44` / `#24262B`, garis `#1C1D20`. Aksen biru dihapus.
+- Tafsiran: kalimat terpotong "jangan lupa iunutk …" dianggap "jangan lupa ikon app".
+
+**Notch** (`feat/notch-home`)
+- Header dibelah kamera: [naga + "Min 1 Nov · 18.52" | lebar notch | 4 tab ikon custom (Home, Fokus, Musik, Claude) 17 pt di tombol 38 × 26, kapsul aktif meluncur].
+- Home 96 pt: [cover 96 dengan glow | judul/artis + visualizer, waktu | progress | durasi, 5 tombol | garis | Fokus + Claude]. "Putar musik" saat musik mati, dan chip 25/5 · 50/10 · Atur saat Pomodoro berhenti.
+- Fokus: [tombol bulat 42 | keterangan + +5 mnt / Lewati / Stop | waktu 50 pt] + progres. Mode Atur tetap.
+- Musik: cover 120 + playlist (judul | durasi, aktif putih).
+- Claude: bar Sesi | Minggu + forecast, lalu Now / Recent / Usage. ⚙︎ membuka Settings (tab Settings tidak ada lagi).
+- Tinggi notch mengikuti isi tab (`Motion.resize`, spring 0.45 / 0.78). Isi tab fade + geser 5 pt. Cover memakai `matchedGeometryEffect` antara live dan Home. Window tetap 640 × 330.
+- Live: naga kecil (Claude), cover + visualizer (musik), waktu silver (Pomodoro). Pomodoro dan musik bergantian tiap 6 detik.
+- Musik: favorit (hati) dan "Putar musik" lewat AppleScript (`favorited`, fallback `loved`).
+
+**Self-test**: screenshot setiap tab di notch asli dan virtual (`tab-<tab>-real/virtual.png`), Home dengan Pomodoro berjalan dan tanpa musik, cek tidak ada view yang overlap atau keluar panel (frame dibandingkan lewat `LayoutProbe`), cek Home 96 pt dan Musik lebih tinggi (tinggi mengikuti tab), dan cek live bergantian. Hasil: `ALL PASSED`.
+
+**Cek manual**
+- Hover naga di header: kepala terangkat.
+- Tombol hati di Home ikut berubah di Music.app.
+- "Putar musik" saat Music tertutup: Music terbuka dan mulai memutar.
+- Animasi cover live ↔ Home saat notch dibuka.
+- Ketik tugas di halaman Fokus.
+
+**Masih terbuka**: anggaran CPU live/expanded, rename ke Notchwyrm, tempat acara kalender berikutnya (sekarang tooltip), dan bahasa UI campuran.
