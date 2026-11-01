@@ -17,6 +17,11 @@ struct ClaudeUsageApp: App {
     }
 }
 
+/// The app's name as the bundle has it.
+enum AppInfo {
+    static var name: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "Notchwyrm" }
+}
+
 /// One copy of each model, shared by the menu bar popover and the notch.
 @MainActor
 enum AppModels {

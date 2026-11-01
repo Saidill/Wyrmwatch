@@ -97,6 +97,8 @@ final class NotchWindowController {
     static let shared = NotchWindowController()
     /// The window never resizes (that's what made things lag); the shape animates inside it.
     static let windowSize = CGSize(width: 420, height: 640)
+    /// Settings: open when the pointer rests on the notch (otherwise only a click opens it).
+    static let openOnHoverKey = "notch.openOnHover"
 
     let model = NotchModel(registry: AppModels.registry)
     private var popQueue: PopQueue { model.registry.popQueue }
@@ -114,6 +116,7 @@ final class NotchWindowController {
     private var hovering: Bool { hoveredDisplay != nil }
 
     private init() {
+        UserDefaults.standard.register(defaults: [Self.openOnHoverKey: true])
         // Pops show only while a notch is on screen and not open; a pop stays while the pointer is on it.
         popQueue.canShow = { [weak self] in
             guard let self else { return false }
@@ -234,6 +237,10 @@ final class NotchWindowController {
         if let global = NSEvent.addGlobalMonitorForEvents(matching: mask, handler: { [weak self] _ in
             MainActor.assumeIsolated { self?.checkPointer() }
         }) { monitors.append(global) }
+        // A click on the closed notch (it lets clicks through, so this sees them) opens it at once.
+        if let click = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDown, handler: { [weak self] _ in
+            MainActor.assumeIsolated { self?.clicked() }
+        }) { monitors.append(click) }
         if let local = NSEvent.addLocalMonitorForEvents(matching: mask, handler: { [weak self] event in
             MainActor.assumeIsolated { self?.checkPointer() }
             return event
@@ -281,7 +288,8 @@ final class NotchWindowController {
             leftAt = nil
             guard hoveredDisplay != under else { return }
             hoveredDisplay = under
-            guard !model.expanded, model.pop == nil else { return }
+            guard !model.expanded, model.pop == nil,
+                  UserDefaults.standard.bool(forKey: Self.openOnHoverKey) else { return }
             // Open once the pointer has rested on the notch for a moment, so passing through doesn't open it,
             // and never while a button is held (dragging a tab or window along the top).
             openTask?.cancel()
@@ -302,6 +310,14 @@ final class NotchWindowController {
                 leftAt = now
             }
         }
+    }
+
+    private func clicked() {
+        guard !model.expanded else { return }
+        let location = NSEvent.mouseLocation
+        guard let under = panels.first(where: { activeRect($0.value.panel, $0.value.screen).contains(location) })?.key else { return }
+        openTask?.cancel()
+        open(on: under)
     }
 
     /// Opens the notch on `display` (default: the screen under the pointer, else the first notch).
