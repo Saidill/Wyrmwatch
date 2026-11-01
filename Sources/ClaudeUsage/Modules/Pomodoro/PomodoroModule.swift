@@ -2,7 +2,7 @@ import AppKit
 import Combine
 import SwiftUI
 
-/// Pomodoro "Ember": every focus session is an ember the dragon keeps alight. Wins the live notch while running.
+/// Pomodoro "Ember": every focus session is an ember the wyrm keeps alight. Wins the live notch while running.
 @MainActor
 final class PomodoroModule: NotchModule {
     let id = "pomodoro"
@@ -20,7 +20,7 @@ final class PomodoroModule: NotchModule {
 
     var livePriority: Int? { timer.isActive ? 1 : nil }
 
-    func liveLeading() -> AnyView { AnyView(PomodoroLiveDragon(timer: timer)) }
+    func liveLeading() -> AnyView { AnyView(PomodoroLiveWyrm(timer: timer)) }
     func liveTrailing() -> AnyView { AnyView(PomodoroLiveTime(timer: timer)) }
     func liveAccent() -> AnyView? { AnyView(EmberFuse(timer: timer)) }
     func expandedCard() -> AnyView? { AnyView(PomodoroCard(timer: timer)) }
@@ -55,12 +55,12 @@ final class PomodoroModule: NotchModule {
 
 // MARK: - Live
 
-/// Left of the camera: the dragon keeping watch while focusing, asleep and smoking while resting.
-private struct PomodoroLiveDragon: View {
+/// Left of the camera: the wyrm keeping watch while focusing, coiled asleep while resting.
+private struct PomodoroLiveWyrm: View {
     @ObservedObject var timer: PomodoroTimer
 
     var body: some View {
-        DragonView(mood: timer.phase.isBreak ? .sleeping : .guarding, size: 26)
+        WyrmView(mood: timer.phase.isBreak ? .sleeping : .guarding, size: 26)
             .padding(.top, 2)
             .opacity(timer.isPaused ? 0.6 : 1)
             .transformEnvironment(\.animationsPaused) { paused in paused = paused || timer.isPaused }
@@ -98,14 +98,14 @@ private struct PopButton: View {
     }
 }
 
-/// Focus is over: the dragon roars, and one more of the four embers lights up.
+/// Focus is over: the wyrm breathes blue fire, and one more of the four embers lights up.
 private struct FocusDonePop: View {
     @ObservedObject var timer: PomodoroTimer
     @State private var lit = 0
 
     var body: some View {
         HStack(spacing: 4) {
-            DragonView(mood: .happy, size: 44, fireRoom: 0.6)
+            WyrmView(mood: .happy, size: 44, fireRoom: 0.6)
             VStack(alignment: .leading, spacing: 6) {
                 Text("Focus done")
                     .font(.app(13, .medium))
@@ -135,14 +135,14 @@ private struct FocusDonePop: View {
     }
 }
 
-/// The break is over: the dragon wakes up and asks to go again.
+/// The break is over: the wyrm wakes up and asks to go again.
 private struct BreakDonePop: View {
     @ObservedObject var timer: PomodoroTimer
     @State private var awake = false
 
     var body: some View {
         HStack(spacing: 10) {
-            DragonView(mood: awake ? .guarding : .sleeping, size: 40)
+            WyrmView(mood: awake ? .guarding : .sleeping, size: 40)
             Text("Ready to focus again?")
                 .font(.app(13, .medium))
                 .foregroundStyle(Palette.text)
