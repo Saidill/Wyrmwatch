@@ -10,6 +10,7 @@ func emberColor(_ phase: PomodoroTimer.Phase) -> Color {
 struct PomodoroDigits: View {
     @ObservedObject var timer: PomodoroTimer
     var size: CGFloat = 11
+    var weight: Font.Weight = .medium
     var color: Color = Palette.text2
     @Environment(\.reduceMotion) private var reduceMotion
 
@@ -28,7 +29,7 @@ struct PomodoroDigits: View {
         let seconds = Int(remaining.rounded(.up))
         let final = timer.isRunning && seconds <= 10
         return Text(String(format: "%d:%02d", seconds / 60, seconds % 60))
-            .font(.app(size, .medium))
+            .font(.app(size, weight))
             .monospacedDigit()
             .foregroundStyle(final ? Palette.text : color)
             .contentTransition(.numericText(countsDown: true))
@@ -73,10 +74,13 @@ struct Ember: View {
     }
 }
 
-/// The burning fuse along the bottom of the live notch: drawn out from the centre when the phase starts,
-/// then burning down towards the centre from both ends, with an ember at each end.
+/// The burning fuse of blue fire. In the live notch it is drawn out from the centre and burns down towards it
+/// from both ends; across the Focus page it runs from the left and burns down from the right.
 struct EmberFuse: View {
+    enum Anchor { case center, leading }
     @ObservedObject var timer: PomodoroTimer
+    var anchor: Anchor = .center
+    var thickness: CGFloat = 1.5
     @Environment(\.reduceMotion) private var reduceMotion
     @State private var drawn = false
 
@@ -99,72 +103,39 @@ struct EmberFuse: View {
         GeometryReader { geo in
             let color = emberColor(timer.phase)
             let length = max(geo.size.width * fraction * (drawn ? 1 : 0), 0)
-            ZStack {
-                Capsule()
-                    .fill(color)
-                    .frame(width: length, height: 1.5)
-                HStack(spacing: 0) {
-                    Ember(color: color, size: 2.5, still: timer.isPaused)
-                    Spacer(minLength: 0)
-                    Ember(color: color, size: 2.5, still: timer.isPaused)
+            let emberSize = 2.5 * max(thickness / 1.5, 1)
+            ZStack(alignment: anchor == .center ? .center : .leading) {
+                // The spent fuse stays as a faint track on the page.
+                if anchor == .leading {
+                    Capsule().fill(Palette.line).frame(width: geo.size.width, height: thickness)
                 }
-                .frame(width: length + 6)
+                Capsule()
+                    .fill(LinearGradient(colors: [Palette.navy, color, Palette.cyan], startPoint: .leading, endPoint: .trailing))
+                    .frame(width: length, height: thickness)
+                HStack(spacing: 0) {
+                    if anchor == .center { Ember(color: color, size: emberSize, still: timer.isPaused) }
+                    Spacer(minLength: 0)
+                    Ember(color: color, size: emberSize, still: timer.isPaused)
+                }
+                .frame(width: length + emberSize * 2.5)
+                .offset(x: anchor == .leading ? emberSize * 1.25 : 0)
                 .opacity(drawn ? 1 : 0)
             }
-            .frame(width: geo.size.width, height: geo.size.height)
+            .frame(width: geo.size.width, height: geo.size.height, alignment: anchor == .center ? .center : .leading)
             .animation(Motion.smooth, value: timer.phase)
         }
     }
 }
 
-/// Large progress ring for the expanded card, with an ember riding the tip of the arc.
-struct EmberRing: View {
-    @ObservedObject var timer: PomodoroTimer
-    var size: CGFloat = 60
-
-    var body: some View {
-        Group {
-            if let end = timer.endDate {
-                TimelineView(.periodic(from: end.addingTimeInterval(-100_000), by: 1)) { context in
-                    ring(timer.fractionLeft(at: context.date))
-                }
-            } else {
-                ring(timer.fractionLeft())
-            }
-        }
-        .frame(width: size, height: size)
-    }
-
-    private func ring(_ fraction: Double) -> some View {
-        let color = emberColor(timer.phase)
-        let line: CGFloat = 4
-        return ZStack {
-            Circle().stroke(Palette.line, lineWidth: line)
-            Circle()
-                .trim(from: 0, to: fraction)
-                .stroke(color, style: StrokeStyle(lineWidth: line, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-            if timer.isActive {
-                Ember(color: color, size: 3.5, still: timer.isPaused)
-                    .offset(y: -size / 2)
-                    .rotationEffect(.degrees(360 * fraction))
-            }
-            PomodoroDigits(timer: timer, size: 13, color: Palette.text)
-        }
-        .opacity(timer.isPaused ? 0.6 : 1)
-        .animation(Motion.smooth, value: fraction)
-        .animation(Motion.smooth, value: timer.phase)
-    }
-}
-
-/// Four ember dots: how many focus sessions of this cycle are done. The newest one pops in when lit.
+/// One ember dot per focus session of the cycle; lit ones are done. The newest one pops in when lit.
 struct EmberDots: View {
     let lit: Int
+    var total: Int = 4
     var size: CGFloat = 6
 
     var body: some View {
         HStack(spacing: size * 0.9) {
-            ForEach(0..<PomodoroTimer.sessionsPerCycle, id: \.self) { i in
+            ForEach(0..<max(total, 1), id: \.self) { i in
                 Circle()
                     .fill(i < lit ? Palette.blue : Palette.line)
                     .frame(width: size, height: size)

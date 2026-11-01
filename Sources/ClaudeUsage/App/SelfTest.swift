@@ -25,6 +25,7 @@ enum SelfTest {
         let display = DisplayModeController.shared
         let notch = NotchWindowController.shared
         let original = display.setting
+        let originalNotchTab = UserDefaults.standard.object(forKey: NotchTab.storageKey)
         notch.holdOpenForTesting = true
         // A real pointer resting on the notch would hold pops open; the timing checks must not depend on it.
         notch.model.registry.popQueue.isHovering = { false }
@@ -131,6 +132,7 @@ enum SelfTest {
         await checkVirtualNotch()
 
         display.setting = original
+        UserDefaults.standard.set(originalNotchTab, forKey: NotchTab.storageKey)
         log(failures == 0 ? "ALL PASSED" : "\(failures) FAILED")
         try? report.joined(separator: "\n").write(to: out.appendingPathComponent("report.txt"), atomically: true, encoding: .utf8)
         NSApp.terminate(nil)
@@ -228,7 +230,7 @@ enum SelfTest {
         await wait(2.2)
         check(timer.phase == .shortBreak || timer.phase == .longBreak, "focus ending moves on to a break")
         check(timer.todaySessions == before.0 + 1, "finished focus counts in today's stats")
-        check(timer.completedInCycle == min(before.1 + 1, PomodoroTimer.sessionsPerCycle), "one more ember lit")
+        check(timer.completedInCycle == min(before.1 + 1, timer.sessionsTarget), "one more ember lit")
         check(notch.model.pop?.kind == .pomodoro, "focus done pops")
         if let w = notch.window { snapshot(w, "13-pomodoro-focus-done") }
         notch.dismissPop()
@@ -255,13 +257,32 @@ enum SelfTest {
         let late = PomodoroTimer()
         check(!late.isRunning && late.phase != .focus, "a phase that ended while closed is finished on launch")
 
-        // The card in the open notch.
+        // The Focus page: setup while stopped, digits, fuse and controls while running.
+        timer.stopToSetup()
+        timer.task = "Write the PRD"
+        timer.sessionsTarget = 4
+        await snapshotExpanded(tab: .focus, "16-focus-setup")
         timer.runForTesting(phase: .focus, secondsLeft: 17 * 60 + 40)
-        notch.open()
-        await wait(1.0)
-        if let w = notch.window { snapshot(w, "16-pomodoro-card") }
-        notch.close()
-        await wait(0.6)
+        await snapshotExpanded(tab: .focus, "16-focus-running")
+        let left = timer.remaining()
+        timer.addFiveMinutes()
+        check(abs(timer.remaining() - left - 300) < 1, "+5 min adds five minutes")
+        check(timer.fractionLeft() <= 1, "fuse stays full or shorter after +5 min")
+        timer.stopToSetup()
+        check(!timer.isActive && timer.phase == .focus && timer.completedInCycle == 0, "Stop goes back to the setup")
+        check(PomodoroTimer().task == "Write the PRD", "the setup (task, lengths) is kept for next time")
+
+        // The session count decides when the long break comes.
+        timer.sessionsTarget = 2
+        timer.runForTesting(phase: .focus, secondsLeft: 0.6)
+        await wait(1.4)
+        check(timer.phase == .shortBreak, "after focus 1 of 2: a short break")
+        notch.dismissPop()
+        timer.runForTesting(phase: .focus, secondsLeft: 0.6)
+        await wait(1.4)
+        check(timer.phase == .longBreak, "after focus 2 of 2: the long break")
+        notch.dismissPop()
+        timer.stopToSetup()
 
         timer.reset()
         restoreSettings(saved, prefix: "pomodoro.")
@@ -305,18 +326,29 @@ enum SelfTest {
         bridge.injectForTesting(track: b, playing: true, position: 30, playlist: list, currentIndex: 43)
         check(bridge.currentPosition(at: Date().addingTimeInterval(10)) > 39, "playing position is worked out locally")
 
-        notch.open()
-        await wait(1.0)
-        if let w = notch.window { snapshot(w, "19-music-card") }
-        bridge.showListForTesting = true
-        await wait(1.0)
-        if let w = notch.window { snapshot(w, "20-music-playlist") }
+        await snapshotExpanded(tab: .music, "19-music-page")
         bridge.injectForTesting(track: b, playing: true, position: 30, playlist: [], currentIndex: nil)
-        await wait(0.6)
-        if let w = notch.window { snapshot(w, "21-music-playlist-unavailable") }
-        bridge.showListForTesting = false
-        notch.close()
-        await wait(0.6)
+        await snapshotExpanded(tab: .music, "21-music-playlist-unavailable")
+
+        // Every page has the same size: switching never moves the shape.
+        if let screen = notch.screens.first?.screen {
+            let size = screen.size(for: .expanded, contentHeight: 0)
+            check(abs(size.width - (ExpandedPanel.width + 20)) < 0.5 && size.height < 230,
+                  "open notch is wide and short (\(Int(size.width)) × \(Int(size.height)))")
+            for tab in NotchTab.allCases {
+                UserDefaults.standard.set(tab.rawValue, forKey: NotchTab.storageKey)
+                notch.open()
+                await wait(0.5)
+                check(screen.size(for: notch.model.state(on: screen.display), contentHeight: 0) == size
+                      && notch.window?.frame.size == NotchWindowController.windowSize, "\(tab.title) page keeps the same size")
+            }
+            if let w = notch.window { snapshot(w, "20-settings-page") }
+            UserDefaults.standard.set(NotchTab.claude.rawValue, forKey: NotchTab.storageKey)
+            await wait(0.6)
+            if let w = notch.window { snapshot(w, "20-claude-page") }
+            notch.close()
+            await wait(0.6)
+        }
 
         // Pomodoro sync: focus plays, a break pauses.
         defaults.set(true, forKey: PomodoroTimer.Keys.musicSync)
@@ -338,33 +370,18 @@ enum SelfTest {
         await wait(0.6)
     }
 
-    /// Header line (date, time, battery, next event) and the charger pop, fed made-up readings.
+    /// The next calendar event (fed a made-up one); Info never takes the live notch and never pops.
     private static func checkInfo() async {
-        let notch = NotchWindowController.shared
         let info = AppModels.info
         log("— Info")
         check(info.livePriority == nil, "info never takes the live notch")
-        info.battery.update(.init(percent: 64, charging: false, onPower: false))
         info.calendar.injectForTesting(.init(title: "Design review with the team", start: Date().addingTimeInterval(25 * 60),
                                              end: Date().addingTimeInterval(55 * 60)))
-        check(InfoStrip.when(info.calendar.next!, now: Date()).hasPrefix("in 2"), "next event shows how soon it starts")
-        notch.open()
-        await wait(1.0)
-        if let w = notch.window { snapshot(w, "22-info-header") }
-        notch.close()
-        await wait(0.6)
-
-        info.battery.update(.init(percent: 65, charging: true, onPower: true))
-        await wait(0.8)
-        check(notch.model.pop?.kind == .info, "plugging in the charger pops")
-        if let w = notch.window { snapshot(w, "23-info-charger-pop") }
-        await wait(2.0)
-        check(notch.model.pop == nil, "charger pop goes away after 2 s")
-        info.battery.update(.init(percent: 65, charging: true, onPower: true))
-        check(notch.model.pop == nil, "no pop without a new plug-in")
-
+        check(NextEventLabel.when(info.calendar.next!, now: Date()).hasPrefix("in 2"), "next event shows how soon it starts")
+        check(NextEventLabel.when(.init(title: "x", start: Date().addingTimeInterval(-60), end: Date().addingTimeInterval(600)),
+                                  now: Date()) == "now", "an event under way shows as now")
+        await snapshotExpanded(tab: .focus, "22-info-header")
         info.calendar.injectForTesting(nil)
-        info.battery.update(nil)
     }
 
     /// With Reduce Motion forced on, nothing repeats: the wyrm in the open notch holds still.
@@ -567,21 +584,40 @@ enum SelfTest {
         guard let a = capture() else { return false }
         await wait(0.5)
         guard let b = capture(), a.pixelsWide == b.pixelsWide, a.pixelsHigh == b.pixelsHigh else { return false }
-        // The avatar is the first thing on the left of the header: find the topmost opaque row, then scan below it.
-        var top = 0
-        while top < a.pixelsHigh - 1, (a.colorAt(x: a.pixelsWide / 2, y: top)?.alphaComponent ?? 0) < 0.5 { top += 1 }
-        let scale = a.pixelsWide / Int(window.frame.width)
-        let notchOffset = window === NotchWindowController.shared.window ? Int(NotchWindowController.shared.screens.first?.screen.notch.height ?? 0) - 8 : 0
-        let x0 = (window.frame.width > 400 ? (Int(window.frame.width) - 376) / 2 : 0) * scale
-        let y0 = top + notchOffset * scale
+        // Where the wyrm sits, in points from the window's top left: the left of the open notch's header band,
+        // or the avatar at the top left of the menu bar popover.
+        let notch = NotchWindowController.shared
+        let region: CGRect
+        if window === notch.window {
+            let band = notch.screens.first?.screen.notch.height ?? 32
+            let left = (window.frame.width - (ExpandedPanel.width + 20)) / 2 + 10 + 16
+            region = CGRect(x: left, y: 0, width: 36, height: band)
+        } else {
+            region = CGRect(x: 10, y: 10, width: 50, height: 50)
+        }
+        let scale = CGFloat(a.pixelsWide) / window.frame.width
         var changed = 0
-        for y in y0..<min(a.pixelsHigh, y0 + 70 * scale) {
-            for x in x0..<min(a.pixelsWide, x0 + 70 * scale) where a.colorAt(x: x, y: y) != b.colorAt(x: x, y: y) {
+        for y in Int(region.minY * scale)..<min(a.pixelsHigh, Int(region.maxY * scale)) {
+            for x in Int(region.minX * scale)..<min(a.pixelsWide, Int(region.maxX * scale))
+            where a.colorAt(x: x, y: y) != b.colorAt(x: x, y: y) {
                 changed += 1
             }
         }
         log("   \(changed) pixels changed around the wyrm")
         return changed > 20
+    }
+
+    /// Opens the notch on one page, saves a picture of it, and closes it again.
+    private static func snapshotExpanded(tab: NotchTab, _ name: String, keepOpen: Bool = false) async {
+        let notch = NotchWindowController.shared
+        UserDefaults.standard.set(tab.rawValue, forKey: NotchTab.storageKey)
+        if !notch.model.expanded { notch.open() }
+        await wait(1.0)
+        if let w = notch.window { snapshot(w, name) }
+        if !keepOpen {
+            notch.close()
+            await wait(0.6)
+        }
     }
 
     private static func snapshot(_ window: NSWindow, _ name: String) {

@@ -20,7 +20,6 @@ struct SettingsView: View {
     @AppStorage(PomodoroTimer.Keys.musicSync) private var pomodoroMusicSync = false
     @AppStorage(MusicModule.Keys.popOnChange) private var musicPop = true
     @AppStorage(MusicModule.Keys.listOnHover) private var musicListOnHover = true
-    @AppStorage(InfoModule.Keys.chargerPop) private var chargerPop = true
     @AppStorage(MotionPreference.forceKey) private var forceReduceMotion = false
     @AppStorage(NotchWindowController.openOnHoverKey) private var openOnHover = true
     @AppStorage("settingsTab") private var settingsTab = 0
@@ -86,11 +85,10 @@ struct SettingsView: View {
                     row("Ping when the session limit resets") { toggle($resetPing) }
                 }
             case 5:
-                section("Info", symbol: "battery.75percent", color: Palette.silver) {
-                    row("Show date, battery and calendar") {
+                section("Calendar", symbol: "calendar", color: Palette.silver) {
+                    row("Show the next calendar event") {
                         toggle(Binding(get: { registry.isEnabled("info") }, set: { registry.setEnabled("info", $0) }))
                     }
-                    row("Pop up when the charger is plugged in") { toggle($chargerPop) }
                 }
                 section("System", symbol: "power.circle.fill", color: Palette.silver) {
                     row("Open at login") {
@@ -260,7 +258,7 @@ private struct ModulesSettings: View {
                         return true
                     }
             }
-            Text("Info (clock, battery, calendar) lives in the header and never takes the live notch.")
+            Text("Info (the next calendar event) lives in the header and never takes the live notch.")
                 .font(.app(10.5))
                 .foregroundStyle(Palette.text3)
                 .fixedSize(horizontal: false, vertical: true)

@@ -6,7 +6,8 @@ struct PopoverView: View {
     @EnvironmentObject var limits: PlanLimitClient
     @EnvironmentObject var recent: RecentSessionStore
     @EnvironmentObject var display: DisplayModeController
-    /// Shown inside the notch: no glass, and the notch window sizes itself.
+    /// Shown as the Claude page of the open notch: limits on the left, sessions / recent / usage on the right,
+    /// at the panel's fixed size.
     var inNotch = false
     @State private var showSettings = false
     @AppStorage("popoverTab") private var tab = 0 // 0 = now, 1 = recent, 2 = usage
@@ -24,7 +25,7 @@ struct PopoverView: View {
     var body: some View {
         Group {
             if inNotch {
-                content
+                claudePage
             } else {
                 menuBarWindow
             }
@@ -60,6 +61,29 @@ struct PopoverView: View {
             })
             .onPreferenceChange(PopoverHeightKey.self) { fitWindow(height: $0) }
             .onChange(of: window) { _, _ in fitWindow(height: popoverHeight) }
+    }
+
+    /// The Claude page in the open notch: limits | a tab of sessions, recent or usage, scrolling in its column.
+    private var claudePage: some View {
+        HStack(alignment: .top, spacing: 12) {
+            ScrollView(.vertical, showsIndicators: false) { limitsCard }
+                .frame(width: 262)
+            VStack(spacing: 8) {
+                PillToggle(options: ["Sessions", "Recent", "Usage"], selection: $tab, fill: true)
+                ScrollView(.vertical, showsIndicators: false) {
+                    Group {
+                        switch tab {
+                        case 1: recentCard
+                        case 2: tokensCard
+                        default: sessionsCard
+                        }
+                    }
+                    .id(tab)
+                    .transition(pageTransition)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var content: some View {
@@ -385,13 +409,13 @@ struct PopoverView: View {
 
 // MARK: - Session row
 
-/// Date, battery and next event under the header, unless Info is switched off.
+/// Date, time and next event under the header, unless Info is switched off.
 struct InfoHeaderLine: View {
     @ObservedObject var registry: ModuleRegistry
 
     var body: some View {
         if registry.isEnabled("info") {
-            InfoStrip(battery: AppModels.info.battery, calendar: AppModels.info.calendar)
+            InfoStrip(calendar: AppModels.info.calendar)
         }
     }
 }
@@ -403,11 +427,9 @@ struct ModuleCardsRow: View {
     var body: some View {
         let cards = registry.enabledModules.compactMap { module in module.expandedCard().map { (module.id, $0) } }
         if !cards.isEmpty {
-            HStack(alignment: .top, spacing: 10) {
-                // Equal widths and equal heights, whatever each card holds.
-                ForEach(cards, id: \.0) { $0.1.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top) }
+            VStack(spacing: 10) {
+                ForEach(cards, id: \.0) { $0.1 }
             }
-            .fixedSize(horizontal: false, vertical: true)
         }
     }
 }
