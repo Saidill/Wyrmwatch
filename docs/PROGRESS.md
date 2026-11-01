@@ -215,3 +215,12 @@ Hanya polanya yang dipelajari: notch hitam, Home berisi player + timer, tab yang
 - Api naga keluar dari celah rahang (0,85; 0,665), bukan dari bawah moncong. Api animasi kini dua lapis partikel (inti putih-panas + tubuh oranye ke merah) yang sedikit mengarah ke bawah. Api diam (Reduce Motion) berupa satu semburan utuh, bukan bulatan terpisah.
 - Self-test: istirahat berjalan sendiri (298 detik tersisa), istirahat tampil di live, fokus yang habis saat app tertutup masuk istirahat dengan waktu yang benar, fokus dan istirahat yang sama-sama lewat kembali ke setup. Hasil: `ALL PASSED`.
 - Cek manual: dengarkan alarm di akhir fokus, dan lihat api saat sesi Claude selesai.
+
+## Performa dengan transkrip Claude Code yang besar (`perf/usage-scan`)
+
+Pengukuran ulang menemukan dua masalah baru:
+- **Saat launch, CPU ±24% selama ±2 menit dan memori 145 MB.** `UsageTracker` membaca 126 MB transkrip 8 hari terakhir sekaligus per file (`readToEnd`), dan mem-parse JSON setiap baris yang memuat kata "usage" (banyak sekali di repo ini). Diperbaiki: baca per 4 MB dengan autorelease pool per chunk, dan hanya parse baris yang memuat `"type":"assistant"` dan `"usage":{` (683 dari 683 baris assistant tetap terbaca). Scan token di latar kini tiap 60 detik (sebelumnya 15). Saat notch atau popover dibuka tetap langsung refresh.
+- **Tab Claude ±20% CPU.** Ikon "working" di daftar sesi memakai `.symbolEffect(.pulse)`, animasi SwiftUI berulang yang mengabaikan status tersembunyi dan Reduce Motion. Diganti tiga titik Core Animation.
+- `--perf` kini juga mengukur setiap tab.
+
+Hasil (sesi Claude ini aktif selama pengukuran): closed ±0,1–1%, live 0,9–1,8%, expanded 1,2–3,2%, memori 23–40 MB. Live dan expanded di dalam anggaran. Closed sedikit di atas 0,5% saat ada aktivitas latar (file sesi Claude yang terus ditulis, monitor mouse saat mouse digerakkan), dan 0,06–0,2% saat tenang.

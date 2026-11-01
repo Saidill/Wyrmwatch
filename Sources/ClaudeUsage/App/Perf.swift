@@ -39,7 +39,7 @@ enum Perf {
         for (name, publisher) in sources {
             publisher.sink { _ in MainActor.assumeIsolated { count(name) } }.store(in: &watchers)
         }
-        var lines = ["state                  cpu %   memory MB   (15 s each, after 2 s to settle; includes one 15 s usage scan)"]
+        var lines = ["state                  cpu %   memory MB   (15 s each, after 2 s to settle; token scan every 60 s)"]
         func measure(_ name: String) async {
             try? await Task.sleep(for: .seconds(2))
             counts = [:]
@@ -77,6 +77,13 @@ enum Perf {
         await measure("expanded (music on)")
         AppModels.music.bridge.injectForTesting(track: nil, playing: false)
         await measure("expanded (idle)")
+        // Each page on its own, since each draws different things.
+        let tabBefore = UserDefaults.standard.object(forKey: NotchTab.storageKey)
+        for tab in NotchTab.allCases {
+            UserDefaults.standard.set(tab.rawValue, forKey: NotchTab.storageKey)
+            await measure("  tab: \(tab.rawValue)")
+        }
+        UserDefaults.standard.set(tabBefore, forKey: NotchTab.storageKey)
         UserDefaults.standard.set(true, forKey: MotionPreference.forceKey)
         await measure("expanded, still")
         UserDefaults.standard.removeObject(forKey: MotionPreference.forceKey)

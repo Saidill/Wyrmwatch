@@ -289,3 +289,61 @@ final class DragonImages {
         return ctx.makeImage()
     }
 }
+
+// MARK: - Working dots
+
+/// Three dots fading in turn: a session is working.
+struct LayerWorkingDots: NSViewRepresentable {
+    var running: Bool
+    var color: NSColor
+
+    func makeNSView(context: Context) -> WorkingDotsHost { WorkingDotsHost() }
+
+    func updateNSView(_ view: WorkingDotsHost, context: Context) {
+        view.update(running: running, color: color)
+    }
+}
+
+final class WorkingDotsHost: NSView {
+    static let size = CGSize(width: 16, height: 4)
+    private var dots: [CALayer] = []
+    private var running = false
+
+    override init(frame: NSRect) {
+        super.init(frame: NSRect(origin: .zero, size: Self.size))
+        wantsLayer = true
+        for i in 0..<3 {
+            let dot = CALayer()
+            dot.frame = CGRect(x: CGFloat(i) * 6, y: 0, width: 4, height: 4)
+            dot.cornerRadius = 2
+            dot.opacity = 0.35
+            layer?.addSublayer(dot)
+            dots.append(dot)
+        }
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    override var intrinsicContentSize: NSSize { Self.size }
+
+    func update(running: Bool, color: NSColor) {
+        dots.forEach { $0.backgroundColor = color.cgColor }
+        guard running != self.running else { return }
+        self.running = running
+        for (i, dot) in dots.enumerated() {
+            guard running else {
+                dot.removeAllAnimations()
+                continue
+            }
+            let fade = CABasicAnimation(keyPath: "opacity")
+            fade.fromValue = 0.3
+            fade.toValue = 1
+            fade.duration = 0.45
+            fade.autoreverses = true
+            fade.repeatCount = .infinity
+            fade.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            fade.beginTime = CACurrentMediaTime() + Double(i) * 0.15
+            dot.add(fade, forKey: "fade")
+        }
+    }
+}

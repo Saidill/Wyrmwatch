@@ -298,12 +298,13 @@ private struct Shimmer: View {
 /// "Working" badge for a busy session row: a slowly breathing ellipsis.
 struct WorkingBadge: View {
     var hovering = false
+    @Environment(\.animationsPaused) private var paused
 
     var body: some View {
-        Image(systemName: "ellipsis")
-            .font(.system(size: 12, weight: .bold))
-            .foregroundStyle(Palette.silver)
-            .symbolEffect(.pulse, isActive: true)
+        // Core Animation dots: a repeating SwiftUI symbol effect redrew the panel every frame (about 20% CPU).
+        LayerWorkingDots(running: !paused, color: NSColor(Palette.silver))
+            .frame(width: WorkingDotsHost.size.width, height: WorkingDotsHost.size.height)
+            .allowsHitTesting(false)
     }
 }
 
