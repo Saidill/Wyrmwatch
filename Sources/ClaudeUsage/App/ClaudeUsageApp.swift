@@ -8,6 +8,7 @@ struct ClaudeUsageApp: App {
         // The menu bar icon and the notch are AppKit windows, managed by the display mode.
         _ = DisplayModeController.shared
         SelfTest.startIfRequested()
+        Diagnose.startIfRequested()
     }
 
     var body: some Scene {
@@ -27,12 +28,15 @@ enum AppModels {
     static let claude = ClaudeModule(sessions: sessions, limits: limits)
     static let pomodoro = PomodoroModule(timer: PomodoroTimer())
     static let music = MusicModule(bridge: MusicBridge(offline: SelfTest.isRequested), pomodoro: pomodoro.timer)
+    static let info = InfoModule(battery: BatteryMonitor(live: !SelfTest.isRequested),
+                                 calendar: CalendarSource(live: !SelfTest.isRequested))
     /// Every notch module, in tie-break order.
     static let registry: ModuleRegistry = {
         let registry = ModuleRegistry()
         registry.register(pomodoro)
         registry.register(claude)
         registry.register(music)
+        registry.register(info)
         return registry
     }()
 }

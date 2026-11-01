@@ -19,6 +19,7 @@ struct SettingsView: View {
     @AppStorage(PomodoroTimer.Keys.musicSync) private var pomodoroMusicSync = false
     @AppStorage(MusicModule.Keys.popOnChange) private var musicPop = true
     @AppStorage(MusicModule.Keys.listOnHover) private var musicListOnHover = true
+    @AppStorage(InfoModule.Keys.chargerPop) private var chargerPop = true
 
     var body: some View {
         VStack(spacing: 12) {
@@ -75,6 +76,10 @@ struct SettingsView: View {
             section("Music", symbol: "music.note", color: Palette.silver) {
                 row("Pop up when the song changes") { toggle($musicPop) }
                 row("Show the playlist on hover") { toggle($musicListOnHover) }
+            }
+
+            section("Info", symbol: "battery.75percent", color: Palette.silver) {
+                row("Pop up when the charger is plugged in") { toggle($chargerPop) }
             }
 
             section("Display", symbol: "macbook", color: Palette.silver) {
