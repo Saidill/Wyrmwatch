@@ -40,7 +40,8 @@ enum DragonArt {
 
     // Landmarks on the artwork, as fractions of its size (from the top left).
     static let eye = CGPoint(x: 0.625, y: 0.365)
-    static let mouth = CGPoint(x: 0.86, y: 0.62)
+    /// Between the jaws, just behind the front teeth (not the snout tip above them).
+    static let mouth = CGPoint(x: 0.85, y: 0.665)
 
     static let red = LinearGradient(colors: [Color(hex: 0xF0454B), Color(hex: 0xC8202C), Color(hex: 0x8E1119)],
                                     startPoint: .top, endPoint: .bottom)
