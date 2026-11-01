@@ -41,12 +41,13 @@ final class PomodoroModule: NotchModule {
         if defaults.bool(forKey: PomodoroTimer.Keys.haptic) {
             NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
         }
-        if defaults.bool(forKey: PomodoroTimer.Keys.sound) { Notifier.shared.playSound() }
+        // A short alarm, so the end of a phase is noticed even when looking elsewhere.
+        if defaults.bool(forKey: PomodoroTimer.Keys.sound) { Notifier.shared.playAlarm() }
         if DisplayModeController.shared.isNotch {
             pop(event)
         } else {
             switch event {
-            case .focusDone: Notifier.shared.notify(title: "Focus done", body: "Time for a break.")
+            case .focusDone: Notifier.shared.notify(title: "Focus done", body: "Your break has started.")
             case .breakDone: Notifier.shared.notify(title: "Break over", body: "Ready to focus again?")
             }
         }
@@ -87,22 +88,25 @@ private struct PopButton: View {
     let title: String
     var primary = true
     let action: () -> Void
+    @State private var hovering = false
 
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.app(11, .medium))
-                .foregroundStyle(primary ? Palette.onSilver : Palette.text2)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Capsule().fill(primary ? AnyShapeStyle(Palette.silverGradient) : AnyShapeStyle(Palette.glass)))
-                .overlay(Capsule().strokeBorder(Palette.rim, lineWidth: primary ? 0 : 1))
+                .font(.app(11.5, .medium))
+                .foregroundStyle(primary ? Palette.onSilver : Palette.text)
+                .lineLimit(1)
+                .padding(.horizontal, 12)
+                .frame(height: 28)
+                .background(Capsule().fill(primary ? Palette.silver : (hovering ? Palette.buttonHi : Palette.button)))
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        .onHover { h in withAnimation(Motion.quick) { hovering = h } }
     }
 }
 
-/// Focus is over: the dragon breathes blue fire, and one more of the four embers lights up.
+/// Focus is over and the break is already counting down: the dragon breathes fire, one more session dot lights up.
 private struct FocusDonePop: View {
     @ObservedObject var timer: PomodoroTimer
     @State private var lit = 0
@@ -110,18 +114,21 @@ private struct FocusDonePop: View {
     var body: some View {
         HStack(spacing: 4) {
             DragonView(mood: .happy, size: 44, fireRoom: 0.6)
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text("Focus done")
                     .font(.app(13, .medium))
                     .foregroundStyle(Palette.text)
-                EmberDots(lit: lit, total: timer.sessionsTarget)
+                HStack(spacing: 6) {
+                    Text(timer.phase == .longBreak ? "Long break" : "Break")
+                        .font(.app(11))
+                        .foregroundStyle(Palette.text2)
+                    PomodoroDigits(timer: timer, size: 11, color: Palette.silverBright)
+                        .fixedSize()
+                }
+                EmberDots(lit: lit, total: timer.sessionsTarget, size: 5)
             }
             Spacer(minLength: 6)
-            PopButton(title: "Start break") {
-                timer.start()
-                NotchWindowController.shared.dismissPop()
-            }
-            PopButton(title: "Skip", primary: false) {
+            PopButton(title: "Skip break", primary: false) {
                 timer.skip()
                 NotchWindowController.shared.dismissPop()
             }

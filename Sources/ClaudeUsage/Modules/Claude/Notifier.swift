@@ -18,6 +18,7 @@ final class Notifier {
     private var canNotify: Bool { Bundle.main.bundleIdentifier != nil }
 
     private lazy var chimePlayer: AVAudioPlayer? = try? AVAudioPlayer(data: Self.makeChimeWAV())
+    private lazy var alarmPlayer: AVAudioPlayer? = try? AVAudioPlayer(data: Self.makeAlarmWAV())
 
     private init() {
         UserDefaults.standard.register(defaults: [
@@ -41,6 +42,12 @@ final class Notifier {
         } else {
             NSSound(named: NSSound.Name(name))?.play()
         }
+    }
+
+    /// A short timer alarm (two sets of three quick beeps, about 1.2 s): a Pomodoro phase has run out.
+    func playAlarm() {
+        alarmPlayer?.currentTime = 0
+        alarmPlayer?.play()
     }
 
     func taskFinished(_ sessionName: String, banner: Bool = true) {
@@ -86,7 +93,33 @@ final class Notifier {
                 samples[offset + i] += attack * (body + shimmer)
             }
         }
-        let pcm = samples.map { Int16(max(-1, min(1, $0 * 0.32)) * Double(Int16.max)) }
+        return wav(samples, sampleRate: sampleRate, gain: 0.32)
+    }
+
+    /// Kitchen-timer beeps (C6) with soft edges, so they're clear without being harsh.
+    private static func makeAlarmWAV() -> Data {
+        let sampleRate = 44_100
+        let beep = 0.09, gap = 0.07, pause = 0.28
+        var starts: [Double] = []
+        for set in 0..<2 {
+            for i in 0..<3 { starts.append(Double(set) * (3 * (beep + gap) + pause) + Double(i) * (beep + gap)) }
+        }
+        let duration = (starts.last ?? 0) + beep + 0.05
+        var samples = [Double](repeating: 0, count: Int(duration * Double(sampleRate)))
+        for start in starts {
+            let offset = Int(start * Double(sampleRate))
+            for i in 0..<Int(beep * Double(sampleRate)) where offset + i < samples.count {
+                let t = Double(i) / Double(sampleRate)
+                let edge = min(1, t / 0.006, (beep - t) / 0.012)
+                samples[offset + i] += edge * (sin(2 * .pi * 1046.5 * t) + 0.3 * sin(2 * .pi * 2093 * t))
+            }
+        }
+        return wav(samples, sampleRate: sampleRate, gain: 0.28)
+    }
+
+    /// 16-bit mono WAV in memory.
+    private static func wav(_ samples: [Double], sampleRate: Int, gain: Double) -> Data {
+        let pcm = samples.map { Int16(max(-1, min(1, $0 * gain)) * Double(Int16.max)) }
 
         var data = Data()
         func append<T: FixedWidthInteger>(_ value: T) { withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) } }

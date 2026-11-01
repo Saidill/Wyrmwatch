@@ -110,6 +110,8 @@ Konsepnya: setiap sesi fokus adalah bara yang dijaga naga. Sisa waktu digambarka
 - Preset Klasik 25/5, Dalam 50/10, dan Custom. Jumlah sesi per siklus 1–8 (default 4). Istirahat panjang 15 menit setelah sesi terakhir siklus.
 - Timer disimpan sebagai `endDate`, bukan hitungan mundur. Tetap akurat walau Mac sleep, dan dipulihkan dari `UserDefaults` setelah app restart.
 - Kontrol: mulai, +5 menit, pause/lanjut, lewati, stop (kembali ke mode Atur). Shortcut global opsional (misalnya ⌥⌘P).
+- Saat fokus habis, istirahat **langsung mulai menghitung mundur** sendiri, dihitung dari saat fokus habis (tetap tepat walau Mac sleep atau app ditutup). Kalau istirahat juga sudah lewat, timer kembali ke mode Atur. Fokus berikutnya tetap dimulai manual.
+- Di akhir setiap fase berbunyi **alarm singkat** (dua kali tiga bip, ±1,2 detik), kalau suara Pomodoro aktif. Pop "Focus done" menampilkan hitung mundur istirahat dan tombol "Skip break".
 - Statistik hari ini: jumlah sesi dan total menit fokus.
 - Opsional: Apple Music otomatis di-pause saat istirahat dan diputar lagi saat fokus dimulai.
 
@@ -174,7 +176,7 @@ Fitur yang sudah ada dipertahankan semua: limit sesi dan mingguan, forecast, daf
 ### 5. Maskot dan tema
 
 - **Naga**: ikon "Spiked dragon head" karya Delapouite dari game-icons.net (CC BY 3.0, atribusi di README dan `Views/Dragon.swift`). Path SVG ditanam di kode, diwarnai gradasi merah (`#F0454B` → `#C8202C` → `#8E1119`). Naga gambar tangan sebelumnya dihapus karena kurang bagus.
-- Animasi lewat Core Animation (`Views/CoreAnimationViews.swift`), jadi app tidak bekerja per frame. Napas (idle, tidur), glow berdenyut dan mata menyala (kerja), mata berkedip pelan (fokus), api partikel `CAEmitterLayer` (selesai), "z" melayang (tidur). Kepala sedikit terangkat saat di-hover.
+- Animasi lewat Core Animation (`Views/CoreAnimationViews.swift`), jadi app tidak bekerja per frame. Napas (idle, tidur), glow berdenyut dan mata menyala (kerja), mata berkedip pelan (fokus), api partikel `CAEmitterLayer` dari celah rahang, bukan ujung moncong (selesai), "z" melayang (tidur). Kepala sedikit terangkat saat di-hover.
 - Di notch live, naga diam (tanpa animasi). Ikon app memakai naga yang sama (`--render-icon`).
 - **Tema**: latar `#000`, teks `#F2F3F5`, sekunder `#8D9096`, track `#2A2B2F`, silver `#C9CDD3`, silver terang `#D5D8DD`, tombol `#3A3D44` / `#24262B`, garis `#1C1D20`. Merah hanya untuk naga, amber/rose hanya untuk peringatan usage.
 - **Bahasa**: semua teks UI berbahasa Inggris.

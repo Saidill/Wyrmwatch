@@ -237,13 +237,15 @@ enum SelfTest {
         timer.runForTesting(phase: .focus, secondsLeft: 1.2)
         await wait(2.2)
         check(timer.phase == .shortBreak || timer.phase == .longBreak, "focus ending moves on to a break")
+        check(timer.isRunning && abs(timer.remaining() - timer.duration(of: timer.phase)) < 3,
+              "the break starts counting down by itself (\(Int(timer.remaining())) s left)")
         check(timer.todaySessions == before.0 + 1, "finished focus counts in today's stats")
         check(timer.completedInCycle == min(before.1 + 1, timer.sessionsTarget), "one more ember lit")
         check(pomodoroPopped(), "focus done pops")
         if let w = notch.window { snapshot(w, "13-pomodoro-focus-done") }
         notch.dismissPop()
         await wait(0.6)
-        check(notch.model.live?.id != "pomodoro", "Pomodoro leaves the live notch between phases")
+        check(notch.model.live?.id == "pomodoro", "the break counts down in the live notch")
 
         timer.runForTesting(phase: .shortBreak, secondsLeft: 3 * 60)
         await wait(0.8)
@@ -263,9 +265,17 @@ enum SelfTest {
         check(reloaded.isRunning && reloaded.endDate.map { abs($0.timeIntervalSince(end!)) < 0.01 } == true,
               "Pomodoro picks up after a restart")
         // A phase that ran out while the app was closed is finished on launch.
+        // Focus ran out 30 s before launch: the break has been running since then.
+        UserDefaults.standard.set(PomodoroTimer.Phase.focus.rawValue, forKey: PomodoroTimer.Keys.phase)
         UserDefaults.standard.set(Date().addingTimeInterval(-30).timeIntervalSince1970, forKey: PomodoroTimer.Keys.endDate)
         let late = PomodoroTimer()
-        check(!late.isRunning && late.phase != .focus, "a phase that ended while closed is finished on launch")
+        check(late.isRunning && late.phase.isBreak && abs(late.remaining() - (late.duration(of: late.phase) - 30)) < 3,
+              "a focus that ended while closed is in its break, counted from when it ended")
+        // Ran out two hours ago: the break is long over too, so the next focus waits.
+        UserDefaults.standard.set(PomodoroTimer.Phase.focus.rawValue, forKey: PomodoroTimer.Keys.phase)
+        UserDefaults.standard.set(Date().addingTimeInterval(-7200).timeIntervalSince1970, forKey: PomodoroTimer.Keys.endDate)
+        let later = PomodoroTimer()
+        check(!later.isRunning && later.phase == .focus, "focus and break both over while closed: back to the setup")
 
         // The Focus page: setup while stopped, digits, fuse and controls while running.
         timer.stopToSetup()

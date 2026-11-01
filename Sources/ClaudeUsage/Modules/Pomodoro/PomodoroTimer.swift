@@ -226,10 +226,13 @@ final class PomodoroTimer: ObservableObject {
             schedule()
             return
         }
-        finish()
+        finish(endedAt: endDate)
     }
 
-    private func finish() {
+    /// Ends the phase that ran out at `endedAt`. A finished focus goes straight into its break, counted from that
+    /// moment (so a Mac that slept through the change still shows the right time); if that break is already
+    /// over too, it ends as well and the next focus waits to be started.
+    private func finish(endedAt: Date) {
         let finished = phase
         let length = phaseLength
         halt()
@@ -239,12 +242,24 @@ final class PomodoroTimer: ObservableObject {
             todayMinutes += Int((length / 60).rounded())
             completedInCycle = min(completedInCycle + 1, sessionsTarget)
             phase = completedInCycle >= sessionsTarget ? .longBreak : .shortBreak
+            let breakEnd = endedAt.addingTimeInterval(duration(of: phase))
+            save()
+            events.send(.focusDone)
+            if breakEnd > Date() {
+                phaseLength = duration(of: phase)
+                endDate = breakEnd
+                save()
+                schedule()
+                starts.send(phase)
+            } else {
+                finish(endedAt: breakEnd)
+            }
         } else {
             if finished == .longBreak { completedInCycle = 0 }
             phase = .focus
+            save()
+            events.send(.breakDone)
         }
-        save()
-        events.send(finished == .focus ? .focusDone : .breakDone)
     }
 
     /// Starts today's stats afresh on a new day.

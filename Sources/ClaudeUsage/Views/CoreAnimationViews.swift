@@ -186,7 +186,7 @@ final class DragonHost: NSView {
             eyePulse.toValue = 1
             eye.add(eyePulse, forKey: "pulse")
         case .happy:
-            flame.emitterCells = [Self.flameCell(size: size, image: DragonImages.shared.spark)]
+            flame.emitterCells = Self.flameCells(size: size, image: DragonImages.shared.spark)
             flame.birthRate = 1
             // Bursts: on for 1.3 s out of every 2.4 s.
             let burst = CAKeyframeAnimation(keyPath: "birthRate")
@@ -209,25 +209,32 @@ final class DragonHost: NSView {
         }
     }
 
-    private static func flameCell(size: CGFloat, image: CGImage?) -> CAEmitterCell {
-        let cell = CAEmitterCell()
-        cell.contents = image
-        cell.birthRate = 70
-        cell.lifetime = 0.42
-        cell.lifetimeRange = 0.12
-        cell.velocity = size * 1.3
-        cell.velocityRange = size * 0.3
-        cell.emissionLongitude = 0
-        cell.emissionRange = .pi / 14
-        cell.scale = size / 260
-        cell.scaleSpeed = size / 220
-        cell.alphaSpeed = -2.2
-        cell.color = NSColor(hex: 0xFFC46B).cgColor
-        cell.redRange = 0.05
-        cell.greenRange = 0.25
-        cell.greenSpeed = -1.6
-        cell.blueSpeed = -1.2
-        return cell
+    /// Two particle streams from the mouth: a small white-hot core and a wider orange body fading to red.
+    private static func flameCells(size: CGFloat, image: CGImage?) -> [CAEmitterCell] {
+        func cell(rate: Float, life: Float, speed: CGFloat, scale: CGFloat, grow: CGFloat, color: NSColor, fade: Float) -> CAEmitterCell {
+            let c = CAEmitterCell()
+            c.contents = image
+            c.birthRate = rate
+            c.lifetime = life
+            c.lifetimeRange = life * 0.25
+            c.velocity = speed
+            c.velocityRange = speed * 0.2
+            // Slightly downward, the way a breath leaves an open jaw.
+            c.emissionLongitude = 0.12
+            c.emissionRange = .pi / 18
+            c.scale = scale
+            c.scaleSpeed = grow
+            c.alphaSpeed = fade
+            c.color = color.cgColor
+            return c
+        }
+        let core = cell(rate: 60, life: 0.22, speed: size * 1.1, scale: size / 420, grow: size / 400,
+                        color: NSColor(hex: 0xFFF1C9), fade: -3.5)
+        let body = cell(rate: 55, life: 0.38, speed: size * 1.25, scale: size / 300, grow: size / 180,
+                        color: NSColor(hex: 0xFF8A1F), fade: -2.4)
+        body.greenSpeed = -1.4
+        body.blueSpeed = -0.8
+        return [body, core]
     }
 }
 

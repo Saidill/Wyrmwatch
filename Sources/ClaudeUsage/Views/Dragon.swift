@@ -40,7 +40,8 @@ enum DragonArt {
 
     // Landmarks on the artwork, as fractions of its size (from the top left).
     static let eye = CGPoint(x: 0.625, y: 0.365)
-    static let mouth = CGPoint(x: 0.86, y: 0.62)
+    /// Between the jaws, just behind the front teeth (not the snout tip above them).
+    static let mouth = CGPoint(x: 0.85, y: 0.665)
 
     static let red = LinearGradient(colors: [Color(hex: 0xF0454B), Color(hex: 0xC8202C), Color(hex: 0x8E1119)],
                                     startPoint: .top, endPoint: .bottom)
@@ -148,11 +149,13 @@ private struct DragonFrame: View {
         return Canvas { ctx, _ in
             guard burst > 0.02 else { return }
             let origin = CGPoint(x: DragonArt.mouth.x * size, y: DragonArt.mouth.y * size)
-            for i in 0..<5 {
-                let f = Double(i) / 4
-                let flicker = 0.85 + 0.15 * sin(t * 23 + Double(i) * 1.7)
-                let c = CGPoint(x: origin.x + (0.05 + 0.45 * f) * size * burst, y: origin.y - 0.04 * f * size + sin(t * 9 + f * 4) * 0.02 * size)
-                let r = (0.05 + 0.09 * f) * size * burst * flicker
+            // Overlapping puffs that widen and cool along the way, so they read as one plume.
+            for i in 0..<10 {
+                let f = Double(i) / 9
+                let flicker = 0.9 + 0.1 * sin(t * 23 + Double(i) * 1.7)
+                let c = CGPoint(x: origin.x + (0.02 + 0.42 * f) * size * burst,
+                                y: origin.y + 0.05 * f * size + sin(t * 9 + f * 4) * 0.01 * size)
+                let r = (0.035 + 0.075 * f) * size * burst * flicker
                 ctx.fill(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)),
                          with: .radialGradient(Gradient(colors: [Color(hex: 0xFFF1C9).opacity(1 - f * 0.8), Color(hex: 0xFF7A1A).opacity(0.85 - f * 0.4),
                                                                  Color(hex: 0xC8202C).opacity(0)]),

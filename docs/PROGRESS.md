@@ -206,3 +206,12 @@ Hanya polanya yang dipelajari: notch hitam, Home berisi player + timer, tab yang
 **Self-test**: `ALL PASSED`. Cek "dragon moves" kini memeriksa animasi Core Animation yang aktif. Reduce Motion memastikan tidak ada animasi.
 
 **Cek manual**: hover naga di header, api saat sesi Claude selesai (pop), dan CPU di Activity Monitor saat musik diputar.
+
+## Istirahat otomatis, alarm, api dari mulut (`feat/pomodoro-autobreak`)
+
+- Fokus habis: istirahat langsung berjalan, dihitung dari saat fokus habis. Setelah sleep atau restart, sisa waktunya tetap tepat. Kalau istirahat juga sudah lewat, timer kembali ke setup.
+- Alarm singkat (dua kali tiga bip C6, ±1,2 detik, dibuat di memori seperti chime) di akhir fokus dan akhir istirahat. Haptic tetap ada.
+- Pop "Focus done" kini menampilkan "Break 5:00" yang menghitung mundur dan tombol "Skip break". Tombol "Start break" dihapus karena istirahat sudah berjalan.
+- Api naga keluar dari celah rahang (0,85; 0,665), bukan dari bawah moncong. Api animasi kini dua lapis partikel (inti putih-panas + tubuh oranye ke merah) yang sedikit mengarah ke bawah. Api diam (Reduce Motion) berupa satu semburan utuh, bukan bulatan terpisah.
+- Self-test: istirahat berjalan sendiri (298 detik tersisa), istirahat tampil di live, fokus yang habis saat app tertutup masuk istirahat dengan waktu yang benar, fokus dan istirahat yang sama-sama lewat kembali ke setup. Hasil: `ALL PASSED`.
+- Cek manual: dengarkan alarm di akhir fokus, dan lihat api saat sesi Claude selesai.
