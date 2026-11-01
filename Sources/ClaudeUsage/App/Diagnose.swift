@@ -34,7 +34,7 @@ enum Diagnose {
         lines.append("track: \(music.track.map { "\($0.title) — \($0.artist) [\($0.id)] \(Int($0.duration))s" } ?? "none")")
         lines.append("playing: \(music.isPlaying), position: \(Int(music.currentPosition()))s, artwork: \(music.artwork != nil)")
         lines.append("playlist: \(music.playlist.map { $0.isEmpty ? "unavailable" : "\($0.count) songs in \"\(music.playlistName)\"" } ?? "not loaded"), current index: \(music.currentIndex.map(String.init) ?? "none")")
-        lines.append("calendar status: \(EKEventStore.authorizationStatus(for: .event).rawValue) (3 = full access)")
+        lines.append("calendar status: \(EKEventStore.authorizationStatus(for: .event).rawValue) (3 = full access)\(info.calendar.lastError.map { ", error: \($0)" } ?? "")")
         lines.append("next event: \(info.calendar.next.map { "\($0.title) at \($0.start)" } ?? "none")")
         lines.append("battery: \(info.battery.reading.map { "\($0.percent)% charging=\($0.charging) onPower=\($0.onPower)" } ?? "none")")
         try? lines.joined(separator: "\n").write(to: out, atomically: true, encoding: .utf8)

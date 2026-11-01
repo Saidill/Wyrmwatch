@@ -12,6 +12,8 @@ final class CalendarSource: ObservableObject {
 
     @Published private(set) var next: Upcoming?
     @Published private(set) var authorized = false
+    /// Why access failed, if it did (for --diagnose).
+    private(set) var lastError: String?
 
     private let store = EKEventStore()
     private var observer: Any?
@@ -34,7 +36,8 @@ final class CalendarSource: ObservableObject {
             refresh()
         case .notDetermined:
             Task {
-                let granted = (try? await store.requestFullAccessToEvents()) ?? false
+                var granted = false
+                do { granted = try await store.requestFullAccessToEvents() } catch { lastError = "\(error)" }
                 authorized = granted
                 if granted { refresh() }
             }
