@@ -353,6 +353,9 @@ enum SelfTest {
         // A streamed song: its album, found online in real use, injected here.
         let album = (1...12).map { AlbumTrack(number: $0, title: $0 == 5 ? "A Much Longer Song Title Than Usual (Remastered)" : "Album song \($0)",
                                                 duration: 210, url: nil) }
+        // Before it, another song by the same artist from another album (as when playing their top songs).
+        bridge.injectForTesting(track: NowPlaying(id: "STREAM0", title: "Paint My Love", artist: "Someone Else", album: "Another Album",
+                                                  duration: 240), playing: true, playlist: [], currentIndex: nil)
         bridge.injectForTesting(track: NowPlaying(id: "STREAM", title: "A Much Longer Song Title Than Usual", artist: "Someone Else",
                                                   album: "Strange Foreign Beauty", duration: 210),
                                 playing: true, position: 30, playlist: [], currentIndex: nil)
@@ -371,6 +374,8 @@ enum SelfTest {
               "same artist, another album: the artist's top songs")
         check(StreamContext.infer(current: song("D", "Y", "Three"), previous: song("A", "X", "One")) == .recent,
               "another artist: a station or mix, so what has played")
+        check(StreamContext.infer(current: bridge.track!, previous: bridge.history.dropFirst().first) == .topSongs,
+              "after a song by the same artist from another album, the list is their top songs")
         // The previous song was by the same artist from another album, so this shows the top songs.
         await snapshotExpanded(tab: .music, "21-music-top-songs", keepOpen: true)
         check(LayoutProbe.frames["music.album"] != nil && LayoutProbe.frames["music.context"] != nil,
