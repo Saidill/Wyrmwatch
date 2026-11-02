@@ -353,9 +353,14 @@ enum SelfTest {
         // A streamed song: its album, found online in real use, injected here.
         let album = (1...12).map { AlbumTrack(number: $0, title: $0 == 5 ? "A Much Longer Song Title Than Usual (Remastered)" : "Album song \($0)",
                                                 duration: 210, url: nil) }
+        bridge.injectForTesting(track: NowPlaying(id: "STREAM", title: "A Much Longer Song Title Than Usual", artist: "Someone Else",
+                                                  album: "Strange Foreign Beauty", duration: 210),
+                                playing: true, position: 30, playlist: [], currentIndex: nil)
         AppModels.music.albums.injectForTesting(.found(album: "Strange Foreign Beauty", tracks: album))
         await snapshotExpanded(tab: .music, "21-music-album", keepOpen: true)
-        check(LayoutProbe.overlaps(prefix: "music.").isEmpty, "album list sits beside the cover without overlapping")
+        check(LayoutProbe.frames["music.album"] != nil, "a streamed song shows its album's songs")
+        check(LayoutProbe.overlaps(prefix: "music.").filter { $0 != ("music.album", "music.list") && $0 != ("music.list", "music.album") }.isEmpty,
+              "album list sits beside the cover without overlapping")
         notch.close()
         await wait(0.6)
         AppModels.music.albums.reset()

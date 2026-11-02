@@ -133,6 +133,7 @@ private struct AlbumList: View {
                     .onChange(of: bridge.track?.title) { _, _ in withAnimation(Motion.smooth) { center(proxy, tracks) } }
                 }
             }
+            .probe("music.album")
         case .loading:
             HStack(spacing: 8) {
                 LayerWorkingDots(running: true, color: NSColor(Palette.text2))
