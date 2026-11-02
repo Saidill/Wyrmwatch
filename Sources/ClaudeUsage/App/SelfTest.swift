@@ -350,6 +350,21 @@ enum SelfTest {
         bridge.injectForTesting(track: b, playing: true, position: 30, playlist: [], currentIndex: nil)
         await snapshotExpanded(tab: .music, "21-music-playlist-unavailable")
 
+        // An Apple Music stream: the notification has no persistent ID, but the song must still show at once.
+        bridge.injectForTesting(track: a, playing: true, position: 10)
+        let stream: [AnyHashable: Any] = ["Name": "Out of the Blue", "Artist": "Michael Learns to Rock",
+                                          "Album": "Strange Foreign Beauty", "Total Time": 244_466, "Player State": "Playing"]
+        bridge.handleForTesting(stream)
+        check(bridge.track?.title == "Out of the Blue" && bridge.isPlaying && abs((bridge.track?.duration ?? 0) - 244.5) < 1,
+              "a streamed song (no persistent ID) shows up straight from the notification")
+        let streamID = bridge.track?.id
+        var paused = stream
+        paused["Player State"] = "Paused"
+        bridge.handleForTesting(paused)
+        check(!bridge.isPlaying && bridge.track?.id == streamID, "pausing the stream is a pause, not a new song")
+        notch.model.registry.popQueue.clear()
+        bridge.injectForTesting(track: b, playing: true, position: 30, playlist: list, currentIndex: 43)
+
         // Pomodoro and music both on: the live notch takes turns between them.
         AppModels.pomodoro.timer.runForTesting(phase: .focus, secondsLeft: 600)
         await wait(0.4)

@@ -98,13 +98,23 @@ final class MusicBridge: ObservableObject {
         let wasPlaying = isPlaying
         let freeze = currentPosition()
         isPlaying = state == "Playing"
-        guard let pid = info["PersistentID"] as? NSNumber else { return }
-        let next = NowPlaying(id: String(format: "%016llX", pid.uint64Value),
-                              title: info["Name"] as? String ?? "",
-                              artist: info["Artist"] as? String ?? "",
-                              album: info["Album"] as? String ?? "",
-                              duration: (info["Total Time"] as? Double ?? 0) / 1000)
-        if next.id != track?.id {
+        let title = info["Name"] as? String ?? ""
+        let artist = info["Artist"] as? String ?? ""
+        let album = info["Album"] as? String ?? ""
+        // Library songs carry a persistent ID; Apple Music streams and radio don't, so fall back to what they do carry.
+        let id: String
+        if let pid = info["PersistentID"] as? NSNumber {
+            id = String(format: "%016llX", pid.uint64Value)
+        } else if let url = info["Store URL"] as? String, !url.isEmpty {
+            id = url
+        } else if !title.isEmpty {
+            id = "stream:\(title)|\(artist)|\(album)"
+        } else {
+            return
+        }
+        let next = NowPlaying(id: id, title: title, artist: artist, album: album,
+                              duration: ((info["Total Time"] as? NSNumber)?.doubleValue ?? 0) / 1000)
+        if next.id != track?.id, !sameSong(next, track) {
             let first = track == nil
             track = next
             position = 0
@@ -118,11 +128,20 @@ final class MusicBridge: ObservableObject {
                 playlist = nil
                 playlistKey = nil
             }
+            // One AppleScript read per song change (not polling): fills in what the notification leaves out
+            // for streams (the real ID, position, favourite, shuffle and repeat) and the artwork.
+            refreshAll()
         } else if wasPlaying != isPlaying {
             // Paused or resumed: carry the position across.
             position = freeze
             positionDate = Date()
         }
+    }
+
+    /// The same song seen through the notification (stream fallback ID) and through AppleScript (persistent ID).
+    private func sameSong(_ a: NowPlaying, _ b: NowPlaying?) -> Bool {
+        guard let b, a.id.hasPrefix("stream:") || b.id.hasPrefix("stream:") else { return false }
+        return a.title == b.title && a.artist == b.artist && a.album == b.album
     }
 
     private func setPlaying(_ playing: Bool) {
@@ -157,7 +176,7 @@ final class MusicBridge: ObservableObject {
             guard f.count >= 8 else { return }
             self.favorite = f.removeFirst() == "true"
             let next = NowPlaying(id: f[1], title: f[2], artist: f[3], album: f[4], duration: Double(f[5].replacingOccurrences(of: ",", with: ".")) ?? 0)
-            if next.id != self.track?.id { self.loadArtwork(for: next) }
+            if next.id != self.track?.id || self.artwork == nil { self.loadArtwork(for: next) }
             self.track = next
             self.isPlaying = f[0] == "playing"
             self.position = Double(f[6].replacingOccurrences(of: ",", with: ".")) ?? 0
@@ -338,6 +357,9 @@ final class MusicBridge: ObservableObject {
     }
 
     // MARK: Self-test
+
+    /// Feeds a made-up playerInfo notification through the real handler.
+    func handleForTesting(_ info: [AnyHashable: Any]) { handle(info) }
 
     func injectForTesting(track: NowPlaying?, playing: Bool, position: Double = 0, artwork: NSImage? = nil,
                           playlist: [PlaylistTrack]? = nil, currentIndex: Int? = nil) {
