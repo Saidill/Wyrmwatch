@@ -128,7 +128,8 @@ final class StatusItemController: NSObject {
     /// Closes on a click anywhere outside the popover, or on Escape.
     private func startMonitoring() {
         guard monitors.isEmpty else { return }
-        if let global = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown], handler: { [weak self] _ in
+        // (Not during the self-test, which opens and closes it itself while someone may be using the Mac.)
+        if !SelfTest.isRequested, let global = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown], handler: { [weak self] _ in
             MainActor.assumeIsolated { self?.close() }
         }) { monitors.append(global) }
         if let local = NSEvent.addLocalMonitorForEvents(matching: [.keyDown], handler: { [weak self] event in
