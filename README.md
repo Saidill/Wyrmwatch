@@ -8,7 +8,7 @@ Hover the notch (or click it) to open it. The header is split by the camera: the
 
 - **Home**: one row with everything. The album cover with a soft glow, the song with a visualizer, a seek bar and the controls (playlist, previous, play/pause, next, favourite). To the right: the Pomodoro (time left, pause, stop, or the 25/5 · 50/10 · Set up chips when it isn't running) and your Claude session limit. No music playing? There's a **Play music** button instead.
 - **Focus**: start a Pomodoro with a preset (Classic 25/5, Deep 50/10) or your own lengths, the number of sessions (1–8) and an optional task. While it runs: big digits, "Focus 2/4 · your task", a dial-like tick scale, +5 min, pause, skip and stop. It keeps time through sleep and restarts.
-- **Music**: the cover and the playlist being played. Click a song to play it. For songs streamed from Apple Music (outside your library), Music.app shares no song list, so the app shows the songs of that song's album instead, looked up on Apple's catalogue; clicking one opens it in Music.
+- **Music**: the cover and the playlist being played. Click a song to play it. For songs streamed from Apple Music (outside your library), Music.app shares neither its queue nor where the song came from, so the app makes an educated guess from the song before it: the same album shows that album, the same artist from another album shows the artist's **top songs**, and a different artist (a station or mix) shows what has played this session. An Album · Top songs · Recent switch lets you pick. Lists come from Apple's catalogue; clicking a song opens it in Music.
 - **Claude**: session and week limits with the forecast, then Now (running sessions, click to jump to their terminal), Recent (click to resume) and Usage (tokens).
 - **Settings**: display mode, modules, Pomodoro, Music, Claude alerts and system options.
 
@@ -54,7 +54,7 @@ To check that everything still works after a change, run the self-test. It switc
 
 ## How it works
 
-Everything is read from files Claude Code already writes on your Mac. Only two things go online: one request for your plan limits, and, for songs streamed from Apple Music, the artist and album name sent to Apple's public [iTunes Search API](https://performance-partners.apple.com/search-api) to list that album's songs (no account, cached per album, off in Settings → Music if you prefer).
+Everything is read from files Claude Code already writes on your Mac. Only two things go online: one request for your plan limits, and, for songs streamed from Apple Music, the artist and album name sent to Apple's public [iTunes Search API](https://performance-partners.apple.com/search-api) to list that album or the artist's top songs (no account, cached per album, off in Settings → Music if you prefer).
 
 | What | Where it comes from |
 | --- | --- |

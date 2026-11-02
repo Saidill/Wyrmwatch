@@ -238,3 +238,11 @@ Hasil (sesi Claude ini aktif selama pengukuran): closed ±0,1–1%, live 0,9–1
 - Bisa dimatikan di Settings → Music ("Look up the album of streamed songs").
 - Diuji nyata lewat `--diagnose --album-test`: 14 lagu dari "Strange Foreign Beauty". Self-test memakai album palsu (tanpa jaringan): `ALL PASSED`.
 - Cek manual: putar lagu Apple Music di luar library, buka tab Music, lalu klik salah satu lagu album (Music membukanya, tapi mungkin tidak langsung memutar).
+
+## Daftar sesuai konteks untuk lagu streaming (`feat/stream-context`)
+
+- Music.app tidak memberi tahu dari mana lagu streaming diputar, dan antreannya tidak bisa dibaca. Konteks kini ditebak dari lagu sebelumnya: album yang sama → Album, artis yang sama dengan album lain → Top songs artis itu, artis lain → Recent (riwayat sesi). Ada switch Album · Top songs · Recent untuk mengganti manual.
+- Top songs: iTunes Search (`entity=song&attribute=artistTerm`, sudah diurutkan menurut popularitas), versi duplikat seperti "(Remastered)" dibuang, maks. 15 lagu. Diuji nyata: "Paint My Love", "That's Why (You Go Away)", "The Actor", "Sleeping Child", "Take Me To Your Heart".
+- Ringan: riwayat diperbarui hanya saat ganti lagu, dan hanya daftar yang tampil yang diambil, di latar, dengan cache per album atau artis. Loading memakai titik Core Animation. Tepi daftar diberi fade statis.
+- Self-test: aturan tebakan (4 kasus), Top songs tampil setelah lagu artis yang sama dari album lain, dan daftar tidak menimpa cover.
+- Cek manual: putar Top Songs seorang artis di Apple Music, lalu buka tab Music setelah lagu kedua (tebakan butuh satu lagu sebelumnya).

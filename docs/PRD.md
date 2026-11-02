@@ -158,6 +158,7 @@ Fitur yang sudah ada dipertahankan semua: limit sesi dan mingguan, forecast, daf
     - Kalau daftar tidak tersedia (radio, lagu katalog di luar library), tampilkan teks "Daftar lagu tidak tersedia untuk sumber ini."
 - Cover memakai `matchedGeometryEffect` antara live dan Home.
 - **Lagu streaming** (di luar library): Music tidak memberi daftar lagu, jadi tab Musik mencari album lagu itu di iTunes Search API publik milik Apple. Yang dikirim hanya artis dan nama album, dengan timeout 5 detik, di luar main thread, di-cache per album, dan hanya saat tab Musik tampil. Hasilnya ditampilkan sebagai "From <album>". Lagu aktif disorot, dan klik membuka lagu di Music. Bisa dimatikan di Settings → Music (default aktif, atas permintaan).
+    - **Konteks lagu streaming**: Music tidak memberi tahu asal lagu (Top Songs artis, album, stasiun), dan antreannya tidak bisa dibaca app lain (`current playlist` gagal; MediaRemote privat dikunci sejak macOS 15.4). Jadi konteks ditebak dari lagu sebelumnya: album sama → **Album**, artis sama tapi album lain → **Top songs** artis itu (iTunes Search, diurutkan menurut popularitas, satu versi per lagu, maks. 15), artis lain → **Recent** (lagu yang diputar sesi ini, maks. 30). Pilihan manual Album · Top songs · Recent berlaku sampai tebakan berubah. Hanya daftar yang tampil yang diambil, dan hasilnya di-cache per album atau artis.
 - Di popover menu bar tetap ada kartu Now Playing (cover 56 pt) dengan panel daftar lagu yang bergeser saat hover 400 ms.
 
 **Cara kerja yang hemat**

@@ -52,6 +52,9 @@ final class MusicBridge: ObservableObject {
 
     /// Self-test only: asks the card to slide its playlist in.
     @Published var showListForTesting = false
+    /// Songs played this session, newest first (at most 30), for the "Recent" list and for guessing the context.
+    @Published private(set) var history: [NowPlaying] = []
+
     /// Fires when the song changes (not on the first song seen).
     let trackChanged = PassthroughSubject<NowPlaying, Never>()
 
@@ -117,6 +120,7 @@ final class MusicBridge: ObservableObject {
         if next.id != track?.id, !sameSong(next, track) {
             let first = track == nil
             track = next
+            remember(next)
             position = 0
             positionDate = Date()
             loadArtwork(for: next)
@@ -136,6 +140,12 @@ final class MusicBridge: ObservableObject {
             position = freeze
             positionDate = Date()
         }
+    }
+
+    private func remember(_ song: NowPlaying) {
+        history.removeAll { AlbumLookup.plain($0.title) == AlbumLookup.plain(song.title) && $0.artist == song.artist }
+        history.insert(song, at: 0)
+        if history.count > 30 { history.removeLast(history.count - 30) }
     }
 
     /// The same song seen through the notification (stream fallback ID) and through AppleScript (persistent ID).
@@ -365,6 +375,7 @@ final class MusicBridge: ObservableObject {
                           playlist: [PlaylistTrack]? = nil, currentIndex: Int? = nil) {
         let changed = track != nil && self.track != nil && track?.id != self.track?.id
         self.track = track
+        if let track, changed || history.isEmpty { remember(track) }
         isPlaying = playing
         self.position = position
         positionDate = Date()

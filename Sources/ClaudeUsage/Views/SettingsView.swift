@@ -44,8 +44,8 @@ struct SettingsView: View {
                 section("Music", symbol: "music.note", color: Palette.silver) {
                     row("Pop up when the song changes") { toggle($musicPop) }
                     row("Show the playlist on hover") { toggle($musicListOnHover) }
-                    row("Look up the album of streamed songs") { toggle($albumLookup) }
-                    Text("For songs streamed from Apple Music, the artist and album name are sent to Apple's public iTunes Search API to show the album's songs.")
+                    row("Find song lists for streamed songs") { toggle($albumLookup) }
+                    Text("For songs streamed from Apple Music, the artist and album name are sent to Apple's public iTunes Search API to show the album or the artist's top songs.")
                         .font(.app(11))
                         .foregroundStyle(Palette.text3)
                         .fixedSize(horizontal: false, vertical: true)

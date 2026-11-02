@@ -353,14 +353,36 @@ enum SelfTest {
         // A streamed song: its album, found online in real use, injected here.
         let album = (1...12).map { AlbumTrack(number: $0, title: $0 == 5 ? "A Much Longer Song Title Than Usual (Remastered)" : "Album song \($0)",
                                                 duration: 210, url: nil) }
+        // Before it, another song by the same artist from another album (as when playing their top songs).
+        bridge.injectForTesting(track: NowPlaying(id: "STREAM0", title: "Paint My Love", artist: "Someone Else", album: "Another Album",
+                                                  duration: 240), playing: true, playlist: [], currentIndex: nil)
         bridge.injectForTesting(track: NowPlaying(id: "STREAM", title: "A Much Longer Song Title Than Usual", artist: "Someone Else",
                                                   album: "Strange Foreign Beauty", duration: 210),
                                 playing: true, position: 30, playlist: [], currentIndex: nil)
         AppModels.music.albums.injectForTesting(.found(album: "Strange Foreign Beauty", tracks: album))
-        await snapshotExpanded(tab: .music, "21-music-album", keepOpen: true)
-        check(LayoutProbe.frames["music.album"] != nil, "a streamed song shows its album's songs")
-        check(LayoutProbe.overlaps(prefix: "music.").filter { $0 != ("music.album", "music.list") && $0 != ("music.list", "music.album") }.isEmpty,
-              "album list sits beside the cover without overlapping")
+        let top = ["Paint My Love", "That's Why (You Go Away)", "The Actor", "A Much Longer Song Title Than Usual", "Take Me To Your Heart"]
+            .enumerated().map { AlbumTrack(number: $0.offset + 1, title: $0.element, duration: 240, url: nil) }
+        AppModels.music.topSongs.injectForTesting(.found(album: "Someone Else", tracks: top))
+        // Where a streamed song came from is guessed from the song before it.
+        func song(_ title: String, _ artist: String, _ album: String) -> NowPlaying {
+            NowPlaying(id: title, title: title, artist: artist, album: album, duration: 200)
+        }
+        check(StreamContext.infer(current: song("A", "X", "One"), previous: nil) == .album, "first streamed song: its album")
+        check(StreamContext.infer(current: song("B", "X", "One (Remastered)"), previous: song("A", "X", "One")) == .album,
+              "next song from the same album: the album")
+        check(StreamContext.infer(current: song("C", "X", "Two"), previous: song("A", "X", "One")) == .topSongs,
+              "same artist, another album: the artist's top songs")
+        check(StreamContext.infer(current: song("D", "Y", "Three"), previous: song("A", "X", "One")) == .recent,
+              "another artist: a station or mix, so what has played")
+        check(StreamContext.infer(current: bridge.track!, previous: bridge.history.dropFirst().first) == .topSongs,
+              "after a song by the same artist from another album, the list is their top songs")
+        // The previous song was by the same artist from another album, so this shows the top songs.
+        await snapshotExpanded(tab: .music, "21-music-top-songs", keepOpen: true)
+        check(LayoutProbe.frames["music.album"] != nil && LayoutProbe.frames["music.context"] != nil,
+              "a streamed song shows a song list with Album / Top songs / Recent")
+        // The list, its switch and its header are nested in one column; none of them may cover the artwork.
+        check(LayoutProbe.overlaps(prefix: "music.").filter { $0.0 == "music.cover" || $0.1 == "music.cover" }.isEmpty,
+              "song list sits beside the cover without overlapping")
         notch.close()
         await wait(0.6)
         AppModels.music.albums.reset()

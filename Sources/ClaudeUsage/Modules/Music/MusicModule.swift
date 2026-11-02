@@ -7,8 +7,9 @@ import SwiftUI
 final class MusicModule: NotchModule {
     let id = "music"
     let bridge: MusicBridge
-    /// The album of a streamed song, for its song list.
+    /// For a streamed song's song list: its album, or the artist's top songs.
     let albums: AlbumLookup
+    let topSongs: AlbumLookup
     let pops: AsyncStream<NotchPop>
     private let popSink: AsyncStream<NotchPop>.Continuation
     private var subscriptions: Set<AnyCancellable> = []
@@ -20,7 +21,8 @@ final class MusicModule: NotchModule {
 
     init(bridge: MusicBridge, pomodoro: PomodoroTimer) {
         self.bridge = bridge
-        albums = AlbumLookup(offline: SelfTest.isRequested || Perf.isRequested)
+        albums = AlbumLookup(kind: .album, offline: SelfTest.isRequested || Perf.isRequested)
+        topSongs = AlbumLookup(kind: .topSongs, offline: SelfTest.isRequested || Perf.isRequested)
         (pops, popSink) = AsyncStream.makeStream(of: NotchPop.self)
         UserDefaults.standard.register(defaults: [Keys.popOnChange: true, Keys.listOnHover: true])
         bridge.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &subscriptions)
