@@ -198,6 +198,10 @@ private struct CatalogList: View {
                             }
                         }
                     }
+                    // Rows half out of view fade into the edges instead of being sliced.
+                    .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.12),
+                                                 .init(color: .black, location: 0.88), .init(color: .clear, location: 1)],
+                                         startPoint: .top, endPoint: .bottom))
                     .onAppear { center(proxy, tracks) }
                     .onChange(of: bridge.track?.title) { _, _ in withAnimation(Motion.smooth) { center(proxy, tracks) } }
                 }
