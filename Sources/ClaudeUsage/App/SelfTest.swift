@@ -363,6 +363,7 @@ enum SelfTest {
         bridge.handleForTesting(paused)
         check(!bridge.isPlaying && bridge.track?.id == streamID, "pausing the stream is a pause, not a new song")
         notch.model.registry.popQueue.clear()
+        bridge.injectForTesting(track: b, playing: true, position: 30, playlist: list, currentIndex: 43)
 
         // Pomodoro and music both on: the live notch takes turns between them.
         AppModels.pomodoro.timer.runForTesting(phase: .focus, secondsLeft: 600)

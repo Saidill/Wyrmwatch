@@ -113,7 +113,7 @@ final class MusicBridge: ObservableObject {
             return
         }
         let next = NowPlaying(id: id, title: title, artist: artist, album: album,
-                              duration: (info["Total Time"] as? Double ?? 0) / 1000)
+                              duration: ((info["Total Time"] as? NSNumber)?.doubleValue ?? 0) / 1000)
         if next.id != track?.id, !sameSong(next, track) {
             let first = track == nil
             track = next

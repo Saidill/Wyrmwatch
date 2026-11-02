@@ -224,3 +224,9 @@ Pengukuran ulang menemukan dua masalah baru:
 - `--perf` kini juga mengukur setiap tab.
 
 Hasil (sesi Claude ini aktif selama pengukuran): closed ±0,1–1%, live 0,9–1,8%, expanded 1,2–3,2%, memori 23–40 MB. Live dan expanded di dalam anggaran. Closed sedikit di atas 0,5% saat ada aktivitas latar (file sesi Claude yang terus ditulis, monitor mouse saat mouse digerakkan), dan 0,06–0,2% saat tenang.
+
+## Musik dari luar library (`fix/music-streaming`)
+
+- **Respons tertunda**: lagu streaming Apple Music atau radio (kelas `URL track`) dikirim Music lewat notifikasi `playerInfo` **tanpa `PersistentID`**, hanya Name, Artist, Album, Total Time, dan Player State (sudah dicek dengan listener). Bridge mengabaikan notifikasi itu sampai tab Music membaca pemutar lewat AppleScript. Kini ID cadangan memakai Store URL atau judul + artis + album. Setiap ganti lagu memicu satu pembacaan AppleScript (bukan polling) untuk melengkapi ID asli, posisi, favorit, shuffle/repeat, dan cover. Pause pada lagu stream tidak dianggap lagu baru.
+- **Daftar lagu kosong**: untuk lagu streaming, Music tidak menyediakan `current playlist` lewat AppleScript ("Can't get current playlist"), dan antrean Up Next memang tidak bisa dibaca app lain. Teks di tab Music kini menjelaskan hal ini.
+- Self-test: notifikasi stream tanpa ID langsung tampil, pause stream tetap lagu yang sama. Hasil: `ALL PASSED`.

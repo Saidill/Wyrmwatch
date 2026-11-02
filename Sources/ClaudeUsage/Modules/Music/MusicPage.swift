@@ -41,9 +41,15 @@ struct MusicPage: View {
     @ViewBuilder private var playlist: some View {
         if let list = bridge.playlist {
             if list.isEmpty {
-                Text("No song list for this source.")
-                    .font(.app(12))
-                    .foregroundStyle(Palette.text2)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("No song list for this song")
+                        .font(.app(12, .medium))
+                        .foregroundStyle(Palette.text)
+                    Text("It's streaming from Apple Music, and Music only shares the song list for playlists and albums in your library.")
+                        .font(.app(11))
+                        .foregroundStyle(Palette.text2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             } else {
                 ScrollViewReader { proxy in
                     ScrollView(.vertical, showsIndicators: false) {
