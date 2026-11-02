@@ -230,3 +230,11 @@ Hasil (sesi Claude ini aktif selama pengukuran): closed ±0,1–1%, live 0,9–1
 - **Respons tertunda**: lagu streaming Apple Music atau radio (kelas `URL track`) dikirim Music lewat notifikasi `playerInfo` **tanpa `PersistentID`**, hanya Name, Artist, Album, Total Time, dan Player State (sudah dicek dengan listener). Bridge mengabaikan notifikasi itu sampai tab Music membaca pemutar lewat AppleScript. Kini ID cadangan memakai Store URL atau judul + artis + album. Setiap ganti lagu memicu satu pembacaan AppleScript (bukan polling) untuk melengkapi ID asli, posisi, favorit, shuffle/repeat, dan cover. Pause pada lagu stream tidak dianggap lagu baru.
 - **Daftar lagu kosong**: untuk lagu streaming, Music tidak menyediakan `current playlist` lewat AppleScript ("Can't get current playlist"), dan antrean Up Next memang tidak bisa dibaca app lain. Teks di tab Music kini menjelaskan hal ini.
 - Self-test: notifikasi stream tanpa ID langsung tampil, pause stream tetap lagu yang sama. Hasil: `ALL PASSED`.
+
+## Daftar album untuk lagu streaming (`feat/album-lookup`)
+
+- Lagu streaming tidak punya daftar lagu dari Music, jadi tab Musik kini mencari albumnya di iTunes Search API Apple (`search?entity=album`, lalu `lookup?entity=song`, negara mengikuti region Mac). Prosesnya di latar, dengan timeout 5 detik dan cache per album. Hanya artis dan nama album yang dikirim. Saat mencari tampil tiga titik Core Animation ("Finding the album…"), tanpa biaya CPU.
+- Lagu aktif dicocokkan dengan mengabaikan huruf besar/kecil dan tambahan dalam kurung seperti "(Remastered)", lalu di-scroll ke tengah. Klik lagu membuka lagu itu di Music.
+- Bisa dimatikan di Settings → Music ("Look up the album of streamed songs").
+- Diuji nyata lewat `--diagnose --album-test`: 14 lagu dari "Strange Foreign Beauty". Self-test memakai album palsu (tanpa jaringan): `ALL PASSED`.
+- Cek manual: putar lagu Apple Music di luar library, buka tab Music, lalu klik salah satu lagu album (Music membukanya, tapi mungkin tidak langsung memutar).

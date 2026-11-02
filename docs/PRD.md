@@ -157,6 +157,7 @@ Fitur yang sudah ada dipertahankan semua: limit sesi dan mingguan, forecast, daf
     - Ditampilkan 50 lagu di sekitar lagu aktif, sisanya dimuat saat di-scroll (`LazyVStack`).
     - Kalau daftar tidak tersedia (radio, lagu katalog di luar library), tampilkan teks "Daftar lagu tidak tersedia untuk sumber ini."
 - Cover memakai `matchedGeometryEffect` antara live dan Home.
+- **Lagu streaming** (di luar library): Music tidak memberi daftar lagu, jadi tab Musik mencari album lagu itu di iTunes Search API publik milik Apple. Yang dikirim hanya artis dan nama album, dengan timeout 5 detik, di luar main thread, di-cache per album, dan hanya saat tab Musik tampil. Hasilnya ditampilkan sebagai "From <album>". Lagu aktif disorot, dan klik membuka lagu di Music. Bisa dimatikan di Settings → Music (default aktif, atas permintaan).
 - Di popover menu bar tetap ada kartu Now Playing (cover 56 pt) dengan panel daftar lagu yang bergeser saat hover 400 ms.
 
 **Cara kerja yang hemat**
@@ -308,7 +309,7 @@ protocol NotchModule: ObservableObject {
 | Notifikasi | Pomodoro dan Claude selesai | Hanya pop dan suara |
 | Keychain | Token Claude Code (sudah ada) | Seperti sekarang |
 
-Tambahkan `NSAppleEventsUsageDescription` dan `NSCalendarsFullAccessUsageDescription` di `Info.plist` lewat `build-app.sh`. Tidak ada data yang dikirim ke luar selain request limit Claude yang sudah ada.
+Tambahkan `NSAppleEventsUsageDescription` dan `NSCalendarsFullAccessUsageDescription` di `Info.plist` lewat `build-app.sh`. Data yang dikirim ke luar hanya request limit Claude, dan (untuk lagu streaming) artis + nama album ke iTunes Search API Apple.
 
 ## Alur kerja Git
 

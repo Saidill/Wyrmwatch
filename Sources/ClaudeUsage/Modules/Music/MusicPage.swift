@@ -4,6 +4,7 @@ import SwiftUI
 /// the playing song in white and the rest in grey. Clicking a song plays it.
 struct MusicPage: View {
     @ObservedObject var bridge: MusicBridge
+    @ObservedObject private var albums = AppModels.music.albums
     @Environment(\.animationsPaused) private var paused
 
     var body: some View {
@@ -34,22 +35,22 @@ struct MusicPage: View {
         .onAppear {
             bridge.refreshAll()
             bridge.loadPlaylist()
+            if bridge.playlist?.isEmpty == true, let track = bridge.track { albums.lookUp(track) }
         }
         .onChange(of: bridge.track?.id) { _, _ in if !paused { bridge.loadPlaylist() } }
+        // Streamed song with no list from Music: find its album instead (in the background).
+        .onChange(of: bridge.playlist?.isEmpty) { _, empty in
+            if empty == true, let track = bridge.track { albums.lookUp(track) }
+        }
+        .onChange(of: bridge.track?.album) { _, _ in
+            if bridge.playlist?.isEmpty == true, let track = bridge.track { albums.lookUp(track) }
+        }
     }
 
     @ViewBuilder private var playlist: some View {
         if let list = bridge.playlist {
             if list.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("No song list for this song")
-                        .font(.app(12, .medium))
-                        .foregroundStyle(Palette.text)
-                    Text("It's streaming from Apple Music, and Music only shares the song list for playlists and albums in your library.")
-                        .font(.app(11))
-                        .foregroundStyle(Palette.text2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                AlbumList(lookup: AppModels.music.albums, bridge: bridge)
             } else {
                 ScrollViewReader { proxy in
                     ScrollView(.vertical, showsIndicators: false) {
@@ -99,5 +100,73 @@ private struct SongRow: View {
         .contentShape(Rectangle())
         .onTapGesture(perform: play)
         .onHover { h in withAnimation(Motion.quick) { hovering = h } }
+    }
+}
+
+/// "From this album": the streamed song's album from Apple's catalogue, the playing song in white.
+private struct AlbumList: View {
+    @ObservedObject var lookup: AlbumLookup
+    @ObservedObject var bridge: MusicBridge
+
+    var body: some View {
+        switch lookup.state {
+        case .found(let album, let tracks):
+            VStack(alignment: .leading, spacing: 4) {
+                Text("From \(album)")
+                    .font(.app(10.5, .medium))
+                    .foregroundStyle(Palette.text2)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .padding(.horizontal, 8)
+                ScrollViewReader { proxy in
+                    ScrollView(.vertical, showsIndicators: false) {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            ForEach(tracks) { track in
+                                let current = Self.matches(track.title, bridge.track?.title ?? "")
+                                SongRow(item: PlaylistTrack(index: track.number, title: track.title, artist: "", duration: track.duration),
+                                        current: current) { lookup.open(track) }
+                                    .id(track.number)
+                            }
+                        }
+                    }
+                    .onAppear { center(proxy, tracks) }
+                    .onChange(of: bridge.track?.title) { _, _ in withAnimation(Motion.smooth) { center(proxy, tracks) } }
+                }
+            }
+            .probe("music.album")
+        case .loading:
+            HStack(spacing: 8) {
+                LayerWorkingDots(running: true, color: NSColor(Palette.text2))
+                    .frame(width: WorkingDotsHost.size.width, height: WorkingDotsHost.size.height)
+                Text("Finding the album…").font(.app(11.5)).foregroundStyle(Palette.text2)
+            }
+            .padding(.horizontal, 8)
+        case .idle, .notFound:
+            VStack(alignment: .leading, spacing: 4) {
+                Text("No song list for this song")
+                    .font(.app(12, .medium))
+                    .foregroundStyle(Palette.text)
+                Text(lookup.enabled
+                     ? "It's streaming from Apple Music and its album wasn't found."
+                     : "It's streaming from Apple Music. Turn on album look-up in Settings → Music to see its album.")
+                    .font(.app(11))
+                    .foregroundStyle(Palette.text2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func center(_ proxy: ScrollViewProxy, _ tracks: [AlbumTrack]) {
+        guard let hit = tracks.first(where: { Self.matches($0.title, bridge.track?.title ?? "") }) else { return }
+        proxy.scrollTo(hit.number, anchor: .center)
+    }
+
+    /// The same song, ignoring case and bracketed extras such as "(Remastered)".
+    static func matches(_ a: String, _ b: String) -> Bool {
+        func plain(_ s: String) -> String {
+            s.lowercased().replacingOccurrences(of: #"\s*[\(\[].*?[\)\]]"#, with: "", options: .regularExpression)
+                .trimmingCharacters(in: .whitespaces)
+        }
+        return !a.isEmpty && plain(a) == plain(b)
     }
 }

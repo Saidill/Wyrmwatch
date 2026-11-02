@@ -27,6 +27,15 @@ enum Diagnose {
         info.calendar.requestAccess()
         music.loadPlaylist(force: true)
         try? await Task.sleep(for: .seconds(3))
+        let albums = AppModels.music.albums
+        // --album-test: look up a known album as if a streamed song were playing (checks the real request).
+        let testAlbum = CommandLine.arguments.contains("--album-test")
+            ? NowPlaying(id: "TEST", title: "Out of the Blue", artist: "Michael Learns to Rock", album: "Strange Foreign Beauty", duration: 244)
+            : nil
+        if let track = testAlbum ?? (music.playlist?.isEmpty == true ? music.track : nil) {
+            albums.lookUp(track)
+            for _ in 0..<12 where albums.state == .loading || albums.state == .idle { try? await Task.sleep(for: .seconds(0.5)) }
+        }
 
         var lines: [String] = []
         lines.append("music running: \(MusicBridge.isRunning)")
@@ -34,6 +43,12 @@ enum Diagnose {
         lines.append("track: \(music.track.map { "\($0.title) — \($0.artist) [\($0.id)] \(Int($0.duration))s" } ?? "none")")
         lines.append("playing: \(music.isPlaying), position: \(Int(music.currentPosition()))s, artwork: \(music.artwork != nil)")
         lines.append("playlist: \(music.playlist.map { $0.isEmpty ? "unavailable" : "\($0.count) songs in \"\(music.playlistName)\"" } ?? "not loaded"), current index: \(music.currentIndex.map(String.init) ?? "none")")
+        switch albums.state {
+        case .found(let album, let tracks): lines.append("album look-up: \(tracks.count) songs from \"\(album)\"")
+        case .notFound: lines.append("album look-up: not found")
+        case .loading: lines.append("album look-up: still loading")
+        case .idle: lines.append("album look-up: not needed (library playlist)")
+        }
         lines.append("calendar status: \(EKEventStore.authorizationStatus(for: .event).rawValue) (3 = full access)\(info.calendar.lastError.map { ", error: \($0)" } ?? "")")
         lines.append("next event: \(info.calendar.next.map { "\($0.title) at \($0.start)" } ?? "none")")
         try? lines.joined(separator: "\n").write(to: out, atomically: true, encoding: .utf8)

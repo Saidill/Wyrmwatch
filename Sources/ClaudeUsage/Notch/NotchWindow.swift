@@ -285,6 +285,8 @@ final class NotchWindowController {
     /// Called on every mouse move while closed, and on a short timer while open
     /// (an open panel takes the mouse, and macOS doesn't always report moves inside it).
     private func checkPointer() {
+        // The self-test opens and closes the notch itself; a real pointer resting on it must not interfere.
+        guard !SelfTest.isRequested else { return }
         let location = NSEvent.mouseLocation
         let under = panels.first { activeRect($0.value.panel, $0.value.screen).contains(location) }?.key
         if let under {
@@ -316,6 +318,7 @@ final class NotchWindowController {
     }
 
     private func clicked() {
+        guard !SelfTest.isRequested else { return }
         guard !model.expanded else { return }
         let location = NSEvent.mouseLocation
         guard let under = panels.first(where: { activeRect($0.value.panel, $0.value.screen).contains(location) })?.key else { return }
