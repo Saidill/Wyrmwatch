@@ -375,8 +375,9 @@ enum SelfTest {
         await snapshotExpanded(tab: .music, "21-music-top-songs", keepOpen: true)
         check(LayoutProbe.frames["music.album"] != nil && LayoutProbe.frames["music.context"] != nil,
               "a streamed song shows a song list with Album / Top songs / Recent")
-        check(LayoutProbe.overlaps(prefix: "music.").filter { $0 != ("music.album", "music.list") && $0 != ("music.list", "music.album") }.isEmpty,
-              "album list sits beside the cover without overlapping")
+        // The list, its switch and its header are nested in one column; none of them may cover the artwork.
+        check(LayoutProbe.overlaps(prefix: "music.").filter { $0.0 == "music.cover" || $0.1 == "music.cover" }.isEmpty,
+              "song list sits beside the cover without overlapping")
         notch.close()
         await wait(0.6)
         AppModels.music.albums.reset()
