@@ -244,8 +244,7 @@ private struct CatalogList: View {
     }
 }
 
-/// One quiet line under the list after a song is picked: playing, or opened in Music (with a way to allow
-/// the notch to press Play there).
+/// One quiet line under the list after a song is picked: playing (library songs), or opened in Music.
 private struct PlayStatus: View {
     @ObservedObject var player: CatalogPlayer
 
@@ -259,20 +258,9 @@ private struct PlayStatus: View {
             case .played(let title):
                 Text("Playing \(title)").foregroundStyle(Palette.text2)
             case .openedOnly(let title):
-                HStack(spacing: 8) {
-                    Text(CatalogPlayer.canPress ? "Opened \(title) in Music" : "Opened in Music. To play from here, allow Accessibility")
-                        .foregroundStyle(Palette.text2)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                    if !CatalogPlayer.canPress {
-                        Button("Allow") { CatalogPlayer.requestAccess() }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(Palette.text)
-                            .padding(.horizontal, 8)
-                            .frame(height: 18)
-                            .background(Capsule().fill(Palette.button))
-                    }
-                }
+                Text("Opened \(title) in Music")
+                    .foregroundStyle(Palette.text2)
+                    .truncationMode(.tail)
             }
         }
         .font(.app(10.5))

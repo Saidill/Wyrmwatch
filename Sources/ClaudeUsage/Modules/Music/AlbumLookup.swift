@@ -74,7 +74,7 @@ final class AlbumLookup: ObservableObject {
         state = .idle
     }
 
-    /// Plays a catalogue track in Music.app (the library copy, or the catalogue song via its Play button).
+    /// Plays a catalogue track's library copy, or else opens its page in Music.app.
     func open(_ track: AlbumTrack, artist: String) {
         AppModels.music.player.play(title: track.title, artist: artist, url: track.url)
     }
