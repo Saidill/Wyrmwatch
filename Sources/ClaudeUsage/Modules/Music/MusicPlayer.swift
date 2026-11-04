@@ -163,7 +163,8 @@ final class CatalogPlayer: ObservableObject {
 /// - Only Music.app: every call starts from the running process with bundle ID `com.apple.Music`, checked again
 ///   before use. No other application is ever looked at.
 /// - Only reading what's needed to recognise the clicked song's Play button: the role, title and description of
-///   buttons, rows, cells and plain text. Field values (such as Music's search text) are never read.
+///   buttons, rows, cells and plain text, plus the visible text of static labels. Values of fields (such as
+///   Music's search text) are never read.
 /// - Only pressing buttons whose label is "Play"; nothing else (rows, menus, fields) is ever pressed, and at most
 ///   one press per click.
 /// - Only the Play button next to the exact title of the song that was clicked; never a lone or unrelated one.
@@ -189,10 +190,12 @@ enum MusicUI {
 
     private static func role(_ element: AXUIElement) -> String { (copy(element, kAXRoleAttribute) as? String) ?? "" }
 
-    /// Title and description only (never AXValue, which would include text typed into fields).
+    /// Title and description; for static text (a label shown on screen) also its value, which is where macOS
+    /// keeps the visible text. Values of anything else, such as text fields and search boxes, are never read.
     private static func label(_ element: AXUIElement) -> String {
-        [kAXTitleAttribute, kAXDescriptionAttribute]
-            .compactMap { copy(element, $0) as? String }.filter { !$0.isEmpty }.joined(separator: " ")
+        var names = [kAXTitleAttribute, kAXDescriptionAttribute]
+        if role(element) == kAXStaticTextRole { names.append(kAXValueAttribute) }
+        return names.compactMap { copy(element, $0) as? String }.filter { !$0.isEmpty }.joined(separator: " ")
     }
 
     private static func children(_ element: AXUIElement) -> [AXUIElement] {
@@ -253,6 +256,20 @@ enum MusicUI {
     static func isSameWindow(_ a: AXUIElement?, _ b: AXUIElement?) -> Bool {
         guard let a, let b else { return false }
         return CFEqual(a, b)
+    }
+
+    /// TEMPORARY (one-time inspection agreed with the user; remove after the test): the roles and visible labels
+    /// in Music's main window, printed to standard output only. Never written to a file by the app.
+    static func inspectionLines(limit: Int = 700) -> [String] {
+        guard let window = mainWindow() else { return ["no Music window"] }
+        var out: [String] = []
+        var frontier: [(AXUIElement, Int)] = [(window, 0)]
+        while !frontier.isEmpty, out.count < limit {
+            let (element, depth) = frontier.removeFirst()
+            out.append(String(repeating: "  ", count: depth) + role(element) + "  " + label(element))
+            frontier.insert(contentsOf: children(element).map { ($0, depth + 1) }, at: 0)
+        }
+        return out
     }
 
     private static func descendants(_ element: AXUIElement, limit: Int = 200) -> [AXUIElement] {

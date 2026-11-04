@@ -39,6 +39,11 @@ enum Diagnose {
 
         var lines: [String] = []
         lines.append("accessibility allowed: \(CatalogPlayer.canPress)")
+        // TEMPORARY one-time inspection (agreed with the user): printed to standard output only, no file.
+        if CommandLine.arguments.contains("--inspect-music") {
+            print(MusicUI.inspectionLines().joined(separator: "\n"))
+            fflush(stdout)
+        }
         // --play-test <title>|<artist>|<link>: plays one catalogue song the way a click in the list does.
         if let i = CommandLine.arguments.firstIndex(of: "--play-test"), CommandLine.arguments.count > i + 1 {
             let parts = CommandLine.arguments[i + 1].components(separatedBy: "|")
