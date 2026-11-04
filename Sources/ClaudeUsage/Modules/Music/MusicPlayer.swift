@@ -220,7 +220,8 @@ enum MusicUI {
 
     /// Presses the Play button that belongs to `title`, and only that one: it looks for elements whose label is
     /// exactly the song title (ignoring case and extras such as "(Remastered)"), then for a Play button in the same
-    /// block as that title (at most four levels up). If none is found nothing is pressed.
+    /// block as that title (at most four levels up, and never beyond the song's own row). If none is found nothing
+    /// is pressed.
     static func pressPlay(forSong title: String) -> Bool {
         let base = AlbumLookup.plain(title)
         guard !base.isEmpty else { return false }
@@ -232,6 +233,8 @@ enum MusicUI {
                 if let play = ([block] + descendants(block)).first(where: isPlayButton) {
                     return AXUIElementPerformAction(play, kAXPressAction as CFString) == .success
                 }
+                // A song's row is its boundary: never climb into the table, where other songs' buttons live.
+                if [kAXRowRole, "AXCell"].contains(role(block)) { break }
                 guard let parent = copy(block, kAXParentAttribute), CFGetTypeID(parent) == AXUIElementGetTypeID(),
                       role(parent as! AXUIElement) != kAXWindowRole else { break }
                 block = parent as! AXUIElement
