@@ -131,60 +131,81 @@ final class CatalogPlayer: ObservableObject {
     }
 }
 
-/// Reads and presses Music.app's interface through the Accessibility API.
+/// Finds and presses Music.app's Play button through the Accessibility API — and nothing else.
+///
+/// Scope, on purpose:
+/// - Only Music.app: every call starts from the running process with bundle ID `com.apple.Music`, checked again
+///   before use. No other application is ever looked at.
+/// - Only reading what's needed to recognise the clicked song's Play button: the role, title and description of
+///   buttons, rows, cells and plain text. Field values (such as Music's search text) are never read.
+/// - Only pressing buttons whose label is "Play"; nothing else (rows, menus, fields) is ever pressed.
+/// - Nothing read here is stored, logged or sent anywhere; it lives in memory for the length of one search.
 @MainActor
 enum MusicUI {
-    private static var app: AXUIElement? {
-        NSRunningApplication.runningApplications(withBundleIdentifier: MusicBridge.bundleID).first
-            .map { AXUIElementCreateApplication($0.processIdentifier) }
+    /// Music.app's accessibility element, or nil when it isn't running (or isn't really Music).
+    private static var music: AXUIElement? {
+        guard let process = NSRunningApplication.runningApplications(withBundleIdentifier: MusicBridge.bundleID).first,
+              process.bundleIdentifier == MusicBridge.bundleID else { return nil }
+        return AXUIElementCreateApplication(process.processIdentifier)
     }
 
-    private static func attribute(_ element: AXUIElement, _ name: String) -> AnyObject? {
+    /// The only roles looked at. Everything else (fields, menus, images…) is skipped without being read.
+    private static let readableRoles: Set<String> = [kAXWindowRole, kAXGroupRole, kAXScrollAreaRole, kAXTableRole, kAXOutlineRole,
+                                                      kAXRowRole, "AXCell", kAXButtonRole, kAXStaticTextRole, kAXListRole,
+                                                      "AXCollection", "AXSection", kAXSplitGroupRole]
+
+    private static func copy(_ element: AXUIElement, _ name: String) -> AnyObject? {
         var value: AnyObject?
         return AXUIElementCopyAttributeValue(element, name as CFString, &value) == .success ? value : nil
     }
 
-    private static func string(_ element: AXUIElement, _ name: String) -> String {
-        (attribute(element, name) as? String) ?? ""
+    private static func role(_ element: AXUIElement) -> String { (copy(element, kAXRoleAttribute) as? String) ?? "" }
+
+    /// Title and description only (never AXValue, which would include text typed into fields).
+    private static func label(_ element: AXUIElement) -> String {
+        [kAXTitleAttribute, kAXDescriptionAttribute]
+            .compactMap { copy(element, $0) as? String }.filter { !$0.isEmpty }.joined(separator: " ")
     }
 
     private static func children(_ element: AXUIElement) -> [AXUIElement] {
-        (attribute(element, kAXChildrenAttribute) as? [AXUIElement]) ?? []
+        ((copy(element, kAXChildrenAttribute) as? [AXUIElement]) ?? []).filter { readableRoles.contains(role($0)) }
     }
 
-    /// Every element of Music's windows, breadth first, up to `limit`.
-    private static func walk(limit: Int = 4000) -> [(element: AXUIElement, depth: Int)] {
-        guard let app else { return [] }
-        var out: [(AXUIElement, Int)] = []
-        var frontier = ((attribute(app, kAXWindowsAttribute) as? [AXUIElement]) ?? []).map { ($0, 0) }
+    /// Music's windows and their readable elements, breadth first, up to `limit`.
+    private static func walk(limit: Int = 4000) -> [AXUIElement] {
+        guard let music else { return [] }
+        var out: [AXUIElement] = []
+        var frontier = (copy(music, kAXWindowsAttribute) as? [AXUIElement]) ?? []
         while !frontier.isEmpty, out.count < limit {
-            let (element, depth) = frontier.removeFirst()
-            out.append((element, depth))
-            if depth < 30 { frontier.append(contentsOf: children(element).map { ($0, depth + 1) }) }
+            let element = frontier.removeFirst()
+            out.append(element)
+            frontier.append(contentsOf: children(element))
         }
         return out
     }
 
-    /// The text of an element: its title, description, value or help.
-    private static func label(_ element: AXUIElement) -> String {
-        [kAXTitleAttribute, kAXDescriptionAttribute, kAXValueAttribute, kAXHelpAttribute]
-            .map { string(element, $0) }.filter { !$0.isEmpty }.joined(separator: " / ")
+    private static func isPlayButton(_ element: AXUIElement) -> Bool {
+        guard role(element) == kAXButtonRole else { return false }
+        let text = label(element).lowercased()
+        return text == "play" || text.hasPrefix("play ")
     }
 
-    /// Presses the Play control that belongs to `title`: a row naming the song with a play button in it,
-    /// or else a lone "Play" button on a single song's page. Returns whether something was pressed.
+    /// Presses the Play button that belongs to `title`: one inside the row or cell naming the song, or else the
+    /// single Play button on that song's own page. Returns whether a Play button was pressed.
     static func pressPlay(forSong title: String) -> Bool {
         let base = AlbumLookup.plain(title)
-        let all = walk()
-        // A row or cell that mentions the song, with a play button inside.
-        for (element, _) in all where AlbumLookup.plain(label(element)).contains(base) {
-            for child in descendants(element) where isPlayButton(child) {
-                if AXUIElementPerformAction(child, kAXPressAction as CFString) == .success { return true }
-            }
-            // The row itself may play when pressed (double-click equivalent on track rows).
-            if string(element, kAXRoleAttribute) == kAXRowRole as String || string(element, kAXRoleAttribute) == "AXCell" {
-                if AXUIElementPerformAction(element, kAXPressAction as CFString) == .success { return true }
-            }
+        let elements = walk()
+        // 1. A row or cell that names the song, with a Play button inside it.
+        for element in elements where [kAXRowRole, "AXCell"].contains(role(element)) {
+            let inside = descendants(element)
+            guard inside.contains(where: { AlbumLookup.plain(label($0)).contains(base) }) || AlbumLookup.plain(label(element)).contains(base),
+                  let play = inside.first(where: isPlayButton) else { continue }
+            return AXUIElementPerformAction(play, kAXPressAction as CFString) == .success
+        }
+        // 2. A song's own page: exactly one Play button in the window.
+        let plays = elements.filter(isPlayButton)
+        if plays.count == 1 {
+            return AXUIElementPerformAction(plays[0], kAXPressAction as CFString) == .success
         }
         return false
     }
@@ -200,16 +221,9 @@ enum MusicUI {
         return out
     }
 
-    private static func isPlayButton(_ element: AXUIElement) -> Bool {
-        guard string(element, kAXRoleAttribute) == kAXButtonRole as String else { return false }
-        let text = label(element).lowercased()
-        return text == "play" || text.hasPrefix("play ") || text.contains("/ play") || text.hasPrefix("play /")
-    }
-
-    /// Diagnose: a readable outline of Music's interface (roles and labels).
-    static func dump(limit: Int = 2500) -> String {
-        walk(limit: limit).map { element, depth in
-            String(repeating: "  ", count: depth) + string(element, kAXRoleAttribute) + "  " + label(element)
-        }.joined(separator: "\n")
+    /// Diagnose only (`--diagnose --ui-dump`, run by hand): the labels of Music's buttons, written to a local file.
+    /// No other text is included.
+    static func dump() -> String {
+        walk().filter { role($0) == kAXButtonRole }.map { "button  " + label($0) }.joined(separator: "\n")
     }
 }
