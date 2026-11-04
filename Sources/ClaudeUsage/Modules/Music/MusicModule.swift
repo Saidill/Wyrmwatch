@@ -10,6 +10,8 @@ final class MusicModule: NotchModule {
     /// For a streamed song's song list: its album, or the artist's top songs.
     let albums: AlbumLookup
     let topSongs: AlbumLookup
+    /// Plays songs picked from those lists.
+    let player = CatalogPlayer()
     let pops: AsyncStream<NotchPop>
     private let popSink: AsyncStream<NotchPop>.Continuation
     private var subscriptions: Set<AnyCancellable> = []

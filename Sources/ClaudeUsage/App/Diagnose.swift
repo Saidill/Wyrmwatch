@@ -38,6 +38,26 @@ enum Diagnose {
         }
 
         var lines: [String] = []
+        // --ui-dump: Music's interface outline next to the report (to find its Play buttons).
+        if CommandLine.arguments.contains("--ui-dump") {
+            try? MusicUI.dump().write(to: out.appendingPathExtension("ui.txt"), atomically: true, encoding: .utf8)
+            lines.append("accessibility allowed: \(CatalogPlayer.canPress)")
+        }
+        // --play-test <title>|<artist>|<link>: plays one catalogue song the way a click in the list does.
+        if let i = CommandLine.arguments.firstIndex(of: "--play-test"), CommandLine.arguments.count > i + 1 {
+            let parts = CommandLine.arguments[i + 1].components(separatedBy: "|")
+            let player = AppModels.music.player
+            player.play(title: parts[0], artist: parts.count > 1 ? parts[1] : "", url: parts.count > 2 ? URL(string: parts[2]) : nil)
+            for _ in 0..<40 {
+                try? await Task.sleep(for: .milliseconds(250))
+                if case .working = player.outcome { continue }
+                break
+            }
+            try? await Task.sleep(for: .seconds(1.5))
+            music.refreshAll()
+            try? await Task.sleep(for: .seconds(1))
+            lines.append("play test: \(player.outcome); now \(music.isPlaying ? "playing" : "not playing") \(music.track?.title ?? "-")")
+        }
         lines.append("music running: \(MusicBridge.isRunning)")
         lines.append("music permission denied: \(music.permissionDenied)")
         lines.append("track: \(music.track.map { "\($0.title) — \($0.artist) [\($0.id)] \(Int($0.duration))s" } ?? "none")")

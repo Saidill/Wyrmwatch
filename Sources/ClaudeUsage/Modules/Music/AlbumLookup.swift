@@ -74,11 +74,9 @@ final class AlbumLookup: ObservableObject {
         state = .idle
     }
 
-    /// Opens a catalogue track in Music.app.
-    func open(_ track: AlbumTrack) {
-        guard let url = track.url,
-              let music = NSWorkspace.shared.urlForApplication(withBundleIdentifier: MusicBridge.bundleID) else { return }
-        NSWorkspace.shared.open([url], withApplicationAt: music, configuration: NSWorkspace.OpenConfiguration())
+    /// Plays a catalogue track in Music.app (the library copy, or the catalogue song via its Play button).
+    func open(_ track: AlbumTrack, artist: String) {
+        AppModels.music.player.play(title: track.title, artist: artist, url: track.url)
     }
 
     /// Self-test: shows a made-up album without going online.
