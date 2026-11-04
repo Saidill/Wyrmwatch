@@ -27,3 +27,21 @@
 - Semua animasi memakai token di `Motion` (`Views/Theme.swift`), jangan membuat kurva baru.
 - Window notch tidak boleh di-resize. Yang dianimasikan hanya shape di dalamnya.
 - Animasi berulang wajib berhenti saat notch tertutup atau tidak terlihat.
+
+## Cara kerja per fitur
+
+1. Sebelum menulis kode untuk fitur baru, kirim dulu rencana singkat:
+   - apakah bisa dengan API publik macOS, dan seberapa stabil
+   - izin sistem apa yang dibutuhkan (Accessibility, Automation, dll)
+   - risiko dan batasan, plus alternatif yang lebih sederhana
+   Tunggu persetujuan sebelum mulai coding.
+2. Hindari Accessibility/UI scripting ke app lain kecuali disetujui eksplisit.
+   Utamakan AppleScript, notifikasi sistem, atau API resmi.
+3. Aturan keamanan tetap untuk semua fitur yang menyentuh app lain:
+   - hanya berinteraksi dengan app target (cek bundle ID)
+   - tidak membaca isi text field / search field
+   - berhenti seketika kalau konteks berubah (klik lain, window berubah)
+   - tidak menyimpan data Accessibility ke file atau log
+   - tidak ada fallback yang menekan tombol "kira-kira"
+4. Satu fitur selesai (build + self-test lulus + dicek manual) baru lanjut fitur lain.
+5. Jangan install build baru di tengah pengujian yang butuh izin sistem.

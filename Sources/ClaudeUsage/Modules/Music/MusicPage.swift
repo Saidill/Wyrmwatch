@@ -141,6 +141,7 @@ private struct StreamList: View {
             .id(context)
             .transition(.opacity.animation(Motion.page))
             .probe("music.album")
+            PlayStatus(player: AppModels.music.player)
         }
         .onAppear(perform: fetch)
         .onChange(of: context) { _, _ in fetch() }
@@ -164,8 +165,10 @@ private struct StreamList: View {
                 ForEach(Array(bridge.history.enumerated()), id: \.offset) { i, song in
                     SongRow(item: PlaylistTrack(index: i + 1, title: song.artist.isEmpty ? song.title : "\(song.title) — \(song.artist)",
                                                 artist: "", duration: song.duration),
-                            current: i == 0) {}
-                        .help("Played this session")
+                            current: i == 0) {
+                        if i > 0 { AppModels.music.player.play(title: song.title, artist: song.artist, url: nil) }
+                    }
+                    .help(i == 0 ? "Playing now" : "Play again")
                 }
             }
         }
@@ -193,7 +196,9 @@ private struct CatalogList: View {
                         LazyVStack(alignment: .leading, spacing: 0) {
                             ForEach(tracks) { track in
                                 SongRow(item: PlaylistTrack(index: track.number, title: track.title, artist: "", duration: track.duration),
-                                        current: Self.matches(track.title, bridge.track?.title ?? "")) { lookup.open(track) }
+                                        current: Self.matches(track.title, bridge.track?.title ?? "")) {
+                                    lookup.open(track, artist: bridge.track?.artist ?? "")
+                                }
                                     .id(track.number)
                             }
                         }
@@ -236,5 +241,31 @@ private struct CatalogList: View {
     /// The same song, ignoring case and bracketed extras such as "(Remastered)".
     static func matches(_ a: String, _ b: String) -> Bool {
         !a.isEmpty && AlbumLookup.plain(a) == AlbumLookup.plain(b)
+    }
+}
+
+/// One quiet line under the list after a song is picked: playing (library songs), or opened in Music.
+private struct PlayStatus: View {
+    @ObservedObject var player: CatalogPlayer
+
+    var body: some View {
+        Group {
+            switch player.outcome {
+            case .idle:
+                EmptyView()
+            case .working(let title):
+                Text("Starting \(title)…").foregroundStyle(Palette.text2)
+            case .played(let title):
+                Text("Playing \(title)").foregroundStyle(Palette.text2)
+            case .openedOnly(let title):
+                Text("Opened \(title) in Music")
+                    .foregroundStyle(Palette.text2)
+                    .truncationMode(.tail)
+            }
+        }
+        .font(.app(10.5))
+        .lineLimit(1)
+        .padding(.horizontal, 8)
+        .animation(Motion.page, value: player.outcome)
     }
 }

@@ -246,3 +246,11 @@ Hasil (sesi Claude ini aktif selama pengukuran): closed ±0,1–1%, live 0,9–1
 - Ringan: riwayat diperbarui hanya saat ganti lagu, dan hanya daftar yang tampil yang diambil, di latar, dengan cache per album atau artis. Loading memakai titik Core Animation. Tepi daftar diberi fade statis.
 - Self-test: aturan tebakan (4 kasus), Top songs tampil setelah lagu artis yang sama dari album lain, dan daftar tidak menimpa cover.
 - Cek manual: putar Top Songs seorang artis di Apple Music, lalu buka tab Music setelah lagu kedua (tebakan butuh satu lagu sebelumnya).
+
+## Memutar lagu dari daftar katalog (`fix/play-from-list`)
+
+- Investigasi: lagu playlist adalah objek track milik Music.app (`play track N of current playlist`). Album, Top songs, dan Recent berasal dari iTunes Search API dan hanya berupa ID katalog plus link. Kamus AppleScript Music tidak punya properti ID katalog, dan `play` hanya menerima track atau file. Lima variasi link `music://` / `itmss://` hanya membuka halaman. `SystemMusicPlayer` (MusicKit) ditandai `@available(macOS, unavailable)`, `MPMusicPlayerController` ditandai `API_UNAVAILABLE(macos)`, dan menelusuri antrean dengan `next track`/`previous track` tidak andal untuk stream.
+- Keputusan akhir pengguna: **lagu di library** diputar langsung lewat AppleScript (diuji: "Multo"), dan **lagu katalog** hanya dibuka halamannya di Music tanpa menekan apa pun. Lagu dari Recent dicari dulu link katalognya. Baris status di bawah daftar: "Playing …" atau "Opened … in Music".
+- Fitur Accessibility (menekan tombol Play di Music) sempat dibuat dan diperketat, lalu **dihapus seluruhnya**: `MusicUI`, penekanan tombol, `--inspect-music`, `--play-test`, dan teks permintaan izin. Tidak ada sertifikat signing yang dibuat.
+- Cek manual: hapus ClaudeUsage dari System Settings → Privacy & Security → Accessibility (izin itu tidak dipakai lagi).
+- Masih terbuka: daftar Top songs dibatasi 15 lagu (data tersedia ±30 dari 40 hasil), dan isinya peringkat pencarian Apple, bukan daftar Top Songs Apple Music yang persis.
