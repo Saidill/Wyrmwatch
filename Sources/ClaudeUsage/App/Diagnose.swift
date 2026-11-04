@@ -38,11 +38,7 @@ enum Diagnose {
         }
 
         var lines: [String] = []
-        // --ui-dump: Music's interface outline next to the report (to find its Play buttons).
-        if CommandLine.arguments.contains("--ui-dump") {
-            try? MusicUI.dump().write(to: out.appendingPathExtension("ui.txt"), atomically: true, encoding: .utf8)
-            lines.append("accessibility allowed: \(CatalogPlayer.canPress)")
-        }
+        lines.append("accessibility allowed: \(CatalogPlayer.canPress)")
         // --play-test <title>|<artist>|<link>: plays one catalogue song the way a click in the list does.
         if let i = CommandLine.arguments.firstIndex(of: "--play-test"), CommandLine.arguments.count > i + 1 {
             let parts = CommandLine.arguments[i + 1].components(separatedBy: "|")

@@ -17,6 +17,8 @@ final class CatalogPlayer: ObservableObject {
 
     @Published private(set) var outcome: Outcome = .idle
     private let queue = DispatchQueue(label: "music.catalog-player", qos: .userInitiated)
+    /// Bumped on every click; a search still running for an older click stops at once.
+    private var generation = 0
     private var clearTask: Task<Void, Never>?
 
     /// Whether this app may press buttons in other apps.
@@ -30,6 +32,7 @@ final class CatalogPlayer: ObservableObject {
     }
 
     func play(title: String, artist: String, url: URL?) {
+        generation += 1
         outcome = .working(title)
         let base = AlbumLookup.plain(title)
         let script = Self.libraryScript(title: base, artist: artist)
@@ -100,6 +103,9 @@ final class CatalogPlayer: ObservableObject {
             finish(.openedOnly(title))
             return
         }
+        let mine = generation
+        let bridge = AppModels.music.bridge
+        let songBefore = bridge.track?.id
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = false
         NSWorkspace.shared.open([url], withApplicationAt: music, configuration: configuration)
@@ -107,17 +113,37 @@ final class CatalogPlayer: ObservableObject {
             finish(.openedOnly(title))
             return
         }
-        // Give Music a moment to show the song, then press its Play button (retrying while the page loads).
+        // Give Music a moment to show the song, then press that song's Play button, retrying while the page loads.
+        // Stops at once if another song is clicked, Music closes or changes window, or something else starts playing.
         Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(350))
+            let window = MusicUI.mainWindow()
             for _ in 0..<12 {
-                try? await Task.sleep(for: .milliseconds(350))
-                if MusicUI.pressPlay(forSong: title) {
-                    self?.finish(.played(title))
+                guard let self, self.generation == mine, MusicBridge.isRunning,
+                      MusicUI.isSameWindow(window, MusicUI.mainWindow()),
+                      bridge.track?.id == songBefore else {
+                    self?.finishIfCurrent(mine, .openedOnly(title))
                     return
                 }
+                if MusicUI.pressPlay(forSong: title) {
+                    // Check that the song that started is the one picked; never press anything again either way.
+                    try? await Task.sleep(for: .milliseconds(1200))
+                    bridge.refreshAll()
+                    try? await Task.sleep(for: .milliseconds(400))
+                    let right = AlbumLookup.plain(title) == AlbumLookup.plain(bridge.track?.title ?? "")
+                    self.finishIfCurrent(mine, right ? .played(title) : .openedOnly(title))
+                    return
+                }
+                try? await Task.sleep(for: .milliseconds(350))
             }
-            self?.finish(.openedOnly(title))
+            self?.finishIfCurrent(mine, .openedOnly(title))
         }
+    }
+
+    /// Reports the result only if no newer click has replaced this one.
+    private func finishIfCurrent(_ mine: Int, _ result: Outcome) {
+        guard generation == mine else { return }
+        finish(result)
     }
 
     private func finish(_ result: Outcome) {
@@ -138,8 +164,10 @@ final class CatalogPlayer: ObservableObject {
 ///   before use. No other application is ever looked at.
 /// - Only reading what's needed to recognise the clicked song's Play button: the role, title and description of
 ///   buttons, rows, cells and plain text. Field values (such as Music's search text) are never read.
-/// - Only pressing buttons whose label is "Play"; nothing else (rows, menus, fields) is ever pressed.
-/// - Nothing read here is stored, logged or sent anywhere; it lives in memory for the length of one search.
+/// - Only pressing buttons whose label is "Play"; nothing else (rows, menus, fields) is ever pressed, and at most
+///   one press per click.
+/// - Only the Play button next to the exact title of the song that was clicked; never a lone or unrelated one.
+/// - Nothing read here is stored, logged, written to a file or sent anywhere; it lives in memory for one search.
 @MainActor
 enum MusicUI {
     /// Music.app's accessibility element, or nil when it isn't running (or isn't really Music).
@@ -190,24 +218,38 @@ enum MusicUI {
         return text == "play" || text.hasPrefix("play ")
     }
 
-    /// Presses the Play button that belongs to `title`: one inside the row or cell naming the song, or else the
-    /// single Play button on that song's own page. Returns whether a Play button was pressed.
+    /// Presses the Play button that belongs to `title`, and only that one: it looks for elements whose label is
+    /// exactly the song title (ignoring case and extras such as "(Remastered)"), then for a Play button in the same
+    /// block as that title (at most four levels up). If none is found nothing is pressed.
     static func pressPlay(forSong title: String) -> Bool {
         let base = AlbumLookup.plain(title)
-        let elements = walk()
-        // 1. A row or cell that names the song, with a Play button inside it.
-        for element in elements where [kAXRowRole, "AXCell"].contains(role(element)) {
-            let inside = descendants(element)
-            guard inside.contains(where: { AlbumLookup.plain(label($0)).contains(base) }) || AlbumLookup.plain(label(element)).contains(base),
-                  let play = inside.first(where: isPlayButton) else { continue }
-            return AXUIElementPerformAction(play, kAXPressAction as CFString) == .success
-        }
-        // 2. A song's own page: exactly one Play button in the window.
-        let plays = elements.filter(isPlayButton)
-        if plays.count == 1 {
-            return AXUIElementPerformAction(plays[0], kAXPressAction as CFString) == .success
+        guard !base.isEmpty else { return false }
+        let titles = walk().filter { [kAXStaticTextRole, kAXRowRole, "AXCell", kAXButtonRole].contains(role($0))
+            && AlbumLookup.plain(label($0)) == base }
+        for element in titles {
+            var block = element
+            for _ in 0..<4 {
+                if let play = ([block] + descendants(block)).first(where: isPlayButton) {
+                    return AXUIElementPerformAction(play, kAXPressAction as CFString) == .success
+                }
+                guard let parent = copy(block, kAXParentAttribute), CFGetTypeID(parent) == AXUIElementGetTypeID(),
+                      role(parent as! AXUIElement) != kAXWindowRole else { break }
+                block = parent as! AXUIElement
+            }
         }
         return false
+    }
+
+    /// Music's main window, to notice when it changes or closes during a search.
+    static func mainWindow() -> AXUIElement? {
+        guard let music, let window = copy(music, kAXMainWindowAttribute),
+              CFGetTypeID(window) == AXUIElementGetTypeID() else { return nil }
+        return (window as! AXUIElement)
+    }
+
+    static func isSameWindow(_ a: AXUIElement?, _ b: AXUIElement?) -> Bool {
+        guard let a, let b else { return false }
+        return CFEqual(a, b)
     }
 
     private static func descendants(_ element: AXUIElement, limit: Int = 200) -> [AXUIElement] {
@@ -219,11 +261,5 @@ enum MusicUI {
             frontier.append(contentsOf: children(next))
         }
         return out
-    }
-
-    /// Diagnose only (`--diagnose --ui-dump`, run by hand): the labels of Music's buttons, written to a local file.
-    /// No other text is included.
-    static func dump() -> String {
-        walk().filter { role($0) == kAXButtonRole }.map { "button  " + label($0) }.joined(separator: "\n")
     }
 }
