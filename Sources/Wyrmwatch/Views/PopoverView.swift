@@ -184,11 +184,7 @@ struct PopoverView: View {
         return HStack(spacing: 8) {
             ZStack {
                 Radius.shape(Radius.button).fill(Palette.card)
-                if WyrmSlot.available {
-                    WyrmSlot(state: WyrmState.current(sessions: sessions, idleFor: 0), look: nil, size: 30)
-                } else {
-                    ClaudeStatusDot(working: sessions.busyCount > 0, waiting: sessions.waitingCount > 0, diameter: 8)
-                }
+                WyrmSlot(state: WyrmState.current(sessions: sessions, idleFor: ExpandedPanel.userIdleTime), look: nil, size: 28)
             }
             .frame(width: 38, height: 38)
 

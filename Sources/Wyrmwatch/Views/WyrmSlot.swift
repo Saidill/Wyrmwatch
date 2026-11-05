@@ -18,8 +18,8 @@ enum WyrmState: String, CaseIterable {
 }
 
 /// Where the mascot appears: the gap in the header beside the camera, and the left of the live notch.
-/// It plays `wyrm.riv` (from the app's Resources) with Rive when that file is there, and shows nothing
-/// otherwise — the app never draws a mascot of its own.
+/// It plays `wyrm.riv` (from the app's Resources) with Rive when that file is there; until then it shows the
+/// temporary layered mascot (`WyrmArt`, from the MIT-licensed Tabler dragon icon).
 struct WyrmSlot: View {
     var state: WyrmState
     /// Where the pointer is, roughly −1…1 on each axis, for the mascot to look at (nil: straight ahead).
@@ -27,18 +27,25 @@ struct WyrmSlot: View {
     var size: CGFloat = 26
     @Environment(\.animationsPaused) private var paused
 
-    /// Whether a mascot file ships with the app.
+    /// Whether a Rive mascot file ships with the app.
     static let fileURL = Bundle.main.url(forResource: "wyrm", withExtension: "riv")
     static var available: Bool { fileURL != nil }
 
     var body: some View {
-        if Self.available, state != .hidden {
-            WyrmRive(state: state, look: look, running: !paused)
-                .frame(width: size, height: size)
-                .allowsHitTesting(false)
-                .accessibilityLabel("Wyrm, \(state.rawValue)")
-        } else {
+        if state == .hidden {
             Color.clear.frame(width: 0, height: 0)
+        } else {
+            Group {
+                if Self.available {
+                    WyrmRive(state: state, look: look, running: !paused)
+                } else {
+                    // The temporary mascot, until a wyrm.riv ships.
+                    WyrmArt(state: state, look: look, running: !paused)
+                }
+            }
+            .frame(width: size, height: size)
+            .allowsHitTesting(false)
+            .accessibilityLabel("Wyrm, \(state.rawValue)")
         }
     }
 }

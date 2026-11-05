@@ -62,12 +62,10 @@ final class PomodoroModule: NotchModule {
 /// Left of the camera: the dragon keeping watch while focusing, coiled asleep while resting.
 private struct PomodoroLiveDragon: View {
     @ObservedObject var timer: PomodoroTimer
+    @ObservedObject var sessions = AppModels.sessions
 
     var body: some View {
-        FocusIcon()
-            .stroke(style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
-            .foregroundStyle(Palette.text2)
-            .frame(width: 13, height: 13)
+        WyrmSlot(state: WyrmState.current(sessions: sessions, idleFor: 0), look: nil, size: 24)
             .opacity(timer.isPaused ? 0.6 : 1)
     }
 }

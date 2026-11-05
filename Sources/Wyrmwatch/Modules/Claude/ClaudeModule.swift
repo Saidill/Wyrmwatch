@@ -63,12 +63,7 @@ private struct ClaudeLiveDragon: View {
     @ObservedObject var sessions: SessionMonitor
 
     var body: some View {
-        // The mascot when there is one; otherwise just the status dot.
-        if WyrmSlot.available {
-            WyrmSlot(state: WyrmState.current(sessions: sessions, idleFor: 0), look: nil, size: 22)
-        } else {
-            ClaudeStatusDot(working: sessions.busyCount > 0, waiting: sessions.waitingCount > 0, diameter: 7)
-        }
+        WyrmSlot(state: WyrmState.current(sessions: sessions, idleFor: ExpandedPanel.userIdleTime), look: nil, size: 24)
     }
 }
 
