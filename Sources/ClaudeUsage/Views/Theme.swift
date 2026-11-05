@@ -213,23 +213,22 @@ struct PillToggle: View {
         HStack(spacing: 2) {
             ForEach(options.indices, id: \.self) { i in
                 Text(options[i])
-                    .font(.app(11, .medium))
-                    .foregroundStyle(selection == i ? Palette.onSilver : Palette.text2)
+                    .font(.app(11.5, .medium))
+                    .foregroundStyle(selection == i ? Palette.text : Palette.text2)
                     .padding(.horizontal, 10)
                     .padding(.vertical, fill ? 6 : 4)
                     .frame(maxWidth: fill ? .infinity : nil)
                     .background {
                         if selection == i {
-                            Capsule().fill(Palette.silverGradient).matchedGeometryEffect(id: "pill", in: ns)
+                            Radius.shape(Radius.tab).fill(Palette.buttonHi).matchedGeometryEffect(id: "pill", in: ns)
                         }
                     }
-                    .contentShape(Capsule())
-                    .onTapGesture { withAnimation(Motion.smooth) { selection = i } }
+                    .contentShape(Rectangle())
+                    .onTapGesture { withAnimation(Motion.quick) { selection = i } }
             }
         }
         .padding(2)
-        .background(Capsule().fill(Palette.glass))
-        .overlay(Capsule().strokeBorder(Palette.rim, lineWidth: 1))
+        .background(Radius.shape(Radius.button).fill(Palette.card))
     }
 }
 
