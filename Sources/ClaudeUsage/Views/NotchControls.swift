@@ -132,3 +132,91 @@ struct SeekRow: View {
         return String(format: "%d:%02d", s / 60, s % 60)
     }
 }
+
+// MARK: - Card controls
+
+/// Buttons shrink a touch (0.96) while pressed; with Reduce Motion they don't move.
+struct Pressable: ButtonStyle {
+    @Environment(\.reduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
+            .animation(Motion.quick, value: configuration.isPressed)
+    }
+}
+
+extension ButtonStyle where Self == Pressable {
+    static var pressable: Pressable { Pressable() }
+}
+
+/// A button inside a card: #2C2C2E (or #3A3A3C when `active`), radius 10. Shows a symbol and/or a title.
+struct CardButton: View {
+    var systemName: String?
+    var title: String?
+    var active = false
+    var height: CGFloat = 30
+    var help: String = ""
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                if let systemName { Image(systemName: systemName).font(.system(size: 12, weight: .semibold)) }
+                if let title { Text(title).font(.app(12, .medium)).lineLimit(1).minimumScaleFactor(0.85) }
+            }
+            .foregroundStyle(Palette.text)
+            .frame(maxWidth: .infinity, minHeight: height, maxHeight: height)
+            .background(Radius.shape(Radius.button).fill(active || hovering ? Palette.buttonHi : Palette.button))
+            .contentShape(Radius.shape(Radius.button))
+        }
+        .buttonStyle(.pressable)
+        .onHover { h in withAnimation(Motion.quick) { hovering = h } }
+        .help(help)
+    }
+}
+
+/// A preset tile (radius 11, 34 pt tall).
+struct PresetButton: View {
+    let title: String
+    var selected = false
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.app(12.5, .medium))
+                .monospacedDigit()
+                .foregroundStyle(Palette.text)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, minHeight: 34, maxHeight: 34)
+                .background(Radius.shape(Radius.preset).fill(selected || hovering ? Palette.buttonHi : Palette.button))
+                .contentShape(Radius.shape(Radius.preset))
+        }
+        .buttonStyle(.pressable)
+        .onHover { h in withAnimation(Motion.quick) { hovering = h } }
+    }
+}
+
+/// Cards come in one after another, 30 ms apart (fade and a 5 pt rise); with Reduce Motion they just appear.
+private struct CardAppear: ViewModifier {
+    let index: Int
+    @State private var shown = false
+    @Environment(\.reduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(shown || reduceMotion ? 1 : 0)
+            .offset(y: shown || reduceMotion ? 0 : 5)
+            .onAppear {
+                guard !reduceMotion else { return }
+                withAnimation(Motion.page.delay(Double(index) * 0.03)) { shown = true }
+            }
+    }
+}
+
+extension View {
+    func cardAppear(_ index: Int) -> some View { modifier(CardAppear(index: index)) }
+}

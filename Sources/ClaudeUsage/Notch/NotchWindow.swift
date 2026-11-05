@@ -99,7 +99,7 @@ struct NotchTarget {
 final class NotchWindowController {
     static let shared = NotchWindowController()
     /// The window never resizes (that's what made things lag); the shape animates inside it.
-    static let windowSize = CGSize(width: 640, height: 330)
+    static let windowSize = CGSize(width: 680, height: 420)
     /// Settings: open when the pointer rests on the notch (otherwise only a click opens it).
     static let openOnHoverKey = "notch.openOnHover"
 
@@ -244,6 +244,14 @@ final class NotchWindowController {
         if let click = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDown, handler: { [weak self] _ in
             MainActor.assumeIsolated { self?.clicked() }
         }) { monitors.append(click) }
+        // A right-click on the notch (open or closed) shows Settings and Quit.
+        if let right = NSEvent.addGlobalMonitorForEvents(matching: .rightMouseDown, handler: { [weak self] _ in
+            MainActor.assumeIsolated { _ = self?.rightClicked() }
+        }) { monitors.append(right) }
+        if let rightInside = NSEvent.addLocalMonitorForEvents(matching: .rightMouseDown, handler: { [weak self] event in
+            let handled: Bool = MainActor.assumeIsolated { self?.rightClicked() ?? false }
+            return handled ? nil : event
+        }) { monitors.append(rightInside) }
         if let local = NSEvent.addLocalMonitorForEvents(matching: mask, handler: { [weak self] event in
             MainActor.assumeIsolated { self?.checkPointer() }
             return event
@@ -315,6 +323,24 @@ final class NotchWindowController {
                 leftAt = now
             }
         }
+    }
+
+    /// Shows the notch menu if the pointer is on a notch; returns whether it did.
+    @discardableResult
+    private func rightClicked() -> Bool {
+        guard !SelfTest.isRequested else { return false }
+        let location = NSEvent.mouseLocation
+        guard panels.contains(where: { activeRect($0.value.panel, $0.value.screen).contains(location) }) else { return false }
+        let menu = NSMenu()
+        let settings = NSMenuItem(title: "Settings…", action: #selector(NotchMenuTarget.openSettings), keyEquivalent: ",")
+        settings.target = NotchMenuTarget.shared
+        menu.addItem(settings)
+        menu.addItem(.separator())
+        let quit = NSMenuItem(title: "Quit \(AppInfo.name)", action: #selector(NotchMenuTarget.quit), keyEquivalent: "q")
+        quit.target = NotchMenuTarget.shared
+        menu.addItem(quit)
+        menu.popUp(positioning: nil, at: location, in: nil)
+        return true
     }
 
     private func clicked() {
@@ -393,5 +419,43 @@ final class NotchWindowController {
             }
         }
         return result
+    }
+}
+
+/// Actions of the notch's right-click menu.
+final class NotchMenuTarget: NSObject {
+    static let shared = NotchMenuTarget()
+    @objc func openSettings() { MainActor.assumeIsolated { SettingsWindow.shared.show() } }
+    @objc func quit() { NSApp.terminate(nil) }
+}
+
+/// Settings in a small window of its own (it is no longer a tab of the notch).
+@MainActor
+final class SettingsWindow {
+    static let shared = SettingsWindow()
+    private var window: NSWindow?
+
+    func show() {
+        let window = self.window ?? make()
+        self.window = window
+        window.center()
+        NSApp.activate()
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    private func make() -> NSWindow {
+        let view = ScrollView(.vertical, showsIndicators: false) { SettingsView().padding(16) }
+            .frame(width: 440, height: 560)
+            .background(Palette.bg)
+            .environmentObject(DisplayModeController.shared)
+            .followsReduceMotion()
+            .preferredColorScheme(.dark)
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 440, height: 560),
+                              styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.title = "\(AppInfo.name) Settings"
+        window.contentView = NSHostingView(rootView: view)
+        window.isReleasedWhenClosed = false
+        window.appearance = NSAppearance(named: .darkAqua)
+        return window
     }
 }

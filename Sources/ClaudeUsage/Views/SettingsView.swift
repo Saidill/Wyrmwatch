@@ -20,7 +20,6 @@ struct SettingsView: View {
     @AppStorage(PomodoroTimer.Keys.musicSync) private var pomodoroMusicSync = false
     @AppStorage(MusicModule.Keys.popOnChange) private var musicPop = true
     @AppStorage(MusicModule.Keys.listOnHover) private var musicListOnHover = true
-    @AppStorage(AlbumLookup.enabledKey) private var albumLookup = true
     @AppStorage(MotionPreference.forceKey) private var forceReduceMotion = false
     @AppStorage(NotchWindowController.openOnHoverKey) private var openOnHover = true
     @AppStorage("settingsTab") private var settingsTab = 0
@@ -44,12 +43,6 @@ struct SettingsView: View {
                 section("Music", symbol: "music.note", color: Palette.silver) {
                     row("Pop up when the song changes") { toggle($musicPop) }
                     row("Show the playlist on hover") { toggle($musicListOnHover) }
-                    row("Find song lists for streamed songs") { toggle($albumLookup) }
-                    Text("For songs streamed from Apple Music, the artist and album name are sent to Apple's public iTunes Search API to show the album or the artist's top songs.")
-                        .font(.app(11))
-                        .foregroundStyle(Palette.text3)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.bottom, 6)
                 }
             case 4:
                 section("When Claude finishes", symbol: "bell.fill", color: Palette.silver) {

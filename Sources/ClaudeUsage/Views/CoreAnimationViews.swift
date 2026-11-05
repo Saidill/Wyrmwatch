@@ -66,227 +66,71 @@ final class VisualizerHost: NSView {
     }
 }
 
-// MARK: - Dragon
+// MARK: - Status dot
 
-/// The dragon with its mood animated by layers: a breath, a pulsing glow, a lit eye, a particle flame, a drifting "z".
-struct LayerDragon: NSViewRepresentable {
-    let mood: DragonMood
-    let size: CGFloat
-    var running: Bool
+/// A small dot that pulses slowly (fades between 45% and 100% over 1.6 s) while `pulsing`.
+struct LayerPulseDot: NSViewRepresentable {
+    var color: NSColor
+    var pulsing: Bool
+    var diameter: CGFloat = 6
 
-    func makeNSView(context: Context) -> DragonHost { DragonHost() }
+    func makeNSView(context: Context) -> PulseDotHost { PulseDotHost(diameter: diameter) }
 
-    func updateNSView(_ view: DragonHost, context: Context) {
-        view.update(mood: mood, size: size, running: running)
+    func updateNSView(_ view: PulseDotHost, context: Context) {
+        view.update(color: color, pulsing: pulsing)
     }
 }
 
-final class DragonHost: NSView {
-    private let glow = CALayer()
-    private let art = CALayer()
-    private let eye = CAGradientLayer()
-    private let flame = CAEmitterLayer()
-    private let snore = CATextLayer()
-    private var state: (DragonMood, CGFloat, Bool)?
+final class PulseDotHost: NSView {
+    private let dot = CALayer()
+    private var pulsing = false
+    private let diameter: CGFloat
 
-    override init(frame: NSRect) {
-        super.init(frame: frame)
+    init(diameter: CGFloat) {
+        self.diameter = diameter
+        super.init(frame: NSRect(x: 0, y: 0, width: diameter, height: diameter))
         wantsLayer = true
-        layer?.isGeometryFlipped = true
-        layer?.masksToBounds = false
-        eye.type = .radial
-        eye.colors = [NSColor(hex: 0xFFE3A3).cgColor, NSColor(hex: 0xFF8A1F).withAlphaComponent(0).cgColor]
-        eye.startPoint = CGPoint(x: 0.5, y: 0.5)
-        eye.endPoint = CGPoint(x: 1, y: 1)
-        snore.string = "z"
-        snore.foregroundColor = NSColor(hex: 0x8D9096).cgColor
-        snore.alignmentMode = .center
-        flame.renderMode = .additive
-        flame.emitterShape = .point
-        [glow, art, eye, flame, snore].forEach { layer?.addSublayer($0) }
+        dot.frame = CGRect(x: 0, y: 0, width: diameter, height: diameter)
+        dot.cornerRadius = diameter / 2
+        layer?.addSublayer(dot)
     }
 
     required init?(coder: NSCoder) { fatalError() }
 
-    override func viewDidChangeBackingProperties() {
-        super.viewDidChangeBackingProperties()
-        state = nil
-        needsLayout = true
-    }
+    override var intrinsicContentSize: NSSize { NSSize(width: diameter, height: diameter) }
 
-    func update(mood: DragonMood, size: CGFloat, running: Bool) {
-        if let state, state == (mood, size, running) { return }
-        state = (mood, size, running)
-        let scale = window?.backingScaleFactor ?? 2
-        [glow, art, eye, flame, snore].forEach { $0.removeAllAnimations(); $0.contentsScale = scale }
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-
-        let images = DragonImages.shared.images(size: size, scale: scale)
-        art.frame = CGRect(x: 0, y: 0, width: size, height: size)
-        art.contents = images.art
-        art.opacity = mood == .sleeping ? 0.55 : 1
-        let spread = size * 0.25
-        glow.frame = art.frame.insetBy(dx: -spread, dy: -spread)
-        glow.contents = images.glow
-        glow.opacity = switch mood {
-        case .working: 0.4
-        case .guarding: 0.35
-        case .happy: 0.5
-        default: 0
+    func update(color: NSColor, pulsing: Bool) {
+        dot.backgroundColor = color.cgColor
+        guard pulsing != self.pulsing else { return }
+        self.pulsing = pulsing
+        guard pulsing else {
+            dot.removeAllAnimations()
+            return
         }
-        eye.bounds = CGRect(x: 0, y: 0, width: size * 0.16, height: size * 0.1)
-        eye.position = CGPoint(x: DragonArt.eye.x * size, y: DragonArt.eye.y * size)
-        eye.opacity = mood == .sleeping ? 0 : (mood == .idle ? 0.55 : 0.95)
-        snore.fontSize = size * 0.22
-        snore.frame = CGRect(x: size * 0.82, y: size * 0.1, width: size * 0.25, height: size * 0.28)
-        snore.opacity = 0
-        flame.emitterPosition = CGPoint(x: DragonArt.mouth.x * size, y: DragonArt.mouth.y * size)
-        flame.frame = CGRect(x: 0, y: 0, width: size, height: size)
-        flame.emitterCells = nil
-        flame.birthRate = 0
-        CATransaction.commit()
-
-        guard running else { return }
-        let now = CACurrentMediaTime()
-        switch mood {
-        case .idle, .sleeping:
-            let breath = CABasicAnimation(keyPath: "transform.scale")
-            breath.fromValue = 1.0
-            breath.toValue = 1.015
-            breath.duration = 1.6
-            breath.autoreverses = true
-            breath.repeatCount = .infinity
-            breath.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            art.add(breath, forKey: "breath")
-            if mood == .sleeping, size >= 24 {
-                let rise = CABasicAnimation(keyPath: "position")
-                rise.fromValue = NSValue(point: CGPoint(x: size * 0.92, y: size * 0.3))
-                rise.toValue = NSValue(point: CGPoint(x: size * 1.02, y: size * 0.05))
-                let fade = CAKeyframeAnimation(keyPath: "opacity")
-                fade.values = [0, 0.8, 0]
-                fade.keyTimes = [0, 0.5, 1]
-                let group = CAAnimationGroup()
-                group.animations = [rise, fade]
-                group.duration = 2.8
-                group.repeatCount = .infinity
-                snore.add(group, forKey: "snore")
-            }
-        case .working:
-            let pulse = CABasicAnimation(keyPath: "opacity")
-            pulse.fromValue = 0.2
-            pulse.toValue = 0.6
-            pulse.duration = 0.8
-            pulse.autoreverses = true
-            pulse.repeatCount = .infinity
-            pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            glow.add(pulse, forKey: "pulse")
-            let eyePulse = pulse.copy() as! CABasicAnimation
-            eyePulse.fromValue = 0.7
-            eyePulse.toValue = 1
-            eye.add(eyePulse, forKey: "pulse")
-        case .happy:
-            flame.emitterCells = Self.flameCells(size: size, image: DragonImages.shared.spark)
-            flame.birthRate = 1
-            // Bursts: on for 1.3 s out of every 2.4 s.
-            let burst = CAKeyframeAnimation(keyPath: "birthRate")
-            burst.values = [0, 1, 1, 0, 0]
-            burst.keyTimes = [0, 0.08, 0.54, 0.62, 1]
-            burst.duration = 2.4
-            burst.repeatCount = .infinity
-            burst.beginTime = now
-            flame.add(burst, forKey: "burst")
-        case .guarding:
-            // Watching: the eye brightens and dims slowly.
-            let watch = CABasicAnimation(keyPath: "opacity")
-            watch.fromValue = 0.6
-            watch.toValue = 1
-            watch.duration = 1.2
-            watch.autoreverses = true
-            watch.repeatCount = .infinity
-            watch.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            eye.add(watch, forKey: "watch")
-        }
-    }
-
-    /// Two particle streams from the mouth: a small white-hot core and a wider orange body fading to red.
-    private static func flameCells(size: CGFloat, image: CGImage?) -> [CAEmitterCell] {
-        func cell(rate: Float, life: Float, speed: CGFloat, scale: CGFloat, grow: CGFloat, color: NSColor, fade: Float) -> CAEmitterCell {
-            let c = CAEmitterCell()
-            c.contents = image
-            c.birthRate = rate
-            c.lifetime = life
-            c.lifetimeRange = life * 0.25
-            c.velocity = speed
-            c.velocityRange = speed * 0.2
-            // Slightly downward, the way a breath leaves an open jaw.
-            c.emissionLongitude = 0.12
-            c.emissionRange = .pi / 18
-            c.scale = scale
-            c.scaleSpeed = grow
-            c.alphaSpeed = fade
-            c.color = color.cgColor
-            return c
-        }
-        let core = cell(rate: 60, life: 0.22, speed: size * 1.1, scale: size / 420, grow: size / 400,
-                        color: NSColor(hex: 0xFFF1C9), fade: -3.5)
-        let body = cell(rate: 55, life: 0.38, speed: size * 1.25, scale: size / 300, grow: size / 180,
-                        color: NSColor(hex: 0xFF8A1F), fade: -2.4)
-        body.greenSpeed = -1.4
-        body.blueSpeed = -0.8
-        return [body, core]
+        let pulse = CABasicAnimation(keyPath: "opacity")
+        pulse.fromValue = 1
+        pulse.toValue = 0.45
+        pulse.duration = 0.8
+        pulse.autoreverses = true
+        pulse.repeatCount = .infinity
+        pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        dot.add(pulse, forKey: "pulse")
     }
 }
 
-/// The tinted dragon and its glow, drawn once per size and screen scale.
-@MainActor
-final class DragonImages {
-    static let shared = DragonImages()
-    private var cache: [String: (art: CGImage?, glow: CGImage?)] = [:]
-    private static let context = CIContext()
+/// Claude's state as a dot: red and pulsing while working, steady white while waiting for you, hidden otherwise.
+struct ClaudeStatusDot: View {
+    var working: Bool
+    var waiting: Bool
+    var diameter: CGFloat = 6
+    @Environment(\.animationsPaused) private var paused
 
-    /// A soft round spark for the flame particles.
-    lazy var spark: CGImage? = {
-        let side = 32
-        guard let ctx = CGContext(data: nil, width: side, height: side, bitsPerComponent: 8, bytesPerRow: 0,
-                                  space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
-              let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
-                                        colors: [NSColor.white.cgColor, NSColor.white.withAlphaComponent(0).cgColor] as CFArray,
-                                        locations: [0, 1]) else { return nil }
-        let c = CGPoint(x: side / 2, y: side / 2)
-        ctx.drawRadialGradient(gradient, startCenter: c, startRadius: 0, endCenter: c, endRadius: CGFloat(side) / 2, options: [])
-        return ctx.makeImage()
-    }()
-
-    func images(size: CGFloat, scale: CGFloat) -> (art: CGImage?, glow: CGImage?) {
-        let key = "\(size)@\(scale)"
-        if let hit = cache[key] { return hit }
-        let px = Int((size * scale).rounded())
-        let art = Self.tinted(px: px)
-        var glow: CGImage?
-        if let art {
-            // The glow is the dragon itself, blurred once, with room around it for the blur to spread.
-            let pad = CGFloat(px) * 0.25
-            let blurred = CIImage(cgImage: art).transformed(by: CGAffineTransform(translationX: pad, y: pad))
-                .applyingGaussianBlur(sigma: Double(px) * 0.06)
-            glow = Self.context.createCGImage(blurred, from: CGRect(x: 0, y: 0, width: CGFloat(px) + pad * 2, height: CGFloat(px) + pad * 2))
+    var body: some View {
+        if working || waiting {
+            LayerPulseDot(color: NSColor(working ? Palette.red : Palette.text), pulsing: working && !paused, diameter: diameter)
+                .frame(width: diameter, height: diameter)
+                .allowsHitTesting(false)
         }
-        cache[key] = (art, glow)
-        return (art, glow)
-    }
-
-    /// The artwork filled with the red gradient.
-    private static func tinted(px: Int) -> CGImage? {
-        guard let ctx = CGContext(data: nil, width: px, height: px, bitsPerComponent: 8, bytesPerRow: 0,
-                                  space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
-              let mask = DragonArt.image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
-        let rect = CGRect(x: 0, y: 0, width: px, height: px)
-        ctx.clip(to: rect, mask: mask)
-        let colors = [NSColor(hex: 0xF0454B), NSColor(hex: 0xC8202C), NSColor(hex: 0x8E1119)].map(\.cgColor) as CFArray
-        if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 0.5, 1]) {
-            ctx.drawLinearGradient(gradient, start: CGPoint(x: 0, y: CGFloat(px)), end: .zero, options: [])
-        }
-        return ctx.makeImage()
     }
 }
 

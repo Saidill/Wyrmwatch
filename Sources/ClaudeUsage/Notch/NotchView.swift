@@ -72,7 +72,8 @@ struct NotchView: View {
                     // The open panel is only built while open: kept hidden, it redrew on every session update
                     // and cost a lot of CPU while closed.
                     if mounted || state == .expanded {
-                        ExpandedPanel(notch: screen.notch, coverSpace: coverSpace) { height in
+                        ExpandedPanel(notch: screen.notch, coverSpace: coverSpace,
+                                      screenFrame: NSScreen.screens.first { $0.displayID == screen.display }?.frame ?? .zero) { height in
                             if abs(height - model.contentHeight) > 0.5 { model.contentHeight = height }
                         }
                             // Eases in a beat after the shape starts opening, settling down from slightly smaller.

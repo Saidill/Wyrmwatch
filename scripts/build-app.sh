@@ -13,10 +13,17 @@ swift build -c release --arch arm64
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$(swift build -c release --arch arm64 --show-bin-path)/ClaudeUsage" "$APP/Contents/MacOS/ClaudeUsage"
+BIN="$(swift build -c release --arch arm64 --show-bin-path)"
+cp "$BIN/ClaudeUsage" "$APP/Contents/MacOS/ClaudeUsage"
+# The Rive runtime (for the mascot) is a framework the binary loads from Contents/Frameworks.
+mkdir -p "$APP/Contents/Frameworks"
+cp -R "$BIN/RiveRuntime.framework" "$APP/Contents/Frameworks/"
+install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/ClaudeUsage" 2>/dev/null || true
+# The mascot itself, when there is one.
+if [[ -f "$ROOT/Resources/wyrm.riv" ]]; then cp "$ROOT/Resources/wyrm.riv" "$APP/Contents/Resources/"; fi
 
 # The icon is the app's own dragon, drawn by the binary; only redraw it when the drawing changes.
-if [[ ! -f "$ICON" || "$ROOT/Sources/ClaudeUsage/Views/Dragon.swift" -nt "$ICON" || "$ROOT/Sources/ClaudeUsage/App/IconRenderer.swift" -nt "$ICON" ]]; then
+if [[ ! -f "$ICON" || "$ROOT/Sources/ClaudeUsage/App/IconRenderer.swift" -nt "$ICON" ]]; then
     SET="$ROOT/.build/AppIcon.iconset"
     rm -rf "$SET" && mkdir -p "$SET"
     "$APP/Contents/MacOS/ClaudeUsage" --render-icon "$ROOT/.build/AppIcon-1024.png"
@@ -50,6 +57,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 </plist>
 PLIST
 
+codesign --force --sign - "$APP/Contents/Frameworks/RiveRuntime.framework"
 codesign --force --sign - "$APP"
 echo "Built $APP"
 
