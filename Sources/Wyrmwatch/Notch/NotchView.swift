@@ -45,6 +45,13 @@ struct NotchView: View {
     @ObservedObject var model: NotchModel
     @ObservedObject var screen: NotchScreen
     @EnvironmentObject var limits: PlanLimitClient
+    @EnvironmentObject var sessions: SessionMonitor
+
+    private var emberMode: EmberMode {
+        if sessions.busyCount > 0 { return .working }
+        if sessions.waitingCount > 0 { return .waiting }
+        return .off
+    }
     @EnvironmentObject var usage: UsageTracker
     @ObservedObject private var motion = MotionPreference.shared
     /// The album cover flies between the live notch and Home.
@@ -103,6 +110,13 @@ struct NotchView: View {
                 }
                 .padding(.horizontal, flare)
                 .frame(width: size.width, height: size.height, alignment: .top)
+                // Ember Edge: Claude's state along the straight part of the bottom edge.
+                .overlay(alignment: .bottom) {
+                    EmberEdge(mode: emberMode, running: state != .closed && !motion.reduce)
+                        .frame(width: max(0, size.width - 2 * flare - 2 * NotchShape.radius(for: state)), height: 1.5)
+                        .allowsHitTesting(false)
+                        .opacity(state == .closed ? 0 : 1)
+                }
                 .clipShape(shape)
             }
             .frame(width: size.width, height: size.height)

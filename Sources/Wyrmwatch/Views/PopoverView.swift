@@ -82,7 +82,7 @@ struct PopoverView: View {
                 BigNumberCard(label: "Sessions running", number: "\(sessions.sessions.count)",
                               detail: sessions.waitingCount > 0 ? "\(sessions.waitingCount) waiting for you"
                                   : sessions.busyCount > 0 ? "\(sessions.busyCount) working" : "All caught up",
-                              working: sessions.busyCount > 0, waiting: sessions.waitingCount > 0)
+                              working: sessions.busyCount > 0, waiting: sessions.waitingCount > 0, active: sessions.busyCount > 0)
                     .probe("claude.running")
                     .cardAppear(2)
             }
@@ -418,6 +418,7 @@ struct BigNumberCard: View {
     var fraction: Double?
     var working = false
     var waiting = false
+    var active = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -440,7 +441,7 @@ struct BigNumberCard: View {
             Spacer(minLength: 4)
             Text(detail).cardLabel()
         }
-        .notchCard()
+        .notchCard(active: active)
     }
 }
 

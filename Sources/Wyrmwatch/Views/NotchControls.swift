@@ -1,21 +1,58 @@
 import SwiftUI
 
-/// A 4 pt bar: track #2A2B2F, filled silver (or a warning colour).
+/// The Wyrmwatch progress bar: a row of small overlapping scales (8 pt). Filled scales are silver (or `color`),
+/// the rest #2C2C2E. When the value grows, the newly filled scales light one after another, 20 ms apart.
+/// (Kept under its old name so every bar in the app draws this way.)
 struct ThinBar: View {
     let fraction: Double
     var color: Color = Palette.silver
-    var height: CGFloat = 4
+    var height: CGFloat = 8
+    @State private var shown = 0
+    @State private var from = 0
+    @Environment(\.reduceMotion) private var reduceMotion
+
+    /// Scale width and step: each scale overlaps the one before by a third.
+    private var scale: CGFloat { height }
+    private var step: CGFloat { height * 2 / 3 }
 
     var body: some View {
         GeometryReader { geo in
+            let count = max(1, Int((geo.size.width - scale) / step) + 1)
+            let target = Int((min(max(fraction, 0), 1) * Double(count)).rounded())
             ZStack(alignment: .leading) {
-                Capsule().fill(Palette.track)
-                Capsule().fill(color)
-                    .frame(width: geo.size.width * min(max(fraction, 0), 1))
+                ForEach(0..<count, id: \.self) { i in
+                    ScaleShape()
+                        .fill(i < shown ? color : Palette.button)
+                        .overlay(ScaleShape().stroke(Palette.bg, lineWidth: 1))
+                        .frame(width: scale, height: height)
+                        .offset(x: CGFloat(i) * step)
+                        .animation(reduceMotion ? nil : .easeOut(duration: 0.12).delay(Double(max(0, i - from)) * 0.02), value: shown)
+                }
+            }
+            .onAppear { shown = target; from = target }
+            .onChange(of: target) { old, new in
+                from = min(old, new)
+                shown = new
             }
         }
         .frame(height: height)
-        .animation(Motion.smooth, value: fraction)
+        .accessibilityElement()
+        .accessibilityValue("\(Int((fraction * 100).rounded())) percent")
+    }
+}
+
+/// One scale: flat on top, rounded below, like a fish scale seen from the side.
+struct ScaleShape: Shape {
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: r.minX, y: r.minY + r.height * 0.15))
+        p.addQuadCurve(to: CGPoint(x: r.maxX, y: r.minY + r.height * 0.15), control: CGPoint(x: r.midX, y: r.minY - r.height * 0.15))
+        p.addCurve(to: CGPoint(x: r.midX, y: r.maxY), control1: CGPoint(x: r.maxX, y: r.minY + r.height * 0.7),
+                   control2: CGPoint(x: r.midX + r.width * 0.3, y: r.maxY))
+        p.addCurve(to: CGPoint(x: r.minX, y: r.minY + r.height * 0.15), control1: CGPoint(x: r.midX - r.width * 0.3, y: r.maxY),
+                   control2: CGPoint(x: r.minX, y: r.minY + r.height * 0.7))
+        p.closeSubpath()
+        return p
     }
 }
 

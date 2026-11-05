@@ -67,7 +67,7 @@ private struct ClaudeCard: View {
             Spacer(minLength: 6)
             Text(statusLine).cardLabel()
         }
-        .notchCard()
+        .notchCard(active: sessions.busyCount > 0)
     }
 
     /// "Editing HomePage.swift · resets in 3h 20m", or the project name when there's no activity to show.
@@ -108,7 +108,7 @@ private struct MusicCard: View {
                     TimelineView(.animation(minimumInterval: 1, paused: paused || !bridge.isPlaying)) { context in
                         ThinBar(fraction: bridge.currentPosition(at: context.date) / max(track.duration, 1))
                     }
-                    .frame(height: 4)
+                    .frame(height: 8)
                     .probe("home.progress")
                     Spacer(minLength: 6)
                     GeometryReader { geo in
@@ -157,7 +157,9 @@ private struct FocusCard: View {
                     .minimumScaleFactor(0.7)
                     .opacity(timer.isPaused ? 0.6 : 1)
                     .probe("home.focus.time")
-                Spacer(minLength: 6)
+                PhaseBar(timer: timer)
+                    .probe("home.focus.bar")
+                Spacer(minLength: 8)
                 HStack(spacing: 6) {
                     CardButton(systemName: timer.isPaused ? "play.fill" : "pause.fill", active: true,
                                help: timer.isPaused ? "Resume" : "Pause") { timer.toggle() }
@@ -174,7 +176,7 @@ private struct FocusCard: View {
                 .probe("home.focus.presets")
             }
         }
-        .notchCard()
+        .notchCard(active: timer.isActive)
     }
 
     private var label: String {
@@ -202,4 +204,20 @@ struct MatchedCover: ViewModifier {
 
 extension String {
     func ifEmpty(_ fallback: String) -> String { isEmpty ? fallback : self }
+}
+
+/// The running phase's elapsed time as a scale bar; moves once a second, still while paused.
+struct PhaseBar: View {
+    @ObservedObject var timer: PomodoroTimer
+
+    var body: some View {
+        if let end = timer.endDate {
+            TimelineView(.periodic(from: end.addingTimeInterval(-100_000), by: 1)) { context in
+                ThinBar(fraction: 1 - timer.fractionLeft(at: context.date))
+            }
+            .frame(height: 8)
+        } else {
+            ThinBar(fraction: 1 - timer.fractionLeft())
+        }
+    }
 }

@@ -66,11 +66,13 @@ extension View {
         font(.app(13, .semibold)).foregroundStyle(Palette.text).lineLimit(1).truncationMode(.tail)
     }
 
-    /// A card: #1C1C1E, radius 20, padding 12.
-    func notchCard(padding: CGFloat = 12) -> some View {
+    /// A card: #1C1C1E, radius 20, padding 12. An `active` card (Claude working, a timer running) gets a 1 pt
+    /// #3A3A3C edge; the others have none.
+    func notchCard(padding: CGFloat = 12, active: Bool = false) -> some View {
         self.padding(padding)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Radius.shape(Radius.card).fill(Palette.card))
+            .overlay(Radius.shape(Radius.card).strokeBorder(active ? Palette.buttonHi : .clear, lineWidth: 1))
     }
 }
 
@@ -276,17 +278,7 @@ struct LimitBar: View {
                     .monospacedDigit()
                     .contentTransition(.numericText())
             }
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Palette.line)
-                    Group {
-                        if let warning { Capsule().fill(warning) } else { Capsule().fill(Palette.silverGradient) }
-                    }
-                    .frame(width: value > 0 ? max(6, geo.size.width * value / 100) : 0)
-                    .overlay { if shimmering { Shimmer().clipShape(Capsule()) } }
-                }
-            }
-            .frame(height: 6)
+            ThinBar(fraction: value / 100, color: warning ?? Palette.silver)
         }
         .animation(Motion.smooth, value: value)
     }
