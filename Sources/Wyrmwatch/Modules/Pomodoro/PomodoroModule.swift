@@ -78,21 +78,19 @@ private struct PomodoroLiveDragon: View {
 }
 
 /// Right of the camera: time left, taking turns every 4 s with the task name when there is one.
+/// One timeline (once a second, on the second) drives the ring, the digits and the turns; nesting a second
+/// timeline for the turns cost about 1% CPU.
 private struct PomodoroLiveTime: View {
     @ObservedObject var timer: PomodoroTimer
 
     var body: some View {
         Group {
-            if timer.phase == .focus, !task.isEmpty, timer.isRunning {
-                TimelineView(.periodic(from: .now, by: 4)) { context in
-                    let showName = Int(context.date.timeIntervalSinceReferenceDate / 4) % 2 == 1
-                    ZStack {
-                        if showName { name } else { time }
-                    }
-                    .animation(Motion.smooth, value: showName)
+            if let end = timer.endDate {
+                TimelineView(.periodic(from: end.addingTimeInterval(-100_000), by: 1)) { context in
+                    content(at: context.date)
                 }
             } else {
-                time
+                content(at: Date())
             }
         }
         .opacity(timer.isPaused ? 0.6 : 1)
@@ -100,23 +98,28 @@ private struct PomodoroLiveTime: View {
 
     private var task: String { timer.task.trimmingCharacters(in: .whitespacesAndNewlines) }
 
-    private var time: some View {
-        HStack(spacing: 4) {
-            PhaseRing(timer: timer, diameter: 12)
-            PomodoroDigits(timer: timer, size: 11, color: Palette.silverBright, rolling: false)
-                .fixedSize()
+    @ViewBuilder private func content(at date: Date) -> some View {
+        let showName = timer.isRunning && timer.phase == .focus && !task.isEmpty
+            && Int(date.timeIntervalSinceReferenceDate.rounded()) / 4 % 2 == 1
+        ZStack {
+            if showName {
+                Text(task)
+                    .font(.app(11))
+                    .foregroundStyle(Palette.silverBright)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                HStack(spacing: 4) {
+                    PhaseRing(timer: timer, diameter: 12, at: date)
+                    Text(PomodoroDigits.format(Int(timer.remaining(at: date).rounded(.up))))
+                        .font(.app(11))
+                        .monospacedDigit()
+                        .foregroundStyle(Palette.silverBright)
+                        .fixedSize()
+                }
+            }
         }
-        .transition(.opacity)
-    }
-
-    private var name: some View {
-        Text(task)
-            .font(.app(11))
-            .foregroundStyle(Palette.silverBright)
-            .lineLimit(1)
-            .truncationMode(.tail)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .transition(.opacity)
     }
 }
 

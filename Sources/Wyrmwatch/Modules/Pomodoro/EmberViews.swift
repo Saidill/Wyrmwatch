@@ -56,10 +56,14 @@ struct PomodoroDigits: View {
 struct PhaseRing: View {
     @ObservedObject var timer: PomodoroTimer
     var diameter: CGFloat = 11
+    /// Drawn for this moment by a parent's timeline, instead of running a timeline of its own.
+    var at: Date?
 
     var body: some View {
         Group {
-            if let end = timer.endDate {
+            if let at {
+                ring(timer.fractionLeft(at: at))
+            } else if let end = timer.endDate {
                 TimelineView(.periodic(from: end.addingTimeInterval(-100_000), by: 1)) { context in
                     ring(timer.fractionLeft(at: context.date))
                 }
