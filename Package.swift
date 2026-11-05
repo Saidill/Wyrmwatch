@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "ClaudeUsage",
+    name: "Wyrmwatch",
     platforms: [.macOS(.v14)],
     dependencies: [
         // The mascot's animations (played only when Resources/wyrm.riv is present).
@@ -10,9 +10,9 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "ClaudeUsage",
+            name: "Wyrmwatch",
             dependencies: [.product(name: "RiveRuntime", package: "rive-ios")],
-            path: "Sources/ClaudeUsage"
+            path: "Sources/Wyrmwatch"
         )
     ]
 )

@@ -3,7 +3,7 @@ import EventKit
 
 /// Reads the live sources once (Music, calendar) with the app's own permissions, writes what it saw
 /// to a file and quits. Used to check access after the permission prompts.
-/// Run: ClaudeUsage.app/Contents/MacOS/ClaudeUsage --diagnose <output file>
+/// Run: Wyrmwatch.app/Contents/MacOS/Wyrmwatch --diagnose <output file>
 @MainActor
 enum Diagnose {
     static func startIfRequested() {

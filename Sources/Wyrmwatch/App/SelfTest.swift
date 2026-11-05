@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Drives the real app through mode switches and every notch state, checks that the right window is
 /// visible and clickable each time, and saves a picture of each screen.
-/// Run: ClaudeUsage.app/Contents/MacOS/ClaudeUsage --selftest <output folder>
+/// Run: Wyrmwatch.app/Contents/MacOS/Wyrmwatch --selftest <output folder>
 @MainActor
 enum SelfTest {
     private static var out = URL(fileURLWithPath: NSTemporaryDirectory())
