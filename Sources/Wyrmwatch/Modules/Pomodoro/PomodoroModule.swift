@@ -34,8 +34,15 @@ final class PomodoroModule: NotchModule {
         case .breakDone:
             popSink.yield(NotchPop(kind: .pomodoro, duration: 8) { BreakDonePop(timer: self.timer) })
         case .countdownDone:
-            popSink.yield(NotchPop(kind: .pomodoro, duration: 8) { TimesUpPop() })
+            let label = timer.lastFinishedTask
+            popSink.yield(NotchPop(kind: .pomodoro, duration: 8) { TimesUpPop(label: label) })
         }
+    }
+
+    /// "Focus done · Revise chapter 3", or just "Focus done" without a task.
+    static func titled(_ head: String, _ task: String) -> String {
+        let name = task.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? head : "\(head) · \(name)"
     }
 
     private func phaseEnded(_ event: PomodoroTimer.Event) {
@@ -49,9 +56,9 @@ final class PomodoroModule: NotchModule {
             pop(event)
         } else {
             switch event {
-            case .focusDone: Notifier.shared.notify(title: "Focus done", body: "Your break has started.")
+            case .focusDone: Notifier.shared.notify(title: Self.titled("Focus done", timer.lastFinishedTask), body: "Your break has started.")
             case .breakDone: Notifier.shared.notify(title: "Break over", body: "Ready to focus again?")
-            case .countdownDone: Notifier.shared.notify(title: "Time's up", body: "Your countdown has finished.")
+            case .countdownDone: Notifier.shared.notify(title: Self.titled("Time's up", timer.lastFinishedTask), body: "Your timer has finished.")
             }
         }
     }
@@ -70,17 +77,46 @@ private struct PomodoroLiveDragon: View {
     }
 }
 
-/// Right of the camera: time left.
+/// Right of the camera: time left, taking turns every 4 s with the task name when there is one.
 private struct PomodoroLiveTime: View {
     @ObservedObject var timer: PomodoroTimer
 
     var body: some View {
-        HStack(spacing: 4) {
-            PhaseRing(timer: timer, diameter: 10)
-            PomodoroDigits(timer: timer, size: 10.5, color: Palette.silverBright, rolling: false)
-                .fixedSize()
+        Group {
+            if timer.phase == .focus, !task.isEmpty, timer.isRunning {
+                TimelineView(.periodic(from: .now, by: 4)) { context in
+                    let showName = Int(context.date.timeIntervalSinceReferenceDate / 4) % 2 == 1
+                    ZStack {
+                        if showName { name } else { time }
+                    }
+                    .animation(Motion.smooth, value: showName)
+                }
+            } else {
+                time
+            }
         }
         .opacity(timer.isPaused ? 0.6 : 1)
+    }
+
+    private var task: String { timer.task.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    private var time: some View {
+        HStack(spacing: 4) {
+            PhaseRing(timer: timer, diameter: 10)
+            PomodoroDigits(timer: timer, size: 11, color: Palette.silverBright, rolling: false)
+                .fixedSize()
+        }
+        .transition(.opacity)
+    }
+
+    private var name: some View {
+        Text(task)
+            .font(.app(11))
+            .foregroundStyle(Palette.silverBright)
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .transition(.opacity)
     }
 }
 
@@ -117,9 +153,10 @@ private struct FocusDonePop: View {
         HStack(spacing: 4) {
             PopIcon(systemName: "checkmark")
             VStack(alignment: .leading, spacing: 4) {
-                Text("Focus done")
-                    .font(.app(13, .medium))
+                Text(PomodoroModule.titled("Focus done", timer.lastFinishedTask))
+                    .font(.app(13, .semibold))
                     .foregroundStyle(Palette.text)
+                    .lineLimit(1)
                 HStack(spacing: 6) {
                     Text(timer.phase == .longBreak ? "Long break" : "Break")
                         .font(.app(11))
@@ -215,14 +252,17 @@ struct PopIcon: View {
     }
 }
 
-/// A countdown has finished.
+/// A timer has finished.
 private struct TimesUpPop: View {
+    let label: String
+
     var body: some View {
         HStack(spacing: 4) {
             PopIcon(systemName: "timer")
-            Text("Time's up")
-                .font(.app(13, .medium))
+            Text(PomodoroModule.titled("Time's up", label))
+                .font(.app(13, .semibold))
                 .foregroundStyle(Palette.text)
+                .lineLimit(1)
             Spacer(minLength: 6)
             PopButton(title: "OK", primary: false) { NotchWindowController.shared.dismissPop() }
         }

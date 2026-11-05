@@ -62,6 +62,9 @@ final class NotchScreen: ObservableObject {
         self.isVirtual = isVirtual
     }
 
+    /// Width of each side of the live notch, left and right of the camera.
+    static let liveWing: CGFloat = 64
+
     /// The small pill a closed virtual notch shrinks to, so it doesn't cover the menu bar.
     static let pill = CGSize(width: 120, height: 6)
 
@@ -71,7 +74,7 @@ final class NotchScreen: ObservableObject {
         switch state {
         case .closed:
             return isVirtual ? Self.pill : CGSize(width: notch.width + flare * 2, height: notch.height)
-        case .live: return CGSize(width: notch.width + 100 + flare * 2, height: notch.height)
+        case .live: return CGSize(width: notch.width + 2 * Self.liveWing + flare * 2, height: notch.height)
         // Just big enough for one row (a 44 pt picture and two lines of text, or a button).
         case .pop: return CGSize(width: 320 + flare * 2, height: notch.height + 58)
         // The same size on every page: wide rather than tall.

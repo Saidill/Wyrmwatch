@@ -8,6 +8,13 @@ func emberColor(_ phase: PomodoroTimer.Phase) -> Color {
 /// Time left as "24:59". Changes once a second, rolling digits; in the last 10 seconds it turns bright
 /// and swells a touch on each tick. Nothing redraws while paused.
 struct PomodoroDigits: View {
+    /// "4:05", or "1:04:05" from an hour up.
+    static func format(_ seconds: Int) -> String {
+        seconds >= 3600
+            ? String(format: "%d:%02d:%02d", seconds / 3600, seconds / 60 % 60, seconds % 60)
+            : String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+
     @ObservedObject var timer: PomodoroTimer
     var size: CGFloat = 11
     var weight: Font.Weight = .medium
@@ -30,7 +37,7 @@ struct PomodoroDigits: View {
     private func label(_ remaining: TimeInterval) -> some View {
         let seconds = Int(remaining.rounded(.up))
         let final = timer.isRunning && seconds <= 10
-        return Text(String(format: "%d:%02d", seconds / 60, seconds % 60))
+        return Text(Self.format(seconds))
             .font(.app(size, weight))
             .monospacedDigit()
             .foregroundStyle(final ? Palette.text : color)

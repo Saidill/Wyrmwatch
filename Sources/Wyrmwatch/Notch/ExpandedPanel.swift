@@ -46,6 +46,7 @@ struct ExpandedPanel: View {
     @EnvironmentObject var sessions: SessionMonitor
     @EnvironmentObject var limits: PlanLimitClient
     @Environment(\.animationsPaused) private var paused
+    @Environment(\.reduceMotion) private var reduceMotion
     @State private var look: CGPoint?
 
     var body: some View {
@@ -84,12 +85,13 @@ struct ExpandedPanel: View {
         .frame(width: Self.width, alignment: .top)
         .coordinateSpace(name: LayoutProbe.space)
         .environment(\.layoutProbing, true)
-        // Where the pointer is, for the mascot to look at: only with a mascot, only while open, at most 15 fps.
+        // Where the pointer is, for the mascot to look at: only while open and awake, at most 15 fps.
         .onReceive(lookTimer) { _ in updateLook() }
     }
 
     private var lookTimer: AnyPublisher<Date, Never> {
-        guard WyrmSlot.available, !paused else { return Empty().eraseToAnyPublisher() }
+        // The built-in mascot and a Rive one both follow the pointer, but only when awake (peek or alert).
+        guard !paused, !reduceMotion, [.peek, .alert].contains(wyrmState) else { return Empty().eraseToAnyPublisher() }
         return Timer.publish(every: 1.0 / 15, on: .main, in: .common).autoconnect().eraseToAnyPublisher()
     }
 

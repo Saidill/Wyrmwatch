@@ -301,10 +301,83 @@ enum SelfTest {
         notch.dismissPop()
         timer.stopToSetup()
 
+        await checkTasksAndTimer()
+
         timer.reset()
         restoreSettings(saved, prefix: "pomodoro.")
         timer.restore()
         await wait(0.4)
+    }
+
+    /// Task names, today's log and the Timer mode (free h:m:s, +1/+5, a labelled pop when it ends).
+    private static func checkTasksAndTimer() async {
+        let notch = NotchWindowController.shared
+        let timer = AppModels.pomodoro.timer
+        let tasks = TaskLog.shared
+        let savedLog = savedSettings(prefix: "focus.")
+        let savedTimer = savedSettings(prefix: "timer.")
+        log("— Tasks and Timer")
+
+        // The log on its own, in a throwaway domain.
+        let scratch = UserDefaults(suiteName: "wyrmwatch.selftest.tasks")!
+        scratch.removePersistentDomain(forName: "wyrmwatch.selftest.tasks")
+        let book = TaskLog(defaults: scratch)
+        book.add(minutes: 25, task: "Revise chapter 3")
+        book.add(minutes: 10, task: " Revise chapter 3 ")
+        book.add(minutes: 0.2, task: "Too short")
+        book.add(minutes: 5, task: "")
+        check(book.today.map(\.task) == ["Revise chapter 3", TaskLog.untitled] && book.today.first?.minutes == 35,
+              "today adds minutes per task, longest first, and skips blips")
+        for name in ["a", "b", "c", "d", "e", "f", "B"] { book.use(name) }
+        check(book.recent == ["B", "f", "e", "d", "c"], "the last five task names, newest first, no repeats")
+        check(TaskLog(defaults: scratch).today.first?.minutes == 35, "the log is kept on disk")
+        scratch.removePersistentDomain(forName: "wyrmwatch.selftest.tasks")
+
+        check(PomodoroDigits.format(3725) == "1:02:05" && PomodoroDigits.format(65) == "1:05", "times from an hour up show h:mm:ss")
+        check(PomodoroModule.titled("Focus done", "Revise chapter 3") == "Focus done · Revise chapter 3"
+              && PomodoroModule.titled("Time's up", " ") == "Time's up", "done titles carry the task name")
+
+        // Stopping a focus counts the part that ran.
+        timer.stopToSetup()
+        timer.task = "Self-test focus"
+        let before = tasks.today.first { $0.task == "Self-test focus" }?.minutes ?? 0
+        timer.runForTesting(phase: .focus, secondsLeft: timer.duration(of: .focus) - 180)
+        timer.stopToSetup()
+        let after = tasks.today.first { $0.task == "Self-test focus" }?.minutes ?? 0
+        check(after - before == 3, "stopping a focus logs its elapsed minutes (\(after - before))")
+
+        // The setup with recent names and today's tasks, in both modes.
+        timer.task = "Revise chapter 3"
+        tasks.use("Revise chapter 3")
+        UserDefaults.standard.set("pomodoro", forKey: "focus.pageMode")
+        await snapshotExpanded(tab: .focus, "16-focus-tasks")
+        UserDefaults.standard.set("countdown", forKey: "focus.pageMode")
+        UserDefaults.standard.set(5400, forKey: "timer.seconds")
+        await snapshotExpanded(tab: .focus, "16-timer-setup")
+
+        // A timer: any length to the second, +1 / +5 while it runs.
+        timer.task = "Meeting"
+        timer.startCountdown(seconds: 90)
+        check(timer.mode == .countdown && abs(timer.remaining() - 90) < 1, "the timer runs for the exact length")
+        check(tasks.recent.first == "Meeting", "starting remembers the task name")
+        timer.addMinutes(1)
+        check(abs(timer.remaining() - 150) < 1, "+1 min adds a minute")
+        timer.addMinutes(5)
+        check(abs(timer.remaining() - 450) < 1, "+5 min adds five minutes")
+        await snapshotExpanded(tab: .focus, "16-timer-running")
+
+        notch.model.registry.popQueue.clear()
+        timer.startCountdown(seconds: 1)
+        await wait(1.8)
+        check(!timer.isActive && timer.lastFinishedTask == "Meeting", "a finished timer stops, keeping its label for the pop")
+        check(pomodoroPopped(), "a finished timer pops")
+        if let w = notch.window { snapshot(w, "16-timer-done") }
+        notch.dismissPop()
+        await wait(0.6)
+
+        restoreSettings(savedLog, prefix: "focus.")
+        restoreSettings(savedTimer, prefix: "timer.")
+        tasks.reloadForTesting()
     }
 
     /// Music, fed a made-up song and playlist (the self-test never scripts the real Music app).
@@ -581,7 +654,8 @@ enum SelfTest {
         func layers(_ layer: CALayer) -> [CALayer] { [layer] + (layer.sublayers ?? []).flatMap(layers) }
         guard let root = window.contentView?.layer else { return false }
         let animating = layers(root).filter { !($0.animationKeys() ?? []).isEmpty }
-        log("   \(animating.count) animating layers")
+        log("   \(animating.count) animating layers"
+            + animating.prefix(4).map { " \(type(of: $0)) \($0.animationKeys() ?? [])" }.joined())
         return !animating.isEmpty
     }
 
@@ -621,7 +695,7 @@ enum SelfTest {
             await wait(0.8)
             verify("Home with the Pomodoro running", "tab-home-focus-\(label)")
             UserDefaults.standard.set(NotchTab.focus.rawValue, forKey: NotchTab.storageKey)
-            await wait(0.8)
+            await waitForPageSwap(gone: "home.")
             verify("Focus while running", "tab-focus-running-\(label)")
             timer.stopToSetup()
             AppModels.music.bridge.injectForTesting(track: nil, playing: false)
@@ -632,6 +706,12 @@ enum SelfTest {
         }
         notch.close()
         await wait(0.6)
+    }
+
+    /// Waits (up to 2 s) until the page that was switched away from has faded out and taken its probes along.
+    private static func waitForPageSwap(gone prefix: String) async {
+        await wait(0.8)
+        for _ in 0..<12 where LayoutProbe.frames.keys.contains(where: { $0.hasPrefix(prefix) }) { await wait(0.1) }
     }
 
     /// Opens the notch on one page, saves a picture of it, and closes it again.

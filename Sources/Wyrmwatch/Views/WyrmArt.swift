@@ -216,6 +216,16 @@ final class WyrmArtHost: NSView {
         if let lastLook, abs(lastLook.x - target.x) + abs(lastLook.y - target.y) < 0.02 { return }
         lastLook = target
         let tilt = Double(max(-1, min(1, target.y))) * 0.22
+        // Without a pointer to follow (asleep, paused, Reduce Motion) the head just sits straight: no spring.
+        guard look != nil else {
+            gaze.removeAnimation(forKey: "look")
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            gaze.setValue(tilt, forKeyPath: "transform.rotation.z")
+            eye.position = CGPoint(x: 15.9, y: 5.2)
+            CATransaction.commit()
+            return
+        }
         let spring = CASpringAnimation(keyPath: "transform.rotation.z")
         spring.damping = 14
         spring.stiffness = 160

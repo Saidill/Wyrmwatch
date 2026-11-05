@@ -28,6 +28,12 @@ final class TaskLog: ObservableObject {
         prune()
     }
 
+    /// Reads the log again after the self-test put the saved one back.
+    func reloadForTesting() {
+        entries = (defaults.data(forKey: Self.entriesKey)).flatMap { try? JSONDecoder().decode([Entry].self, from: $0) } ?? []
+        recent = defaults.stringArray(forKey: Self.recentKey) ?? []
+    }
+
     /// The label used for time without a task name.
     static let untitled = "No task"
 
