@@ -1,22 +1,26 @@
-# Claude Usage (becoming Notchwyrm)
+# Wyrmwatch
 
-A macOS notch app for focused work: Claude Code usage, a Pomodoro timer, Apple Music and your next calendar event, all in the camera notch. A red dragon keeps watch. It is being renamed to **Notchwyrm**; until then the app is still called `ClaudeUsage`.
+**Guarding your focus, your music, and your AI agents, right from the notch.**
+
+Wyrmwatch is a macOS notch app: a Pomodoro and countdown timer, Apple Music, and your Claude Code sessions and usage limits, all in the camera notch.
 
 ## In the notch
 
-Hover the notch (or click it) to open it. The header is split by the camera: the dragon with the date and time on the left, five tabs on the right (Home, Focus, Music, Claude, Settings). The notch grows to fit each tab.
+Hover the notch (or click it) to open it. The header is split by the camera: four small tabs on the left (Home, Focus, Music, Claude), the active tab's name and the time on the right, and in between, where the camera sits, a slot for the Wyrmwatch mascot (coming soon). The notch grows to fit each tab. Right-click the notch for **Settings** and **Quit**.
 
-- **Home**: one row with everything. The album cover with a soft glow, the song with a visualizer, a seek bar and the controls (playlist, previous, play/pause, next, favourite). To the right: the Pomodoro (time left, pause, stop, or the 25/5 · 50/10 · Set up chips when it isn't running) and your Claude session limit. No music playing? There's a **Play music** button instead.
-- **Focus**: start a Pomodoro with a preset (Classic 25/5, Deep 50/10) or your own lengths, the number of sessions (1–8) and an optional task. While it runs: big digits, "Focus 2/4 · your task", a dial-like tick scale, +5 min, pause, skip and stop. It keeps time through sleep and restarts.
-- **Music**: the cover and the playlist being played. Click a song to play it. For songs streamed from Apple Music (outside your library), Music.app shares neither its queue nor where the song came from, so the app makes an educated guess from the song before it: the same album shows that album, the same artist from another album shows the artist's **top songs**, and a different artist (a station or mix) shows what has played this session. An Album · Top songs · Recent switch lets you pick. Lists come from Apple's catalogue. Clicking a song plays it straight away when it's in your library; otherwise its page opens in Music, where you press play (Music.app offers no supported way for other apps to play a catalogue song).
-- **Claude**: session and week limits with the forecast, then Now (running sessions, click to jump to their terminal), Recent (click to resume) and Usage (tokens).
-- **Settings**: display mode, modules, Pomodoro, Music, Claude alerts and system options.
+- **Home**: three cards of the same height, one big number each.
+  - **Claude**: your session limit, whether Claude is working (a slowly pulsing red dot) or waiting for you, and what it is doing right now ("Editing HomePage.swift"), with when the limit resets.
+  - **Music**: the cover, title and artist, progress, and previous / play-pause / next. Nothing playing? A **Play music** button.
+  - **Focus**: the time left with pause and stop, or the 25/5 and 50/10 presets when no timer runs.
+- **Focus**: Pomodoro or Countdown, with presets 25/5, 50/10, 90/15, 05:00 and 15:00, or your own lengths. It keeps time through sleep and restarts, starts each break by itself and plays a short alarm when a phase ends.
+- **Music**: a large cover, the song with its progress and controls (shuffle, previous, play-pause, next, repeat), and the library playlist being played. Click a song to play it.
+- **Claude**: session limit, week limit and sessions running as big numbers, then Now (running sessions, click to jump to their terminal), Recent (click to resume) and Usage (tokens).
 
-When it's closed, the notch shows what matters in a slim "live" strip: the small dragon while Claude works, the cover and a visualizer while music plays, the time left with a small ring during a Pomodoro (taking turns with the music every 6 seconds). Short cards drop out of it when a Claude session finishes, a Pomodoro phase ends or the song changes.
+When it's closed, the notch shows what matters in a slim "live" strip: Claude's status dot while it works or waits, the cover and a visualizer while music plays, the time left with a small ring during a Pomodoro (taking turns with the music every 6 seconds). Short cards drop out of it when a Claude session finishes, a timer ends or the song changes.
 
 On a screen without a notch (an external monitor), the app draws one: a small black pill at the top that opens the same way. Display modes are Auto, Notch, Menu bar and All screens. In Menu bar mode the app lives in a popover under a menu bar icon instead.
 
-The look is plain black with silver accents. Red is only for the dragon, and amber or rose only for usage warnings. Repeating animations (the dragon, the visualizer) run in Core Animation, so the app does no work per frame: about 0.2% CPU closed or live and under 2% open on an M-series Mac (`scripts/measure-perf.sh`). Nothing animates unless it's on screen, and Reduce Motion (or Settings → System → Always reduce motion) turns all repeating animation off.
+The look is black with #1C1C1E cards and silver progress. The only colour is red (#E5322B): Claude working, and usage above 90%. Repeating animations run in Core Animation, so the app does no work per frame. Nothing animates unless it's on screen, and Reduce Motion (or Settings → System → Always reduce motion) turns all repeating animation off.
 
 ## Claude in the background
 
@@ -33,11 +37,11 @@ The look is plain black with silver accents. Red is only for the dragon, and amb
 ## Install
 
 ```bash
-git clone https://github.com/<your-username>/claude-usage-ui.git
-cd claude-usage-ui
+git clone https://github.com/Saidill/Wyrmwatch.git
+cd Wyrmwatch
 ./scripts/build-app.sh
-cp -R ClaudeUsage.app /Applications/
-open /Applications/ClaudeUsage.app
+cp -R Wyrmwatch.app /Applications/
+open /Applications/Wyrmwatch.app
 ```
 
 Then click the ring in the menu bar → ⚙ → turn on **Open at login**. From then on it starts by itself.
@@ -49,12 +53,12 @@ While you're working on it, run `./scripts/dev.sh` and leave it open: every time
 To check that everything still works after a change, run the self-test. It switches between the menu bar and the notch, opens every tab on the real and on a virtual notch, checks that no view overlaps another and that the notch follows each tab's height, runs the Pomodoro, Music and Info modules on made-up data, and saves a picture of every screen plus a `report.txt` to the folder you give it:
 
 ```bash
-./scripts/build-app.sh && ./ClaudeUsage.app/Contents/MacOS/ClaudeUsage --selftest /tmp/claude-usage-test
+./scripts/build-app.sh && ./Wyrmwatch.app/Contents/MacOS/Wyrmwatch --selftest /tmp/wyrmwatch-test
 ```
 
 ## How it works
 
-Everything is read from files Claude Code already writes on your Mac. Only two things go online: one request for your plan limits, and, for songs streamed from Apple Music, the artist and album name sent to Apple's public [iTunes Search API](https://performance-partners.apple.com/search-api) to list that album or the artist's top songs (no account, cached per album, off in Settings → Music if you prefer).
+Everything is read from files Claude Code already writes on your Mac, and from Music.app. Nothing is sent anywhere, apart from one request for your Claude plan limits.
 
 | What | Where it comes from |
 | --- | --- |
@@ -73,7 +77,7 @@ The Session and Week limits are shared, so they include your chats on claude.ai 
 ## Project layout
 
 ```
-Sources/ClaudeUsage/
+Sources/Wyrmwatch/
   App/            entry point, display modes, menu bar icon, self-test, --diagnose, --perf, --render-icon
   Core/           NotchModule protocol, module registry, priority resolver, pop queue, layout probe
   Notch/          notch window and shape, virtual notch, open panel (header, tabs, Home page)
@@ -82,9 +86,9 @@ Sources/ClaudeUsage/
     Pomodoro/     timer, Focus page, fuse and dots
     Music/        Music.app bridge, artwork cache, Music page, playlist
     Info/         next calendar event
-  Views/          theme and motion, the dragon, shared controls, popover, settings
+  Views/          design tokens and motion, the mascot slot (WyrmSlot), shared controls, popover, settings
 scripts/
-  build-app.sh    builds ClaudeUsage.app (and the dragon app icon); --install puts it in /Applications
+  build-app.sh    builds Wyrmwatch.app (with the Rive runtime and app icon); --install puts it in /Applications
   measure-perf.sh CPU and memory per notch state
   dev.sh          rebuild and relaunch on every save
 ```
@@ -98,6 +102,6 @@ swift build                 # compile
 
 No Xcode project is needed. It's a plain Swift package.
 
-## Credits
+## The mascot
 
-The dragon is [Spiked dragon head](https://game-icons.net/1x1/delapouite/spiked-dragon-head.html) by Delapouite, from [game-icons.net](https://game-icons.net), licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). It is tinted red and animated in the app.
+The mascot slot plays `Resources/wyrm.riv` with [Rive](https://rive.app) (`RiveRuntime`, about 14 MB in the app) when that file is present, and shows nothing otherwise. Its state machine gets one boolean input per state (`hidden`, `peek`, `working`, `alert`, `done`, `sleep`) and the numbers `lookX` / `lookY` for where the pointer is.

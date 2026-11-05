@@ -1,10 +1,10 @@
-# PRD Notchwyrm
+# PRD Wyrmwatch
 
 1 November 2026 · Saidil Halim
 
 ## Ringkasan
 
-App Claude Usage yang sudah ada dikembangkan menjadi Notchwyrm: satu notch app produktivitas untuk MacBook. Isinya empat modul: Pomodoro, Claude Usage, Apple Music, dan info dasar. Semua animasinya halus, tapi pemakaian CPU saat idle tetap mendekati nol.
+App Claude Usage yang sudah ada dikembangkan menjadi **Wyrmwatch** ("Guarding your focus, your music, and your AI agents, right from the notch."): satu notch app produktivitas untuk MacBook. Isinya empat modul: Pomodoro, Claude Usage, Apple Music, dan info dasar. Semua animasinya halus, tapi pemakaian CPU saat idle tetap mendekati nol.
 
 **Tujuan**
 
@@ -36,7 +36,7 @@ Keputusannya: disatukan dan dikembangkan di repo yang sudah ada (sebelumnya `cla
 | Kurva open spring(0.46, 0.8), close spring(0.36, 1) | `NotchView` | Jadi standar semua modul |
 | Mode Auto / Menu bar / Notch | `DisplayMode.swift` | Ditambah notch virtual |
 | Usage, limit, sesi, forecast, notifikasi | `PlanLimitClient`, `SessionMonitor`, `UsageTracker`, dll. | Dipindah ke modul Claude |
-| Maskot naga merah (sleeping, idle, working, happy, guarding) | `Views/Dragon.swift` (`DragonView`) | Dipakai juga oleh Pomodoro dan ikon app |
+| Slot maskot (hidden, peek, working, alert, done, sleep) | `Views/WyrmSlot.swift` (`WyrmSlot`, Rive) | Diisi `wyrm.riv` yang akan menyusul |
 | Tema hitam frosted dan silver | `Views/Theme.swift` | Jadi design system semua modul |
 
 **Kenapa disatukan**
@@ -48,7 +48,7 @@ Keputusannya: disatukan dan dikembangkan di repo yang sudah ada (sebelumnya `cla
 
 **Konsekuensi**
 
-- Nama app diganti menjadi Notchwyrm (repo `notchwyrm`) karena isinya tidak lagi hanya Claude.
+- Nama app diganti menjadi **Wyrmwatch** (repo `Wyrmwatch`) karena isinya tidak lagi hanya Claude.
 - Kode Claude dirapikan ke folder `Modules/Claude/` supaya modul lain tidak bergantung padanya.
 
 ## Model tampilan dan prioritas
@@ -78,24 +78,24 @@ Notch punya empat state, sama seperti sekarang. Bedanya, isi state live dan pop 
 - Lagu berganti hanya memunculkan pop singkat (2,5 detik) dan bisa dimatikan di Settings.
 - Saat expanded, pop tidak muncul. Event cukup ditandai di dalam panel.
 
-**Isi state expanded** (pola Boring Notch / DynamicNotch: hanya polanya yang dipelajari, tidak ada kode yang disalin karena keduanya GPL v3)
+**Isi state expanded** (layout kartu, terinspirasi pola Perch: kartu sama tinggi, satu angka besar per kartu, tab ikon kecil. Hanya polanya yang dipelajari, tidak ada aset atau tampilan yang ditiru)
 
-Lebar 600 pt. Tingginya mengikuti isi tab, dianimasikan dengan `resize`. Window tetap berukuran 640 × 330 dan tidak pernah di-resize.
+Lebar tetap ±640 pt (panel 620 + flare). Tinggi mengikuti isi tab aktif (`GeometryReader`, spring response 0,45, damping 0,8). Window tetap 680 × 420 dan tidak pernah di-resize.
 
-1. **Header** setinggi notch, berupa grid 3 kolom: kiri | lebar notch fisik (kamera) | kanan.
-    - Kiri: naga merah 22 pt + "Min 1 Nov · 18.52" (locale id_ID). Acara kalender berikutnya muncul sebagai tooltip di tanggal.
-    - Kanan: 5 tab ikon custom (Shape, bukan SF Symbols) Home, Focus, Music, Claude, Settings. Ikon 17 pt di tombol 36 × 26 (5 × 38 tidak muat di samping kamera). Kapsul aktif `#2A2B2F` meluncur dengan `matchedGeometryEffect` + spring `resize`. Tab terakhir disimpan.
-2. **Home**: satu baris setinggi 96 pt, kolom [96 | flex | 1 pt | 180], jarak 16.
-    - Cover 96 pt radius 16, dengan glow dari cover itu sendiri yang di-blur (statis) di belakangnya.
-    - Info: baris 1 [judul + artis (ellipsis) | visualizer silver], baris 2 [waktu 30 | progress 4 pt bisa digeser | durasi 30], baris 3 lima kolom sama lebar: playlist (ke tab Musik), previous, play/pause, next, favorit (hati Music.app).
-    - Garis 1 pt `#1C1D20`.
-    - Kolom kanan: baris 58 pt = ["Fokus n/N" + waktu 28 pt silver terang | tombol bulat 30 pt pause dan close]. Baris bawah rata bawah: "Claude · sesi" + persen + bar 4 pt.
-    - Musik mati: player diganti tombol "Putar musik" (membuka Music dan memutar). Pomodoro berhenti: chip 25/5, 50/10 (langsung mulai), Atur (ke tab Fokus).
-    - Tidak ada elemen yang overlap, dan teks panjang selalu ellipsis. Keduanya dicek di self-test lewat frame.
-3. **Fokus**: lihat modul Pomodoro.
-4. **Musik**: cover 120 pt + playlist (judul | durasi, lagu aktif putih, lainnya abu).
-5. **Claude**: dua kolom bar Session / Week + forecast, lalu Now / Recent / Usage.
-6. **Settings**: tab sendiri (dikembalikan atas permintaan), berisi Settings yang sudah ada, scroll di tinggi 220 pt.
+1. **Header**: grid 3 kolom [kiri | lebar notch fisik | kanan].
+    - Kiri: 4 tab ikon (Home, Focus, Music, Claude). Tombol 26 × 26, radius 8, ikon custom 14 pt. Tidak aktif: bg `#1C1C1E`, ikon `#8E8E93`. Aktif: bg `#3A3A3C`, ikon putih.
+    - Tengah: kosong (kamera), berisi slot maskot `WyrmSlot`.
+    - Kanan: pill (ikon + nama tab aktif, crossfade) + jam 11 pt.
+    - Settings bukan tab lagi. Dibuka lewat klik kanan notch (menu Settings… / Quit, membuka jendela Settings) atau ikon menu bar.
+2. **Home**: 3 kartu sejajar, tinggi sama 118 pt, gap 8, kolom [1 | 1,25 | 1], padding 12.
+    - Claude: "Claude · session" + titik merah berdenyut dan "working" saat busy (atau titik putih dan "waiting" saat Claude menunggu kamu), persen sesi besar + bar 4 pt, lalu 1 baris status: alat yang sedang dipakai (dari ekor transkrip, misalnya "Editing HomePage.swift") atau "Waiting for you", plus waktu reset (ellipsis).
+    - Music: cover 46 pt radius 11 + judul + artis, progress 4 pt, lalu 3 tombol [1 | 1,3 | 1]: previous, play/pause (aktif), next. Musik mati → "Play music".
+    - Focus: "Focus n/N", "Break", atau "Timer" untuk countdown, waktu besar, lalu pause/resume dan Stop. Timer berhenti → label "Focus" + preset 25/5 dan 50/10.
+3. **Focus**: kiri kartu 200 pt (waktu 46 pt + pause/Start dan +5). Kanan: segmented Pomodoro | Countdown + grid preset 3 × 2 (25/5, 50/10, 90/15, 05:00, 15:00, Custom) setinggi 34 pt. Custom membuka stepper sesuai mode.
+4. **Music**: kartu cover 150 × 150 + kartu info (judul 16 semibold, artis · album, progress, shuffle/previous/play-pause/next/repeat). Playlist library di bawahnya kalau Music menyediakannya.
+5. **Claude**: 3 kartu angka besar (Session %, Week %, Sessions running), lalu Now (sesi dengan Jump) / Recent / Usage.
+
+Gerak: kartu muncul bergiliran (stagger 30 ms, fade + geser 5 pt), angka besar memakai `contentTransition(.numericText())`, cover memakai `matchedGeometryEffect` antara live dan expanded, tombol scale 0,96 saat ditekan, mengikuti Reduce Motion, dan semua animasi berulang berhenti saat notch tertutup.
 
 Popover menu bar (mode Menu bar) tetap memakai tata letak vertikal 344 pt.
 
@@ -107,9 +107,10 @@ Konsepnya: setiap sesi fokus adalah bara yang dijaga naga. Sisa waktu digambarka
 
 **Perilaku**
 
-- Preset Klasik 25/5, Dalam 50/10, dan Custom. Jumlah sesi per siklus 1–8 (default 4). Istirahat panjang 15 menit setelah sesi terakhir siklus.
+- Preset 25/5, 50/10, 90/15, dan Custom. Jumlah sesi per siklus 1–8 (default 4). Istirahat panjang 15 menit setelah sesi terakhir siklus.
 - Timer disimpan sebagai `endDate`, bukan hitungan mundur. Tetap akurat walau Mac sleep, dan dipulihkan dari `UserDefaults` setelah app restart.
 - Kontrol: mulai, +5 menit, pause/lanjut, lewati, stop (kembali ke mode Atur). Shortcut global opsional (misalnya ⌥⌘P).
+- **Mode Countdown**: timer biasa tanpa istirahat (preset 05:00 dan 15:00 atau custom 1–180 menit). Saat habis, alarm berbunyi dan muncul pop "Time's up", lalu timer kembali ke setup. Countdown tidak dihitung di statistik Pomodoro.
 - Saat fokus habis, istirahat **langsung mulai menghitung mundur** sendiri, dihitung dari saat fokus habis (tetap tepat walau Mac sleep atau app ditutup). Kalau istirahat juga sudah lewat, timer kembali ke mode Atur. Fokus berikutnya tetap dimulai manual.
 - Di akhir setiap fase berbunyi **alarm singkat** (dua kali tiga bip, ±1,2 detik), kalau suara Pomodoro aktif. Pop "Focus done" menampilkan hitung mundur istirahat dan tombol "Skip break".
 - Statistik hari ini: jumlah sesi dan total menit fokus.
@@ -127,18 +128,16 @@ Konsepnya: setiap sesi fokus adalah bara yang dijaga naga. Sisa waktu digambarka
 | Istirahat | Naga tidur dengan asap (mood `sleeping`). Sumbu berubah cyan | Asap memakai animasi di `Wyrm.swift` |
 | Istirahat selesai | Pop: "Siap fokus lagi?" dengan tombol "Fokus" dan "Nanti" | Naga bangun (transisi dari sleeping ke guarding) |
 
-**Halaman Fokus di state expanded**
-
-- **Jalan**: [tombol bulat 42 pt pause/lanjut | keterangan "Fokus n/N · tugas" + tombol +5 mnt, Lewati, Stop | waktu 50 pt silver terang], progres 4 pt silver di bawahnya.
-- **Atur** (timer tidak berjalan): chip Klasik 25/5, Dalam 50/10, Custom. Stepper Fokus (5–90, step 5), Istirahat (1–30), Sesi (1–8). Field tugas opsional, tombol Mulai. Pengaturan terakhir disimpan.
-- Di popover menu bar, halaman yang sama tampil sebagai kartu, dan stepper otomatis ditumpuk kalau sempit.
+**Halaman Focus di state expanded**: lihat "Isi state expanded" butir 3.
 
 ### 2. Claude Usage
 
 Fitur yang sudah ada dipertahankan semua: limit sesi dan mingguan, forecast, daftar sesi, Jump, Recent, Usage, suara dan notifikasi selesai.
 
-- Live: naga mode working dan ring limit sesi, seperti sekarang. Amber dan rose hanya dipakai untuk peringatan usage.
-- Warna ring mengikuti level: silver di bawah 80%, amber 80–90%, rose di atas 90%. Di atas 90% ring berdenyut sekali setiap 4 detik, tidak terus-menerus.
+- Live: slot maskot (atau titik status kalau belum ada maskot): merah berdenyut saat Claude bekerja, putih saat Claude menunggu kamu, plus ring limit sesi.
+- **Status `waiting`**: Claude Code menulis `status: "waiting"` di file sesi saat menunggu izin atau jawaban. Status ini tidak dianggap "selesai" (sebelumnya memicu pop "finished" yang salah). Yang dianggap selesai hanya perubahan busy → idle.
+- **Aktivitas**: alat terakhir yang dipakai Claude dibaca dari ±200 KB terakhir transkrip `~/.claude/projects/<cwd>/<session>.jsonl`, tanpa membaca seluruh file. Pembacaan dilakukan di latar, maksimal tiap 2 detik per sesi, dan hanya untuk sesi yang busy atau waiting.
+- Warna mengikuti level: silver sampai 90%, merah `#E5322B` di atas 90%. Di atas 90% ring berdenyut sekali setiap 4 detik, tidak terus-menerus.
 - Pop "sesi selesai" dengan tombol Jump tetap ada.
 - Batas peringatan 80% bisa diatur, seperti sekarang.
 
@@ -157,9 +156,7 @@ Fitur yang sudah ada dipertahankan semua: limit sesi dan mingguan, forecast, daf
     - Ditampilkan 50 lagu di sekitar lagu aktif, sisanya dimuat saat di-scroll (`LazyVStack`).
     - Kalau daftar tidak tersedia (radio, lagu katalog di luar library), tampilkan teks "Daftar lagu tidak tersedia untuk sumber ini."
 - Cover memakai `matchedGeometryEffect` antara live dan Home.
-- **Klik lagu di daftar katalog** (Album / Top songs / Recent): kalau lagunya ada di library, langsung diputar lewat AppleScript (`play` pada track library). Kalau tidak, halamannya hanya dibuka di Music tanpa menekan apa pun. Music.app tidak menyediakan cara resmi bagi app lain untuk memutar lagu katalog: perintah `play` hanya menerima track yang sudah ada, tidak ada properti ID katalog, link `music://` hanya membuka halaman, `SystemMusicPlayer` (MusicKit) dan `MPMusicPlayerController` tidak tersedia di macOS. Otomasi Accessibility (menekan tombol Play di Music) sempat dibuat lalu **dihentikan dan dihapus** atas keputusan pengguna.
-- **Lagu streaming** (di luar library): Music tidak memberi daftar lagu, jadi tab Musik mencari album lagu itu di iTunes Search API publik milik Apple. Yang dikirim hanya artis dan nama album, dengan timeout 5 detik, di luar main thread, di-cache per album, dan hanya saat tab Musik tampil. Hasilnya ditampilkan sebagai "From <album>". Lagu aktif disorot. Bisa dimatikan di Settings → Music (default aktif, atas permintaan).
-    - **Konteks lagu streaming**: Music tidak memberi tahu asal lagu (Top Songs artis, album, stasiun), dan antreannya tidak bisa dibaca app lain (`current playlist` gagal; MediaRemote privat dikunci sejak macOS 15.4). Jadi konteks ditebak dari lagu sebelumnya: album sama → **Album**, artis sama tapi album lain → **Top songs** artis itu (iTunes Search, diurutkan menurut popularitas, satu versi per lagu, maks. 15), artis lain → **Recent** (lagu yang diputar sesi ini, maks. 30). Pilihan manual Album · Top songs · Recent berlaku sampai tebakan berubah. Hanya daftar yang tampil yang diambil, dan hasilnya di-cache per album atau artis.
+- **Lagu streaming** (di luar library): Music tidak memberi daftar lagu atau antrean, dan lagu katalog tidak bisa diputar langsung oleh app lain (lihat PROGRESS.md). Karena itu daftar Album / Top songs / Recent dari iTunes Search API **dihapus**. Tab Music hanya menampilkan playlist library saat tersedia. App tidak lagi mengirim data apa pun ke iTunes Search API.
 - Di popover menu bar tetap ada kartu Now Playing (cover 56 pt) dengan panel daftar lagu yang bergeser saat hover 400 ms.
 
 **Cara kerja yang hemat**
@@ -178,11 +175,14 @@ Fitur yang sudah ada dipertahankan semua: limit sesi dan mingguan, forecast, daf
 
 ### 5. Maskot dan tema
 
-- **Naga**: ikon "Spiked dragon head" karya Delapouite dari game-icons.net (CC BY 3.0, atribusi di README dan `Views/Dragon.swift`). Path SVG ditanam di kode, diwarnai gradasi merah (`#F0454B` → `#C8202C` → `#8E1119`). Naga gambar tangan sebelumnya dihapus karena kurang bagus.
-- Animasi lewat Core Animation (`Views/CoreAnimationViews.swift`), jadi app tidak bekerja per frame. Napas (idle, tidur), glow berdenyut dan mata menyala (kerja), mata berkedip pelan (fokus), api partikel `CAEmitterLayer` dari celah rahang, bukan ujung moncong (selesai), "z" melayang (tidur). Kepala sedikit terangkat saat di-hover.
-- Di notch live, naga diam (tanpa animasi). Ikon app memakai naga yang sama (`--render-icon`).
-- **Tema**: latar `#000`, teks `#F2F3F5`, sekunder `#8D9096`, track `#2A2B2F`, silver `#C9CDD3`, silver terang `#D5D8DD`, tombol `#3A3D44` / `#24262B`, garis `#1C1D20`. Merah hanya untuk naga, amber/rose hanya untuk peringatan usage.
-- **Bahasa**: semua teks UI berbahasa Inggris.
+- **Maskot**: naga lama (`Views/Dragon.swift` dan ikon game-icons.net) dihapus. Penggantinya adalah slot `WyrmSlot(state:look:)` di celah tengah header dan di kiri notch live.
+    - State: `hidden`, `peek`, `working`, `alert`, `done`, `sleep`. Pemetaan: user idle lama (> 5 menit) → sleep, Claude busy → working, Claude menunggu input → alert, sesi selesai → done, selain itu peek.
+    - Kalau `Resources/wyrm.riv` ada, file itu diputar dengan RiveRuntime (rive-ios 6.x, framework ±14 MB di `Contents/Frameworks`). Setiap state dipetakan ke input boolean bernama sama di state machine, ditambah input angka `lookX` / `lookY` dari posisi kursor (maks. 15 fps, hanya saat notch terbuka). Rive di-pause saat notch tertutup.
+    - Kalau file belum ada, slot kosong (app tidak menggambar maskot sendiri). Notch live menampilkan titik status Claude.
+- **Tema** (`Views/Theme.swift`): bg `#000`, kartu `#1C1C1E`, tombol `#2C2C2E`, tombol aktif/hover `#3A3A3C`, teks `#F5F5F7`, sekunder `#8E8E93`, progress silver `#D1D5DB`. Satu-satunya warna adalah merah `#E5322B`, hanya untuk titik status Claude "working" dan usage > 90%.
+- Radius (semua `.continuous`): kartu 20, tombol 10, preset 11, tab 8.
+- Tipografi: angka besar 38 pt semibold, tracking −1, `monospacedDigit`. Label 11 pt sekunder. Judul lagu 13 pt semibold.
+- **Ikon app**: notch hitam dengan titik merah (digambar oleh binary lewat `--render-icon`).
 
 ## Notch virtual di monitor eksternal
 
@@ -219,7 +219,7 @@ Prinsipnya: membuka pelan dan sedikit memantul, menutup cepat dan tenang, dan ti
 | `smooth` | smooth 0.28 detik | Perubahan nilai (ring, progress, warna) |
 | `quick` | snappy 0.18 detik | Hover tombol, tekan |
 | `slide` | spring(response 0.4, damping 0.86) | Panel daftar lagu di popover menu bar |
-| `resize` | spring(response 0.45, damping 0.78) | Tinggi notch mengikuti isi tab, kapsul tab meluncur |
+| `resize` | spring(response 0.45, damping 0.8) | Tinggi notch mengikuti isi tab, kapsul tab meluncur |
 | `page` | easeOut 0.22 detik | Isi tab berganti (fade + geser 5 pt) |
 
 **Koreografi per transisi**
@@ -270,7 +270,7 @@ Prinsipnya: membuka pelan dan sedikit memantul, menutup cepat dan tenang, dan ti
 **Struktur folder baru**
 
 ```
-Sources/Notchwyrm/
+Sources/Wyrmwatch/
   App/            entry point, AppModels, DisplayMode, StatusItem
   Notch/          NotchWindow, NotchView, NotchShape, VirtualNotch, ExpandedPanel (header + halaman)
   Core/           NotchModule (protokol), ModuleRegistry, PriorityResolver, PopQueue
@@ -311,7 +311,7 @@ protocol NotchModule: ObservableObject {
 | Notifikasi | Pomodoro dan Claude selesai | Hanya pop dan suara |
 | Keychain | Token Claude Code (sudah ada) | Seperti sekarang |
 
-Tambahkan `NSAppleEventsUsageDescription` dan `NSCalendarsFullAccessUsageDescription` di `Info.plist` lewat `build-app.sh`. Data yang dikirim ke luar hanya request limit Claude, dan (untuk lagu streaming) artis + nama album ke iTunes Search API Apple.
+Tambahkan `NSAppleEventsUsageDescription` dan `NSCalendarsFullAccessUsageDescription` di `Info.plist` lewat `build-app.sh`. Bundle ID `com.saidilhalim.wyrmwatch`. Setelah rename, macOS meminta izin Music, Kalender, dan akses Keychain sekali lagi. Pengaturan lama dari `com.saidilhalim.claudeusage` disalin otomatis saat pertama kali jalan. Data yang dikirim ke luar hanya request limit Claude, dan (untuk lagu streaming) artis + nama album ke iTunes Search API Apple.
 
 ## Alur kerja Git
 
@@ -331,7 +331,7 @@ Semua pengembangan dilakukan di branch terpisah, di-commit otomatis per langkah,
 3. **Pomodoro Ember.** Timer, sumbu, bara, mood naga, pop selesai, dan statistik harian.
 4. **Apple Music.** Now playing, kontrol, pop ganti lagu, lalu panel daftar lagu.
 5. **Info dasar.** Jam dan acara kalender berikutnya (baterai dan pop charger dihapus setelah revisi desain).
-6. **Polishing dan rename.** Reduce Motion, Settings lengkap, pengukuran performa, ganti nama app menjadi Notchwyrm (target, executable, bundle identifier, ikon, README).
+6. **Polishing dan rename.** Reduce Motion, Settings lengkap, pengukuran performa, ganti nama app (akhirnya menjadi Wyrmwatch) (target, executable, bundle identifier, ikon, README).
 
 **Kriteria penerimaan**
 
@@ -378,3 +378,4 @@ Semua pengembangan dilakukan di branch terpisah, di-commit otomatis per langkah,
 - Acara kalender berikutnya tidak punya tempat di header baru ("naga + tanggal · jam").
     - Keputusan sementara: tampil sebagai tooltip di tanggal. Perlu diputuskan apakah butuh baris sendiri.
 - Kalimat terpotong di permintaan ("jangan lupa iunutk …"): ditafsirkan sebagai "jangan lupa untuk ikon app", jadi ikon app kini naga merah.
+- Nama app: **Wyrmwatch** (keputusan 5 Nov 2026), menggantikan rencana "Notchwyrm". Nama app tidak memakai kata "Claude".
