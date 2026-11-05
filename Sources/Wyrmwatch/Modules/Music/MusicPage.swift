@@ -52,18 +52,23 @@ struct MusicPage: View {
                         .foregroundStyle(Palette.text)
                         .lineLimit(1)
                         .truncationMode(.tail)
-                    Text([track.artist, track.album].filter { !$0.isEmpty }.joined(separator: " · ")).cardLabel()
+                    Text([track.artist, bridge.isMusicApp ? track.album : bridge.sourceName].filter { !$0.isEmpty }
+                        .joined(separator: " · ")).cardLabel()
                     Spacer(minLength: 6)
                     SeekRow(bridge: bridge)
                     Spacer(minLength: 6)
                     HStack(spacing: 6) {
-                        CardButton(systemName: "shuffle", active: bridge.shuffle, help: "Shuffle") { bridge.toggleShuffle() }
+                        if bridge.isMusicApp {
+                            CardButton(systemName: "shuffle", active: bridge.shuffle, help: "Shuffle") { bridge.toggleShuffle() }
+                        }
                         CardButton(systemName: "backward.fill", help: "Previous") { bridge.previous() }
                         CardButton(systemName: bridge.isPlaying ? "pause.fill" : "play.fill", active: true,
                                    help: bridge.isPlaying ? "Pause" : "Play") { bridge.playPause() }
                         CardButton(systemName: "forward.fill", help: "Next") { bridge.next() }
-                        CardButton(systemName: bridge.repeatMode == .one ? "repeat.1" : "repeat", active: bridge.repeatMode != .off,
-                                   help: "Repeat") { bridge.cycleRepeat() }
+                        if bridge.isMusicApp {
+                            CardButton(systemName: bridge.repeatMode == .one ? "repeat.1" : "repeat", active: bridge.repeatMode != .off,
+                                       help: "Repeat") { bridge.cycleRepeat() }
+                        }
                     }
                 }
             } else {

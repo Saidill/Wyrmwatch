@@ -125,6 +125,7 @@ enum SelfTest {
         checkCore()
         await checkPomodoro()
         await checkMusic()
+        await checkOtherPlayers()
         await checkInfo()
         await checkReduceMotion()
         renderSettings()
@@ -473,6 +474,41 @@ enum SelfTest {
         await wait(0.6)
     }
 
+    /// Another app than Music playing, as mediaremote-adapter reports it (fed made-up payloads, no real process).
+    private static func checkOtherPlayers() async {
+        let bridge = AppModels.music.bridge
+        let registry = NotchWindowController.shared.model.registry
+        log("— Other players")
+        registry.onlyForTesting = ["music"]
+        bridge.injectForTesting(track: nil, playing: false)
+        let spotify: [String: Any] = [
+            "bundleIdentifier": "com.spotify.client", "title": "Holocene", "artist": "Bon Iver", "album": "Bon Iver",
+            "duration": 337.0, "elapsedTime": 40.0, "playing": true, "uniqueIdentifier": 42,
+            "timestamp": ISO8601DateFormatter().string(from: Date()),
+        ]
+        check(NowPlayingAdapter.item(from: ["title": "", "bundleIdentifier": "x"]) == nil, "media without a title is ignored")
+        bridge.adapterForTesting(spotify)
+        check(bridge.source == "com.spotify.client" && !bridge.isMusicApp, "another app playing becomes the source")
+        check(bridge.track?.title == "Holocene" && bridge.isPlaying && abs(bridge.currentPosition() - 40) < 2,
+              "its song, play state and position come from the adapter")
+        check(bridge.playlist?.isEmpty == true, "another app has no playlist to show")
+        bridge.handleForTesting(["Player State": "Stopped"])
+        check(bridge.track?.title == "Holocene", "Music stopping doesn't clear another app's song")
+        await snapshotExpanded(tab: .music, "18-music-other-app")
+        var paused = spotify
+        paused["playing"] = false
+        bridge.adapterForTesting(paused)
+        check(!bridge.isPlaying, "pausing in the other app shows as paused")
+        bridge.adapterForTesting(["bundleIdentifier": MusicBridge.bundleID, "title": "Song", "playing": true])
+        check(bridge.isMusicApp, "Music playing again takes back over (and is read the richer way)")
+        bridge.adapterForTesting(spotify)
+        bridge.adapterForTesting(nil)
+        check(bridge.track == nil && bridge.isMusicApp, "nothing playing anywhere clears the song")
+        bridge.injectForTesting(track: nil, playing: false)
+        registry.onlyForTesting = nil
+        await wait(0.4)
+    }
+
     /// The next calendar event (fed a made-up one); Info never takes the live notch and never pops.
     private static func checkInfo() async {
         let info = AppModels.info
@@ -684,7 +720,8 @@ enum SelfTest {
         for tab in NotchTab.allCases {
             UserDefaults.standard.set(tab.rawValue, forKey: NotchTab.storageKey)
             if !notch.model.expanded { notch.open(on: screen.display) }
-            await wait(1.0)
+            await wait(0.2)
+            await waitForPage(tab)
             heights[tab] = notch.model.contentHeight
             let size = screen.size(for: .expanded, contentHeight: notch.model.contentHeight)
             check(abs(size.width - (ExpandedPanel.width + 20)) < 0.5 && notch.window?.frame.size == NotchWindowController.windowSize,
@@ -702,12 +739,12 @@ enum SelfTest {
             await wait(0.8)
             verify("Home with the Pomodoro running", "tab-home-focus-\(label)")
             UserDefaults.standard.set(NotchTab.focus.rawValue, forKey: NotchTab.storageKey)
-            await waitForPageSwap(gone: "home.")
+            await waitForPage(.focus)
             verify("Focus while running", "tab-focus-running-\(label)")
             timer.stopToSetup()
             AppModels.music.bridge.injectForTesting(track: nil, playing: false)
             UserDefaults.standard.set(NotchTab.home.rawValue, forKey: NotchTab.storageKey)
-            await wait(0.8)
+            await waitForPage(.home)
             check(LayoutProbe.frames["home.startMusic"] != nil, "\(label): Home offers Play music when nothing plays")
             verify("Home with no music", "tab-home-nomusic-\(label)")
         }
@@ -715,10 +752,13 @@ enum SelfTest {
         await wait(0.6)
     }
 
-    /// Waits (up to 2 s) until the page that was switched away from has faded out and taken its probes along.
-    private static func waitForPageSwap(gone prefix: String) async {
+    /// Waits (up to 2 s) until only `tab`'s page is left: the one switched away from has faded out with its probes.
+    private static func waitForPage(_ tab: NotchTab) async {
         await wait(0.8)
-        for _ in 0..<12 where LayoutProbe.frames.keys.contains(where: { $0.hasPrefix(prefix) }) { await wait(0.1) }
+        let others = NotchTab.allCases.filter { $0 != tab }.map { $0.rawValue + "." }
+        for _ in 0..<12 where LayoutProbe.frames.keys.contains(where: { key in others.contains { key.hasPrefix($0) } }) {
+            await wait(0.1)
+        }
     }
 
     /// Opens the notch on one page, saves a picture of it, and closes it again.
