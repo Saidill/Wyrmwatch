@@ -50,7 +50,7 @@ struct ExpandedPanel: View {
     @State private var look: CGPoint?
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             HStack(spacing: 0) {
                 TabBar(selection: $tab)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -59,10 +59,9 @@ struct ExpandedPanel: View {
                 WyrmSlot(state: wyrmState, look: look, size: min(notch.height - 4, 28))
                     .frame(width: notch.width, height: notch.height)
                 HStack(spacing: 8) {
-                    TabPill(tab: tab)
                     TimelineView(.everyMinute) { context in
                         Text(context.date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute()))
-                            .font(.app(11, .medium))
+                            .font(.app(11))
                             .foregroundStyle(Palette.text2)
                             .monospacedDigit()
                     }
@@ -135,13 +134,13 @@ private struct TabBar: View {
     @Binding var selection: NotchTab
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             ForEach(NotchTab.allCases) { tab in
                 Button { withAnimation(Motion.quick) { selection = tab } } label: {
                     tab.icon()
-                        .frame(width: 14, height: 14)
+                        .frame(width: 16, height: 16)
                         .foregroundStyle(selection == tab ? Palette.text : Palette.text2)
-                        .frame(width: 26, height: 26)
+                        .frame(width: 28, height: 28)
                         .background(Radius.shape(Radius.tab).fill(selection == tab ? Palette.buttonHi : Palette.card))
                         .contentShape(Radius.shape(Radius.tab))
                 }
@@ -153,21 +152,3 @@ private struct TabBar: View {
     }
 }
 
-/// The active tab's icon and name, crossfading when the tab changes.
-private struct TabPill: View {
-    let tab: NotchTab
-
-    var body: some View {
-        HStack(spacing: 5) {
-            tab.icon(lineWidth: 1.3).frame(width: 10, height: 10)
-            Text(tab.title).font(.app(11, .medium))
-        }
-        .foregroundStyle(Palette.text)
-        .padding(.horizontal, 9)
-        .frame(height: 22)
-        .background(Capsule().fill(Palette.card))
-        .id(tab)
-        .transition(.opacity)
-        .animation(Motion.page, value: tab)
-    }
-}

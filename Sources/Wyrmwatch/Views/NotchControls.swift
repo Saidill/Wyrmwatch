@@ -112,11 +112,11 @@ struct NotchChip: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.app(11, .medium))
+                .font(.app(11))
                 .foregroundStyle(selected ? Palette.onSilver : Palette.text)
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
-                .frame(maxWidth: .infinity, minHeight: 26)
+                .frame(maxWidth: .infinity, minHeight: 28)
                 .background(Capsule().fill(selected ? Palette.silver : (hovering ? Palette.buttonHi : Palette.button)))
                 .contentShape(Capsule())
         }
@@ -138,7 +138,7 @@ struct SeekRow: View {
             let now = dragging ?? bridge.currentPosition(at: context.date)
             HStack(spacing: 8) {
                 Text(Self.format(now))
-                    .frame(width: 30, alignment: .leading)
+                    .frame(width: 32, alignment: .leading)
                     .probe(probePrefix.map { $0 + "elapsed" } ?? "")
                 GeometryReader { geo in
                     ThinBar(fraction: now / duration)
@@ -154,10 +154,10 @@ struct SeekRow: View {
                 .frame(height: 12)
                 .probe(probePrefix.map { $0 + "progress" } ?? "")
                 Text(Self.format(duration))
-                    .frame(width: 30, alignment: .trailing)
+                    .frame(width: 32, alignment: .trailing)
                     .probe(probePrefix.map { $0 + "length" } ?? "")
             }
-            .font(.app(10))
+            .font(.app(11))
             .foregroundStyle(Palette.text2)
             .monospacedDigit()
             .lineLimit(1)
@@ -199,9 +199,9 @@ struct CardButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 6) {
-                if let systemName { Image(systemName: systemName).font(.system(size: 12, weight: .semibold)) }
-                if let title { Text(title).font(.app(12, .medium)).lineLimit(1).minimumScaleFactor(0.85) }
+            HStack(spacing: 8) {
+                if let systemName { Image(systemName: systemName).font(.system(size: 13, weight: .semibold)) }
+                if let title { Text(title).font(.app(13, .semibold)).lineLimit(1).minimumScaleFactor(0.85) }
             }
             .foregroundStyle(Palette.text)
             .frame(maxWidth: .infinity, minHeight: height, maxHeight: height)
@@ -224,11 +224,11 @@ struct PresetButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.app(12.5, .medium))
+                .font(.app(13, .semibold))
                 .monospacedDigit()
                 .foregroundStyle(Palette.text)
                 .lineLimit(1)
-                .frame(maxWidth: .infinity, minHeight: 34, maxHeight: 34)
+                .frame(maxWidth: .infinity, minHeight: 32, maxHeight: 32)
                 .background(Radius.shape(Radius.preset).fill(selected || hovering ? Palette.buttonHi : Palette.button))
                 .contentShape(Radius.shape(Radius.preset))
         }

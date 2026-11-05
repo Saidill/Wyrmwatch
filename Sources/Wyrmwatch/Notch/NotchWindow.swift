@@ -76,7 +76,7 @@ final class NotchScreen: ObservableObject {
             return isVirtual ? Self.pill : CGSize(width: notch.width + flare * 2, height: notch.height)
         case .live: return CGSize(width: notch.width + 2 * Self.liveWing + flare * 2, height: notch.height)
         // Just big enough for one row (a 44 pt picture and two lines of text, or a button).
-        case .pop: return CGSize(width: 320 + flare * 2, height: notch.height + 58)
+        case .pop: return CGSize(width: 320 + flare * 2, height: notch.height + 60)
         // The same size on every page: wide rather than tall.
         case .expanded:
             return CGSize(width: ExpandedPanel.width + flare * 2,

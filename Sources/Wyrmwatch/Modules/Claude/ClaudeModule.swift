@@ -75,7 +75,7 @@ private struct ClaudeLiveLimit: View {
         HStack(spacing: 4) {
             MiniRing(fraction: (limits.fiveHourPercent ?? 0) / 100)
             Text(limits.fiveHourPercent.map { "\(Int($0.rounded()))%" } ?? "")
-                .font(.app(10, .medium))
+                .font(.app(11))
                 .foregroundStyle(Palette.text2)
                 .monospacedDigit()
         }
@@ -125,7 +125,7 @@ private struct ClaudeFinishedPop: View {
         HStack(spacing: 4) {
             // Room on the right for its fire.
             Image(systemName: "checkmark")
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(Palette.text)
                 .frame(width: 40, height: 40)
                 .background(Radius.shape(Radius.button).fill(Palette.button))
@@ -135,7 +135,7 @@ private struct ClaudeFinishedPop: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(session.displayName) finished")
-                    .font(.app(13, .medium))
+                    .font(.app(13, .semibold))
                     .foregroundStyle(Palette.text)
                     .lineLimit(1)
                 Text(session.shortFolder.isEmpty ? "Waiting for you" : session.shortFolder)
@@ -146,10 +146,10 @@ private struct ClaudeFinishedPop: View {
             Spacer(minLength: 6)
             Button { NotchWindowController.shared.jump(to: session) } label: {
                 Text("Jump")
-                    .font(.app(11, .medium))
+                    .font(.app(11))
                     .foregroundStyle(Palette.onSilver)
                     .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
+                    .padding(.vertical, 8)
                     .background(Capsule().fill(Palette.silverGradient))
             }
             .buttonStyle(.plain)

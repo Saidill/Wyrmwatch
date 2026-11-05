@@ -111,7 +111,7 @@ private struct SongPop: View {
             CoverArt(image: bridge.artwork, id: bridge.track?.id ?? "", size: 44, radius: 9)
             VStack(alignment: .leading, spacing: 2) {
                 Text(bridge.track?.title ?? "")
-                    .font(.app(13, .medium))
+                    .font(.app(13, .semibold))
                     .foregroundStyle(Palette.text)
                     .lineLimit(1)
                 Text(bridge.track?.artist ?? "")
@@ -140,14 +140,14 @@ struct NowPlayingCard: View {
     @State private var hoverTask: Task<Void, Never>?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            CardTitle(showList ? "Playlist" : "Now playing") {
+        VStack(alignment: .leading, spacing: 8) {
+            SectionTitle(showList ? "Playlist" : "Now playing") {
                 if bridge.track != nil {
                     Button { toggleList(!showList) } label: {
                         Image(systemName: showList ? "chevron.left" : "list.bullet")
-                            .font(.system(size: 10.5, weight: .semibold))
+                            .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(Palette.text2)
-                            .frame(width: 18, height: 18)
+                            .frame(width: 20, height: 20)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -209,12 +209,12 @@ struct NowPlayingCard: View {
                     .controlSize(.small)
             }
         } else if let track = bridge.track {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top, spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .top, spacing: 8) {
                     CoverArt(image: bridge.artwork, id: track.id, size: 56, radius: 10)
-                    VStack(alignment: .leading, spacing: 3) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(track.title)
-                            .font(.app(12.5, .medium))
+                            .font(.app(13, .semibold))
                             .foregroundStyle(Palette.text)
                             .lineLimit(2)
                         Text(track.artist)
@@ -234,10 +234,10 @@ struct NowPlayingCard: View {
                 }
             }
         } else {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 CoverArt(image: nil, id: "", size: 40, radius: 8)
                 Text(MusicBridge.isRunning ? "Nothing playing" : "Music isn't open")
-                    .font(.app(11.5))
+                    .font(.app(11))
                     .foregroundStyle(Palette.text3)
             }
         }
@@ -272,13 +272,13 @@ struct Scrubber: View {
                         })
                     .animation(Motion.quick, value: dragging == nil)
                 }
-                .frame(height: 10)
+                .frame(height: 12)
                 HStack {
                     Text(Self.format(now))
                     Spacer()
                     Text("-" + Self.format(max(duration - now, 0)))
                 }
-                .font(.app(9.5))
+                .font(.app(11))
                 .foregroundStyle(Palette.text3)
                 .monospacedDigit()
             }

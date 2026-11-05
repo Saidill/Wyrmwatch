@@ -12,11 +12,11 @@ struct MusicPage: View {
             HStack(alignment: .top, spacing: 8) {
                 CoverArt(image: bridge.artwork, id: bridge.track?.id ?? "", size: 150, radius: Radius.card)
                     .modifier(MatchedCover(space: coverSpace))
-                    .frame(width: 150, height: 150)
+                    .frame(width: 152, height: 152)
                     .probe("music.cover")
                     .cardAppear(0)
                 info
-                    .frame(height: 150)
+                    .frame(height: 152)
                     .probe("music.info")
                     .cardAppear(1)
             }
@@ -37,9 +37,9 @@ struct MusicPage: View {
     @ViewBuilder private var info: some View {
         Group {
             if bridge.permissionDenied {
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 8) {
                     Text("Allow this app to control Music to see what's playing.")
-                        .font(.app(12))
+                        .font(.app(13))
                         .foregroundStyle(Palette.text2)
                         .fixedSize(horizontal: false, vertical: true)
                     CardButton(title: "Give access") { bridge.openPermissionSettings() }
@@ -57,7 +57,7 @@ struct MusicPage: View {
                     Spacer(minLength: 6)
                     SeekRow(bridge: bridge)
                     Spacer(minLength: 6)
-                    HStack(spacing: 6) {
+                    HStack(spacing: 8) {
                         if bridge.isMusicApp {
                             CardButton(systemName: "shuffle", active: bridge.shuffle, help: "Shuffle") { bridge.toggleShuffle() }
                         }
@@ -72,11 +72,11 @@ struct MusicPage: View {
                     }
                 }
             } else {
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 8) {
                     Text(MusicBridge.isRunning ? "Nothing playing" : "Music isn't open").cardLabel()
                     Spacer(minLength: 0)
-                    CardButton(systemName: "play.fill", title: "Play music", active: true, height: 34) { bridge.startMusic() }
-                        .frame(width: 150)
+                    CardButton(systemName: "play.fill", title: "Play music", active: true, height: 32) { bridge.startMusic() }
+                        .frame(width: 152)
                 }
             }
         }
@@ -92,7 +92,7 @@ struct MusicPage: View {
                             .id(item.index)
                     }
                 }
-                .padding(6)
+                .padding(8)
             }
             .background(Radius.shape(Radius.card).fill(Palette.card))
             .clipShape(Radius.shape(Radius.card))
@@ -115,7 +115,7 @@ private struct SongRow: View {
     @State private var hovering = false
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             Text(item.title)
                 .lineLimit(1)
                 .truncationMode(.tail)
@@ -127,7 +127,7 @@ private struct SongRow: View {
         .font(.app(12, current ? .semibold : .regular))
         .foregroundStyle(current ? Palette.text : Palette.text2)
         .padding(.horizontal, 8)
-        .frame(height: 26)
+        .frame(height: 28)
         .background(Radius.shape(Radius.button).fill(hovering ? Palette.button : .clear))
         .contentShape(Rectangle())
         .onTapGesture(perform: play)

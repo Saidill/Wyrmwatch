@@ -102,7 +102,7 @@ private struct PomodoroLiveTime: View {
 
     private var time: some View {
         HStack(spacing: 4) {
-            PhaseRing(timer: timer, diameter: 10)
+            PhaseRing(timer: timer, diameter: 12)
             PomodoroDigits(timer: timer, size: 11, color: Palette.silverBright, rolling: false)
                 .fixedSize()
         }
@@ -131,7 +131,7 @@ private struct PopButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.app(11.5, .medium))
+                .font(.app(11))
                 .foregroundStyle(primary ? Palette.onSilver : Palette.text)
                 .lineLimit(1)
                 .padding(.horizontal, 12)
@@ -157,7 +157,7 @@ private struct FocusDonePop: View {
                     .font(.app(13, .semibold))
                     .foregroundStyle(Palette.text)
                     .lineLimit(1)
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     Text(timer.phase == .longBreak ? "Long break" : "Break")
                         .font(.app(11))
                         .foregroundStyle(Palette.text2)
@@ -188,10 +188,10 @@ private struct BreakDonePop: View {
     @State private var awake = false
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             PopIcon(systemName: "timer")
             Text("Ready to focus again?")
-                .font(.app(13, .medium))
+                .font(.app(13, .semibold))
                 .foregroundStyle(Palette.text)
                 .lineLimit(1)
             Spacer(minLength: 6)
@@ -215,7 +215,7 @@ private struct FocusCard: View {
     @ObservedObject var timer: PomodoroTimer
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(timer.isActive ? (timer.phase.isBreak ? "Break" : "Focus \(timer.sessionNumber)/\(timer.sessionsTarget)") : "Focus")
                     .cardLabel()
@@ -244,7 +244,7 @@ struct PopIcon: View {
 
     var body: some View {
         Image(systemName: systemName)
-            .font(.system(size: 15, weight: .bold))
+            .font(.system(size: 16, weight: .semibold))
             .foregroundStyle(Palette.text)
             .frame(width: 40, height: 40)
             .background(Radius.shape(Radius.button).fill(Palette.button))

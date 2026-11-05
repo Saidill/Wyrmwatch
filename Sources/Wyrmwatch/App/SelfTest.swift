@@ -127,6 +127,7 @@ enum SelfTest {
         await checkMusic()
         await checkOtherPlayers()
         await checkInfo()
+        await checkDesignStates()
         await checkReduceMotion()
         renderSettings()
         await checkVirtualNotch()
@@ -521,6 +522,39 @@ enum SelfTest {
                                   now: Date()) == "now", "an event under way shows as now")
         await snapshotExpanded(tab: .focus, "22-info-header")
         info.calendar.injectForTesting(nil)
+    }
+
+    /// Pictures of every Claude state for the design review, and the signature motion (Ember Edge, wyrm)
+    /// stopping once the notch is closed.
+    private static func checkDesignStates() async {
+        let notch = NotchWindowController.shared
+        let sessions = AppModels.sessions
+        let registry = notch.model.registry
+        log("— Design states")
+        func session(_ status: String) -> LiveSession {
+            LiveSession(pid: 1, sessionId: "test", cwd: NSHomeDirectory() + "/Projects/thesis", name: nil, status: status,
+                        kind: nil, startedAt: Date().timeIntervalSince1970 * 1000 - 600_000,
+                        statusUpdatedAt: Date().timeIntervalSince1970 * 1000 - 90_000)
+        }
+        for (status, name) in [(nil, "idle"), ("busy", "working"), ("waiting", "waiting")] as [(String?, String)] {
+            sessions.injectForTesting(status.map { [session($0)] } ?? [])
+            await snapshotExpanded(tab: .home, "design-home-claude-\(name)")
+            await snapshotExpanded(tab: .claude, "design-claude-\(name)")
+        }
+
+        // Working: the edge glows while open; closed, nothing moves (no live module, so the notch really closes).
+        sessions.injectForTesting([session("busy")])
+        notch.open()
+        await wait(1.0)
+        if let w = notch.window { check(await animationsRunning(in: w), "the Ember Edge moves while Claude works") }
+        registry.onlyForTesting = []
+        notch.close()
+        await wait(1.0)
+        check(notch.model.state(on: notch.screens.first?.screen.display ?? 0) == .closed, "the notch is closed")
+        if let w = notch.window { check(!(await animationsRunning(in: w)), "closed: the Ember Edge and the wyrm stop") }
+        registry.onlyForTesting = nil
+        sessions.injectForTesting(nil)
+        await wait(0.6)
     }
 
     /// With Reduce Motion forced on, nothing repeats: the dragon in the open notch holds still.

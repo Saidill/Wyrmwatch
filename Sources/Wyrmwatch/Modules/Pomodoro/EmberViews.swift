@@ -17,7 +17,7 @@ struct PomodoroDigits: View {
 
     @ObservedObject var timer: PomodoroTimer
     var size: CGFloat = 11
-    var weight: Font.Weight = .medium
+    var weight: Font.Weight = .regular
     var color: Color = Palette.text2
     /// Roll the digits on each tick (off in the live notch, where it's too small to see and costs a redraw).
     var rolling = true
@@ -99,7 +99,7 @@ struct TickScale: View {
                 scale(1 - timer.fractionLeft())
             }
         }
-        .frame(height: 14)
+        .frame(height: 16)
         .opacity(timer.isPaused ? 0.6 : 1)
     }
 

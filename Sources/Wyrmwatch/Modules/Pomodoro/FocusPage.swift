@@ -50,7 +50,19 @@ struct FocusPage: View {
                 }
             }
             Spacer(minLength: 4)
-            PomodoroDigits(timer: timer, size: 38, weight: .semibold, color: Palette.text)
+            Group {
+                if !timer.isActive && mode == .countdown {
+                    // Not started yet: the length chosen for the Timer, not the Pomodoro's.
+                    Text(PomodoroDigits.format(timerSeconds))
+                        .font(.app(38, .semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(Palette.text)
+                        .contentTransition(.numericText())
+                        .animation(Motion.quick, value: timerSeconds)
+                } else {
+                    PomodoroDigits(timer: timer, size: 38, weight: .semibold, color: Palette.text)
+                }
+            }
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
                 .opacity(timer.isPaused ? 0.6 : 1)
