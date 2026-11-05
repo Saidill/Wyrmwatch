@@ -14,8 +14,6 @@ struct PopoverView: View {
     @State private var range = 0 // 0 = today, 1 = week
     @State private var hoveredBar: Int?
     @State private var refreshTurns = 0.0
-    /// Clicking the dragon makes it hop for a moment.
-    @State private var petted = false
     /// Measured height of the current tab's content; the popover shrinks to fit it.
     @State private var contentHeight: CGFloat = 300
     private let maxContentHeight: CGFloat = 470
@@ -69,20 +67,26 @@ struct PopoverView: View {
     private var claudePage: some View {
         let session = limits.windows.first { $0.id == "five_hour" }
         let week = limits.windows.first { $0.id == "seven_day" }
-        return VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 16) {
-                ClaudeBar(title: "Session", window: session, reset: session?.resetsAt.map(formatReset))
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                BigNumberCard(label: "Session", number: session.map { "\(Int($0.utilization.rounded()))%" } ?? "–",
+                              detail: session?.resetsAt.map(formatReset) ?? limits.error ?? "",
+                              warn: (session?.utilization ?? 0) >= 90, fraction: (session?.utilization ?? 0) / 100)
                     .probe("claude.session")
-                ClaudeBar(title: "Week", window: week, reset: week?.resetsAt.map(formatReset))
+                    .cardAppear(0)
+                BigNumberCard(label: "Week", number: week.map { "\(Int($0.utilization.rounded()))%" } ?? "–",
+                              detail: week?.resetsAt.map(formatReset) ?? "",
+                              warn: (week?.utilization ?? 0) >= 90, fraction: (week?.utilization ?? 0) / 100)
                     .probe("claude.week")
+                    .cardAppear(1)
+                BigNumberCard(label: "Sessions running", number: "\(sessions.sessions.count)",
+                              detail: sessions.waitingCount > 0 ? "\(sessions.waitingCount) waiting for you"
+                                  : sessions.busyCount > 0 ? "\(sessions.busyCount) working" : "All caught up",
+                              working: sessions.busyCount > 0, waiting: sessions.waitingCount > 0)
+                    .probe("claude.running")
+                    .cardAppear(2)
             }
-            if let forecast = limits.forecast {
-                ForecastLine(forecast: forecast)
-                    .lineLimit(1)
-                    .probe("claude.forecast")
-            } else if let error = limits.error, limits.windows.isEmpty {
-                Text(error).font(.app(11)).foregroundStyle(Palette.text2).lineLimit(1)
-            }
+            .frame(height: 96)
             PillToggle(options: ["Now", "Recent", "Usage"], selection: $tab, fill: true)
                 .probe("claude.tabs")
             ScrollView(.vertical, showsIndicators: false) {
@@ -96,7 +100,7 @@ struct PopoverView: View {
                 .id(tab)
                 .transition(.opacity.combined(with: .offset(y: 5)))
             }
-            .frame(height: 120)
+            .frame(height: 130)
             .probe("claude.list")
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -178,16 +182,15 @@ struct PopoverView: View {
     private var header: some View {
         let greeting = Greeting.now
         return HStack(spacing: 8) {
-            Button { pet() } label: {
-                DragonView(mood: dragonMood, size: 34)
-                    .padding(.top, 4)
-                    .frame(width: 38, height: 38)
-                    .background(Circle().fill(Palette.glass))
-                    .clipShape(Circle())
-                    .overlay(Circle().strokeBorder(Palette.silverGradient.opacity(0.5), lineWidth: 1))
+            ZStack {
+                Radius.shape(Radius.button).fill(Palette.card)
+                if WyrmSlot.available {
+                    WyrmSlot(state: WyrmState.current(sessions: sessions, idleFor: 0), look: nil, size: 30)
+                } else {
+                    ClaudeStatusDot(working: sessions.busyCount > 0, waiting: sessions.waitingCount > 0, diameter: 8)
+                }
             }
-            .buttonStyle(.plain)
-            .help("Make it roar")
+            .frame(width: 38, height: 38)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(showSettings ? "Settings" : greeting.text)
@@ -225,20 +228,6 @@ struct PopoverView: View {
         .padding(.horizontal, 2)
     }
 
-    private func pet() {
-        petted = true
-        Task {
-            try? await Task.sleep(for: .seconds(1.6))
-            petted = false
-        }
-    }
-
-    /// The dragon mirrors what Claude is doing.
-    private var dragonMood: DragonMood {
-        if petted || sessions.celebrating { return .happy }
-        if sessions.busyCount > 0 { return .working }
-        return sessions.sessions.isEmpty ? .sleeping : .idle
-    }
 
     private var statusLine: String {
         let busy = sessions.busyCount
@@ -306,7 +295,6 @@ struct PopoverView: View {
             }
             if sessions.sessions.isEmpty {
                 HStack(spacing: 10) {
-                    DragonView(mood: .sleeping, size: 30)
                     Text("Start `claude` in a terminal and it shows up here.")
                         .font(.app(12))
                         .foregroundStyle(Palette.text2)
@@ -425,29 +413,38 @@ struct PopoverView: View {
 
 // MARK: - Session row
 
-/// One limit on the Claude page: name and reset on the left, percent on the right, a 4 pt bar under them.
-struct ClaudeBar: View {
-    let title: String
-    let window: LimitWindow?
-    let reset: String?
+/// One big number in a card: a label, the number (38 pt), and a line of detail; optional 4 pt bar and status dot.
+struct BigNumberCard: View {
+    let label: String
+    let number: String
+    var detail: String = ""
+    var warn = false
+    var fraction: Double?
+    var working = false
+    var waiting = false
 
     var body: some View {
-        let percent = window?.utilization
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(title).font(.app(12.5, .medium)).foregroundStyle(Palette.text)
-                Text(reset ?? "").font(.app(10.5)).foregroundStyle(Palette.text2)
-                    .lineLimit(1).truncationMode(.tail)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 6) {
+                Text(label).cardLabel()
                 Spacer(minLength: 4)
-                Text(percent.map { "\(Int($0.rounded()))%" } ?? "–")
-                    .font(.app(13, .medium))
-                    .foregroundStyle(Palette.level(percent ?? 0, base: Palette.text, warn: 80))
-                    .monospacedDigit()
-                    .fixedSize()
+                ClaudeStatusDot(working: working, waiting: waiting)
             }
-            ThinBar(fraction: (percent ?? 0) / 100, color: Palette.level(percent ?? 0, base: Palette.silver, warn: 80))
+            Spacer(minLength: 2)
+            Text(number)
+                .bigNumber()
+                .foregroundStyle(warn ? Palette.red : Palette.text)
+                .contentTransition(.numericText())
+                .animation(Motion.smooth, value: number)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            if let fraction {
+                ThinBar(fraction: fraction, color: warn ? Palette.red : Palette.silver).padding(.top, 2)
+            }
+            Spacer(minLength: 4)
+            Text(detail).cardLabel()
         }
-        .frame(maxWidth: .infinity)
+        .notchCard()
     }
 }
 

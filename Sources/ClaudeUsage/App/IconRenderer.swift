@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// Draws the app icon (the red dragon on a black tile) at 1024 × 1024 and quits.
+/// Draws the app icon (a notch with a red dot, on a dark tile) at 1024 × 1024 and quits.
 /// Used by scripts/build-app.sh: <exe> --render-icon <out.png>
 @MainActor
 enum IconRenderer {
@@ -13,8 +13,14 @@ enum IconRenderer {
             tile.fill(LinearGradient(colors: [Color(hex: 0x1C1D20), .black], startPoint: .top, endPoint: .bottom))
                 .overlay(tile.strokeBorder(Color(hex: 0x2A2B2F), lineWidth: 4))
                 .frame(width: 824, height: 824)
-            DragonView(mood: .guarding, size: 560, at: 1000)
-                .offset(x: -10, y: 10)
+            // The notch, with the red "watching" dot beside it.
+            UnevenRoundedRectangle(bottomLeadingRadius: 90, bottomTrailingRadius: 90, style: .continuous)
+                .fill(Color.black)
+                .overlay(UnevenRoundedRectangle(bottomLeadingRadius: 90, bottomTrailingRadius: 90, style: .continuous)
+                    .strokeBorder(Color(hex: 0x3A3A3C), lineWidth: 6))
+                .frame(width: 560, height: 230)
+                .offset(y: -297)
+            Circle().fill(Color(hex: 0xE5322B)).frame(width: 64, height: 64).offset(x: 0, y: -297)
         }
         .frame(width: 1024, height: 1024)
         let renderer = ImageRenderer(content: icon)

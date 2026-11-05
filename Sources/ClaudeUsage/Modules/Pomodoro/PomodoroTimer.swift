@@ -10,7 +10,10 @@ final class PomodoroTimer: ObservableObject {
         var isBreak: Bool { self != .focus }
     }
 
-    enum Event { case focusDone, breakDone }
+    enum Event { case focusDone, breakDone, countdownDone }
+
+    /// Pomodoro: focus and breaks in cycles. Countdown: one plain timer, no break.
+    enum Mode: String { case pomodoro, countdown }
 
     /// Ready-made lengths, in minutes.
     struct Preset: Equatable, Identifiable {
@@ -19,6 +22,7 @@ final class PomodoroTimer: ObservableObject {
         var id: String { "\(focus)/\(shortBreak)" }
         static let classic = Preset(focus: 25, shortBreak: 5)
         static let long = Preset(focus: 50, shortBreak: 10)
+        static let extended = Preset(focus: 90, shortBreak: 15)
     }
 
     /// Allowed focus lengths and session counts in the setup.
@@ -65,6 +69,7 @@ final class PomodoroTimer: ObservableObject {
         static let sound = "pomodoro.sound"
         static let haptic = "pomodoro.haptic"
         static let musicSync = "pomodoro.musicSync"
+        static let mode = "pomodoro.mode"
         static let phase = "pomodoro.phase"
         static let endDate = "pomodoro.endDate"
         static let paused = "pomodoro.pausedRemaining"
@@ -171,6 +176,7 @@ final class PomodoroTimer: ObservableObject {
     /// Ends the cycle and goes back to the setup: focus first, no sessions done.
     func stopToSetup() {
         halt()
+        mode = .pomodoro
         phase = .focus
         completedInCycle = 0
         save()
@@ -188,6 +194,28 @@ final class PomodoroTimer: ObservableObject {
         focusMinutes = preset.focus
         shortBreakMinutes = preset.shortBreak
         if !isActive { save() }
+    }
+
+    /// The running (or last) mode.
+    @Published private(set) var mode: Mode = .pomodoro
+
+    /// Starts a Pomodoro cycle with `preset` from its first focus.
+    func startPomodoro(_ preset: Preset) {
+        stopToSetup()
+        mode = .pomodoro
+        apply(preset)
+        start()
+    }
+
+    /// Starts a plain countdown of `minutes` (no break afterwards).
+    func startCountdown(minutes: Int) {
+        halt()
+        mode = .countdown
+        phase = .focus
+        phaseLength = TimeInterval(max(minutes, 1) * 60)
+        endDate = Date().addingTimeInterval(phaseLength)
+        save()
+        schedule()
     }
 
     /// Self-test only: puts the clock a few seconds from the end of the phase.
@@ -233,6 +261,15 @@ final class PomodoroTimer: ObservableObject {
     /// moment (so a Mac that slept through the change still shows the right time); if that break is already
     /// over too, it ends as well and the next focus waits to be started.
     private func finish(endedAt: Date) {
+        if mode == .countdown {
+            // A countdown just ends: no break, no Pomodoro stats.
+            halt()
+            mode = .pomodoro
+            phase = .focus
+            save()
+            events.send(.countdownDone)
+            return
+        }
         let finished = phase
         let length = phaseLength
         halt()
@@ -280,6 +317,7 @@ final class PomodoroTimer: ObservableObject {
     // MARK: Saving
 
     private func save() {
+        defaults.set(mode.rawValue, forKey: Keys.mode)
         defaults.set(phase.rawValue, forKey: Keys.phase)
         defaults.set(endDate?.timeIntervalSince1970, forKey: Keys.endDate)
         defaults.set(pausedRemaining, forKey: Keys.paused)
@@ -294,6 +332,7 @@ final class PomodoroTimer: ObservableObject {
     func restore() {
         timer?.invalidate()
         phase = defaults.string(forKey: Keys.phase).flatMap(Phase.init) ?? .focus
+        mode = defaults.string(forKey: Keys.mode).flatMap(Mode.init) ?? .pomodoro
         completedInCycle = defaults.integer(forKey: Keys.cycle)
         let end = defaults.object(forKey: Keys.endDate) as? Double
         endDate = end.map(Date.init(timeIntervalSince1970:))

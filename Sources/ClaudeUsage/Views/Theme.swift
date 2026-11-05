@@ -97,7 +97,7 @@ enum Motion {
     /// Side panels (the playlist) sliding in and out.
     static let slide = Animation.spring(response: 0.4, dampingFraction: 0.86)
     /// The open notch growing or shrinking to fit the page, and the tab capsule gliding.
-    static let resize = Animation.spring(response: 0.45, dampingFraction: 0.78)
+    static let resize = Animation.spring(response: 0.45, dampingFraction: 0.8)
     /// A page swapping in when the tab changes (fade, 5 pt shift).
     static let page = Animation.easeOut(duration: 0.22)
     /// What springs become with Reduce Motion on.
@@ -143,13 +143,9 @@ struct GlassBackground: NSViewRepresentable {
 extension View {
     /// Glass card. `fillHeight` stretches it to the row's height (cards side by side).
     func card(fillHeight: Bool = false) -> some View {
-        padding(14)
+        padding(12)
             .frame(maxWidth: .infinity, maxHeight: fillHeight ? .infinity : nil, alignment: .topLeading)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Palette.glass)
-                    .strokeBorder(Palette.rim, lineWidth: 1)
-            )
+            .background(Radius.shape(Radius.card).fill(Palette.card))
     }
 }
 

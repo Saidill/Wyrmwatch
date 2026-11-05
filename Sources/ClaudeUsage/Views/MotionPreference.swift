@@ -60,3 +60,16 @@ extension View {
     /// Stops every repeating animation below while motion is reduced.
     func followsReduceMotion() -> some View { modifier(FollowsReduceMotion()) }
 }
+
+private struct AnimationsPausedKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// Stops every repeating animation (status dot, working dots, visualizer, mascot) while out of sight,
+    /// e.g. the notch content when the notch is closed.
+    var animationsPaused: Bool {
+        get { self[AnimationsPausedKey.self] }
+        set { self[AnimationsPausedKey.self] = newValue }
+    }
+}

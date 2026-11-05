@@ -33,6 +33,8 @@ final class PomodoroModule: NotchModule {
             popSink.yield(NotchPop(kind: .pomodoro, duration: 8) { FocusDonePop(timer: self.timer) })
         case .breakDone:
             popSink.yield(NotchPop(kind: .pomodoro, duration: 8) { BreakDonePop(timer: self.timer) })
+        case .countdownDone:
+            popSink.yield(NotchPop(kind: .pomodoro, duration: 8) { TimesUpPop() })
         }
     }
 
@@ -49,6 +51,7 @@ final class PomodoroModule: NotchModule {
             switch event {
             case .focusDone: Notifier.shared.notify(title: "Focus done", body: "Your break has started.")
             case .breakDone: Notifier.shared.notify(title: "Break over", body: "Ready to focus again?")
+            case .countdownDone: Notifier.shared.notify(title: "Time's up", body: "Your countdown has finished.")
             }
         }
     }
@@ -61,10 +64,11 @@ private struct PomodoroLiveDragon: View {
     @ObservedObject var timer: PomodoroTimer
 
     var body: some View {
-        DragonView(mood: timer.phase.isBreak ? .sleeping : .guarding, size: 26, animated: false)
-            .padding(.top, 2)
+        FocusIcon()
+            .stroke(style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
+            .foregroundStyle(Palette.text2)
+            .frame(width: 13, height: 13)
             .opacity(timer.isPaused ? 0.6 : 1)
-            .transformEnvironment(\.animationsPaused) { paused in paused = paused || timer.isPaused }
     }
 }
 
@@ -113,7 +117,7 @@ private struct FocusDonePop: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            DragonView(mood: .happy, size: 44, fireRoom: 0.6)
+            PopIcon(systemName: "checkmark")
             VStack(alignment: .leading, spacing: 4) {
                 Text("Focus done")
                     .font(.app(13, .medium))
@@ -150,7 +154,7 @@ private struct BreakDonePop: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            DragonView(mood: awake ? .guarding : .sleeping, size: 40)
+            PopIcon(systemName: "timer")
             Text("Ready to focus again?")
                 .font(.app(13, .medium))
                 .foregroundStyle(Palette.text)
@@ -174,19 +178,57 @@ private struct BreakDonePop: View {
 /// Focus in the menu bar popover: one compact row, so the popover never outgrows the screen.
 private struct FocusCard: View {
     @ObservedObject var timer: PomodoroTimer
-    @State private var setup = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if setup && !timer.isActive {
-                FocusPage(timer: timer)
-                NotchChip(title: "Close") { withAnimation(Motion.page) { setup = false } }
-                    .frame(width: 80)
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(timer.isActive ? (timer.phase.isBreak ? "Break" : "Focus \(timer.sessionNumber)/\(timer.sessionsTarget)") : "Focus")
+                    .cardLabel()
+                PomodoroDigits(timer: timer, size: 28, weight: .semibold, color: Palette.text)
+                    .tracking(-1)
+                    .opacity(timer.isPaused ? 0.6 : 1)
+            }
+            Spacer(minLength: 6)
+            if timer.isActive {
+                CardButton(systemName: timer.isPaused ? "play.fill" : "pause.fill", active: true) { timer.toggle() }
+                    .frame(width: 44)
+                CardButton(systemName: "stop.fill") { timer.stopToSetup() }
+                    .frame(width: 44)
             } else {
-                FocusMini(timer: timer) { withAnimation(Motion.page) { setup = true } }
-                    .frame(height: 58)
+                PresetButton(title: "25/5") { timer.startPomodoro(.classic) }.frame(width: 64)
+                PresetButton(title: "50/10") { timer.startPomodoro(.long) }.frame(width: 64)
             }
         }
         .card()
+    }
+}
+
+/// The icon at the start of a pop: a symbol on a #2C2C2E tile.
+struct PopIcon: View {
+    let systemName: String
+
+    var body: some View {
+        Image(systemName: systemName)
+            .font(.system(size: 15, weight: .bold))
+            .foregroundStyle(Palette.text)
+            .frame(width: 40, height: 40)
+            .background(Radius.shape(Radius.button).fill(Palette.button))
+            .padding(.trailing, 8)
+    }
+}
+
+/// A countdown has finished.
+private struct TimesUpPop: View {
+    var body: some View {
+        HStack(spacing: 4) {
+            PopIcon(systemName: "timer")
+            Text("Time's up")
+                .font(.app(13, .medium))
+                .foregroundStyle(Palette.text)
+            Spacer(minLength: 6)
+            PopButton(title: "OK", primary: false) { NotchWindowController.shared.dismissPop() }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { NotchWindowController.shared.expand() }
     }
 }

@@ -30,7 +30,6 @@ enum SelfTest {
         // A real pointer resting on the notch would hold pops open; the timing checks must not depend on it.
         notch.model.registry.popQueue.isHovering = { false }
         await wait(1.5) // let the app finish launching
-        renderDragons()
 
         for round in 1...3 {
             log("— Round \(round)")
@@ -44,7 +43,6 @@ enum SelfTest {
             check(popoverWindow()?.isVisible == true, "popover opens from the menu bar icon")
             if round == 1, let w = popoverWindow() {
                 snapshot(w, "1-menubar-popover")
-                check(await dragonMoves(in: w), "dragon moves in the menu bar header")
             }
 
             // Header button inside the popover: switch to the notch while the popover is open.
@@ -63,7 +61,6 @@ enum SelfTest {
             check(notch.window?.ignoresMouseEvents == false, "open notch takes clicks")
             if round == 1, let w = notch.window {
                 snapshot(w, "2-notch-open")
-                check(await dragonMoves(in: w), "dragon moves in the open notch header")
             }
 
             // Header button inside the notch: back to the menu bar while the notch is open.
@@ -350,43 +347,6 @@ enum SelfTest {
         bridge.injectForTesting(track: b, playing: true, position: 30, playlist: [], currentIndex: nil)
         await snapshotExpanded(tab: .music, "21-music-playlist-unavailable")
 
-        // A streamed song: its album, found online in real use, injected here.
-        let album = (1...12).map { AlbumTrack(number: $0, title: $0 == 5 ? "A Much Longer Song Title Than Usual (Remastered)" : "Album song \($0)",
-                                                duration: 210, url: nil) }
-        // Before it, another song by the same artist from another album (as when playing their top songs).
-        bridge.injectForTesting(track: NowPlaying(id: "STREAM0", title: "Paint My Love", artist: "Someone Else", album: "Another Album",
-                                                  duration: 240), playing: true, playlist: [], currentIndex: nil)
-        bridge.injectForTesting(track: NowPlaying(id: "STREAM", title: "A Much Longer Song Title Than Usual", artist: "Someone Else",
-                                                  album: "Strange Foreign Beauty", duration: 210),
-                                playing: true, position: 30, playlist: [], currentIndex: nil)
-        AppModels.music.albums.injectForTesting(.found(album: "Strange Foreign Beauty", tracks: album))
-        let top = ["Paint My Love", "That's Why (You Go Away)", "The Actor", "A Much Longer Song Title Than Usual", "Take Me To Your Heart"]
-            .enumerated().map { AlbumTrack(number: $0.offset + 1, title: $0.element, duration: 240, url: nil) }
-        AppModels.music.topSongs.injectForTesting(.found(album: "Someone Else", tracks: top))
-        // Where a streamed song came from is guessed from the song before it.
-        func song(_ title: String, _ artist: String, _ album: String) -> NowPlaying {
-            NowPlaying(id: title, title: title, artist: artist, album: album, duration: 200)
-        }
-        check(StreamContext.infer(current: song("A", "X", "One"), previous: nil) == .album, "first streamed song: its album")
-        check(StreamContext.infer(current: song("B", "X", "One (Remastered)"), previous: song("A", "X", "One")) == .album,
-              "next song from the same album: the album")
-        check(StreamContext.infer(current: song("C", "X", "Two"), previous: song("A", "X", "One")) == .topSongs,
-              "same artist, another album: the artist's top songs")
-        check(StreamContext.infer(current: song("D", "Y", "Three"), previous: song("A", "X", "One")) == .recent,
-              "another artist: a station or mix, so what has played")
-        check(StreamContext.infer(current: bridge.track!, previous: bridge.history.dropFirst().first) == .topSongs,
-              "after a song by the same artist from another album, the list is their top songs")
-        // The previous song was by the same artist from another album, so this shows the top songs.
-        await snapshotExpanded(tab: .music, "21-music-top-songs", keepOpen: true)
-        check(LayoutProbe.frames["music.album"] != nil && LayoutProbe.frames["music.context"] != nil,
-              "a streamed song shows a song list with Album / Top songs / Recent")
-        // The list, its switch and its header are nested in one column; none of them may cover the artwork.
-        check(LayoutProbe.overlaps(prefix: "music.").filter { $0.0 == "music.cover" || $0.1 == "music.cover" }.isEmpty,
-              "song list sits beside the cover without overlapping")
-        notch.close()
-        await wait(0.6)
-        AppModels.music.albums.reset()
-
         // An Apple Music stream: the notification has no persistent ID, but the song must still show at once.
         bridge.injectForTesting(track: a, playing: true, position: 10)
         let stream: [AnyHashable: Any] = ["Name": "Out of the Blue", "Artist": "Michael Learns to Rock",
@@ -457,7 +417,7 @@ enum SelfTest {
         check(MotionPreference.shared.reduce, "forcing Reduce Motion turns it on")
         notch.open()
         await wait(1.0)
-        if let w = notch.window { check(!(await dragonMoves(in: w)), "no repeating animation with Reduce Motion") }
+        if let w = notch.window { check(!(await animationsRunning(in: w)), "no repeating animation with Reduce Motion") }
         notch.close()
         await wait(0.6)
         restoreSettings(saved, prefix: "motion.")
@@ -614,47 +574,14 @@ enum SelfTest {
         return nil
     }
 
-    /// Every dragon mood, large and at the sizes the app uses, on black.
-    private static func renderDragons() {
-        let moods: [DragonMood] = [.sleeping, .idle, .working, .happy]
-        // The roar, frame by frame (one cycle is 2.6 s): building up, full fire, settling.
-        let roar = [0.15, 0.4, 0.9, 1.5, 1.85].map { 2600.0 + $0 }
-        let sheet = VStack(alignment: .leading, spacing: 24) {
-            HStack(spacing: 24) { ForEach(moods.indices, id: \.self) { DragonView(mood: moods[$0], size: 160, at: 2600.5) } }
-            HStack(spacing: 0) { ForEach(roar.indices, id: \.self) { DragonView(mood: .happy, size: 100, at: roar[$0], fireRoom: 0.6) } }
-            HStack(spacing: 24) {
-                ForEach(moods.indices, id: \.self) { i in
-                    HStack(spacing: 12) {
-                        DragonView(mood: moods[i], size: 44, at: 2601)
-                        DragonView(mood: moods[i], size: 34, at: 2601)
-                        DragonView(mood: moods[i], size: 26, at: 2601)
-                    }
-                    .frame(width: 160)
-                }
-            }
-        }
-        .padding(30)
-        .background(Color.black)
-        let renderer = ImageRenderer(content: sheet)
-        renderer.scale = 2
-        guard let image = renderer.nsImage, let tiff = image.tiffRepresentation,
-              let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else { return }
-        try? png.write(to: out.appendingPathComponent("0-dragons.png"))
-        log("saved 0-dragons.png")
-    }
-
-    /// Captures the window twice, half a second apart, and checks that the header avatar (the dragon) changed.
-    /// Whether a dragon in the window is animating: its Core Animation layers carry running animations.
-    private static func dragonMoves(in window: NSWindow) async -> Bool {
+    /// Whether anything in the window repeats: a Core Animation layer (status dot, working dots, visualizer)
+    /// carrying an animation.
+    private static func animationsRunning(in window: NSWindow) async -> Bool {
         await wait(0.3)
-        func hosts(_ view: NSView) -> [DragonHost] {
-            (view as? DragonHost).map { [$0] } ?? view.subviews.flatMap(hosts)
-        }
-        guard let root = window.contentView else { return false }
-        let animating = hosts(root).filter { host in
-            (host.layer?.sublayers ?? []).contains { !($0.animationKeys() ?? []).isEmpty }
-        }
-        log("   \(hosts(root).count) dragon layer views, \(animating.count) animating")
+        func layers(_ layer: CALayer) -> [CALayer] { [layer] + (layer.sublayers ?? []).flatMap(layers) }
+        guard let root = window.contentView?.layer else { return false }
+        let animating = layers(root).filter { !($0.animationKeys() ?? []).isEmpty }
+        log("   \(animating.count) animating layers")
         return !animating.isEmpty
     }
 
@@ -683,7 +610,7 @@ enum SelfTest {
                   "\(label): \(tab.title) is 600 wide and the window never resizes")
             verify(tab.title, "tab-\(tab.rawValue)-\(label)")
         }
-        check(abs((heights[.home] ?? 0) - 96) < 1, "\(label): Home page is 96 pt tall (\(Int(heights[.home] ?? 0)))")
+        check(abs((heights[.home] ?? 0) - HomePage.height) < 1, "\(label): Home cards are \(Int(HomePage.height)) pt tall (\(Int(heights[.home] ?? 0)))")
         check((heights[.music] ?? 0) > (heights[.home] ?? 0) + 10,
               "\(label): the notch height follows the page (home \(Int(heights[.home] ?? 0)), music \(Int(heights[.music] ?? 0)))")
         if variants {

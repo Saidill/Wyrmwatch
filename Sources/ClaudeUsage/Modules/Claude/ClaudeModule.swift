@@ -63,8 +63,12 @@ private struct ClaudeLiveDragon: View {
     @ObservedObject var sessions: SessionMonitor
 
     var body: some View {
-        DragonView(mood: sessions.busyCount > 0 ? .working : .idle, size: 26, animated: false)
-            .padding(.top, 2)
+        // The mascot when there is one; otherwise just the status dot.
+        if WyrmSlot.available {
+            WyrmSlot(state: WyrmState.current(sessions: sessions, idleFor: 0), look: nil, size: 22)
+        } else {
+            ClaudeStatusDot(working: sessions.busyCount > 0, waiting: sessions.waitingCount > 0, diameter: 7)
+        }
     }
 }
 
@@ -125,16 +129,12 @@ private struct ClaudeFinishedPop: View {
     var body: some View {
         HStack(spacing: 4) {
             // Room on the right for its fire.
-            DragonView(mood: .happy, size: 44, fireRoom: 0.6)
-                .overlay(alignment: .bottomLeading) {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 7, weight: .heavy))
-                        .foregroundStyle(Palette.onSilver)
-                        .frame(width: 14, height: 14)
-                        .background(Circle().fill(Palette.silverGradient))
-                        .overlay(Circle().strokeBorder(.black, lineWidth: 1.5))
-                        .offset(x: 30)
-                }
+            Image(systemName: "checkmark")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(Palette.text)
+                .frame(width: 40, height: 40)
+                .background(Radius.shape(Radius.button).fill(Palette.button))
+                .padding(.trailing, 8)
                 .scaleEffect(checked ? 1 : 0.6)
                 .opacity(checked ? 1 : 0)
 
