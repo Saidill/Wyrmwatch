@@ -8,14 +8,17 @@ enum LayoutProbe {
     static var frames: [String: CGRect] = [:]
     static var enabled: Bool { SelfTest.isRequested }
 
-    /// Leaf views whose frames intersect another's (touching edges don't count).
+    /// Views whose frames partly cover each other (touching edges, and one view nested inside another, don't count).
     static func overlaps(prefix: String) -> [(String, String)] {
         let items = frames.filter { $0.key.hasPrefix(prefix) && $0.value.width > 0 && $0.value.height > 0 }
             .sorted { $0.key < $1.key }
         var result: [(String, String)] = []
         for i in items.indices {
             for j in items.indices where j > i {
-                let overlap = items[i].value.intersection(items[j].value)
+                let a = items[i].value, b = items[j].value
+                // A card holding its own pieces is nesting, not overlap.
+                if a.insetBy(dx: -0.5, dy: -0.5).contains(b) || b.insetBy(dx: -0.5, dy: -0.5).contains(a) { continue }
+                let overlap = a.intersection(b)
                 if !overlap.isNull, overlap.width > 0.5, overlap.height > 0.5 { result.append((items[i].key, items[j].key)) }
             }
         }
