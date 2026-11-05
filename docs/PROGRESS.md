@@ -254,3 +254,25 @@ Hasil (sesi Claude ini aktif selama pengukuran): closed ±0,1–1%, live 0,9–1
 - Fitur Accessibility (menekan tombol Play di Music) sempat dibuat dan diperketat, lalu **dihapus seluruhnya**: `MusicUI`, penekanan tombol, `--inspect-music`, `--play-test`, dan teks permintaan izin. Tidak ada sertifikat signing yang dibuat.
 - Cek manual: hapus ClaudeUsage dari System Settings → Privacy & Security → Accessibility (izin itu tidak dipakai lagi).
 - Masih terbuka: daftar Top songs dibatasi 15 lagu (data tersedia ±30 dari 40 hasil), dan isinya peringkat pencarian Apple, bukan daftar Top Songs Apple Music yang persis.
+
+## Layout kartu, slot maskot Rive, rename ke Wyrmwatch (`feat/card-redesign`, `feat/rename-wyrmwatch`)
+
+**Cek kelayakan (langkah 0)**
+- Status Claude live **bisa**. Alat terakhir dan file yang disentuh dibaca dari ±200 KB terakhir transkrip (file 32 MB tidak dibaca utuh). Saat Claude menunggu izin atau jawaban, file sesi menulis `status: "waiting"` (dikonfirmasi di binary Claude Code). Temuan sampingan: app sebelumnya menganggap `waiting` sebagai "selesai" dan memunculkan pop palsu. Sekarang sudah diperbaiki.
+- RiveRuntime (rive-ios 6.x) **bisa** di-build lewat SPM untuk macOS 14. Bentuknya framework dinamis 14 MB (arm64 + x86_64) yang di-embed di `Contents/Frameworks`. Tanpa `wyrm.riv` tidak ada biaya CPU, karena view Rive tidak dibuat. Biaya saat memutar baru bisa diukur setelah file maskot ada. API `RiveViewModel` yang dipakai ditandai deprecated di 6.x.
+
+**Dibuat**
+- Token desain baru, header 3 kolom (tab ikon | slot maskot | pill + jam), Home 3 kartu 118 pt, Focus (Pomodoro/Countdown + grid preset 3 × 2), Music (cover card + info card + playlist library), Claude (3 angka besar + Now/Recent/Usage).
+- Settings pindah ke klik kanan notch (menu Settings… / Quit, jendela Settings sendiri).
+- Mode Countdown (05:00, 15:00, custom) dengan pop "Time's up". Preset baru 90/15.
+- `WyrmSlot` memutar `Resources/wyrm.riv` kalau ada. Tanpa file itu slot kosong dan notch live menampilkan titik status (merah berdenyut = working, putih = waiting).
+- Naga lama dan ikon game-icons.net dihapus. Ikon app baru: notch hitam dengan titik merah.
+- **Dihapus**: daftar Album/Top songs/Recent katalog (`AlbumLookup`, stream context, `CatalogPlayer`), karena lagu katalog tidak bisa diputar langsung. App tidak lagi menghubungi iTunes Search API.
+- Rename ke **Wyrmwatch**: target, executable, folder `Sources/Wyrmwatch`, bundle ID `com.saidilhalim.wyrmwatch`, README dengan tagline baru. Pengaturan lama disalin sekali dari `com.saidilhalim.claudeusage`. `--install` menutup ClaudeUsage lama dan memindahkan app lamanya ke Trash.
+- Self-test: cek overlap kini mengabaikan view yang bersarang (kartu yang memuat isinya). Hasil: `ALL PASSED`.
+
+**Cek manual**
+- Izin Music (Automation), Kalender, dan akses Keychain untuk token Claude Code akan diminta lagi sekali karena bundle ID baru.
+- Klik kanan notch → Settings…
+- Status Claude saat menunggu izin: titik putih dan "waiting", tanpa pop "finished".
+- Remote git lokal masih menunjuk `claude-usage-ui`. GitHub sudah mengalihkan ke `Saidill/Wyrmwatch`, tapi perintah `git remote set-url` tidak dijalankan karena diblokir pengecekan izin.

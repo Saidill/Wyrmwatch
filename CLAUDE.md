@@ -2,9 +2,9 @@
 
 ## Proyek
 
-- App ini sedang dikembangkan dari "Claude Usage" menjadi **Notchwyrm**: notch app produktivitas dengan modul Pomodoro, Claude Usage, Apple Music, dan info dasar.
+- App ini bernama **Wyrmwatch** (dulu "Claude Usage", sempat direncanakan "Notchwyrm"): notch app produktivitas dengan modul Pomodoro, Claude Usage, Apple Music, dan info dasar.
 - Spesifikasi lengkap ada di `docs/PRD.md`. Baca dulu sebelum mulai, dan kerjakan milestone berurutan (1 sampai 6).
-- Rename teknis (target Swift, executable, `CFBundleName`, `CFBundleIdentifier` → `com.saidilhalim.notchwyrm`, ikon, README) dikerjakan di branch tersendiri, terpisah dari perubahan fitur, supaya rename tidak tercampur dalam satu diff.
+- Rename ke Wyrmwatch sudah selesai (target `Wyrmwatch`, bundle id `com.saidilhalim.wyrmwatch`). Rename berikutnya tetap dikerjakan di branch tersendiri, terpisah dari perubahan fitur.
 - Kalau ada keputusan yang tidak dijawab PRD, pilih opsi paling sederhana, catat di bagian "Pertanyaan terbuka" PRD, lalu lanjut.
 
 ## Git
@@ -20,7 +20,7 @@
 ## Build dan cek
 
 - `swift build` harus lulus sebelum commit.
-- Setelah perubahan di notch atau tampilan, jalankan self-test kalau bisa: `./scripts/build-app.sh && ./ClaudeUsage.app/Contents/MacOS/ClaudeUsage --selftest /tmp/claude-usage-test`.
+- Setelah perubahan di notch atau tampilan, jalankan self-test kalau bisa: `./scripts/build-app.sh && ./Wyrmwatch.app/Contents/MacOS/Wyrmwatch --selftest /tmp/wyrmwatch-test`.
 
 ## Desain
 

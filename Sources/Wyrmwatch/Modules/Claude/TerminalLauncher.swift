@@ -44,7 +44,7 @@ enum TerminalLauncher {
         let folder = cwd.flatMap { fm.fileExists(atPath: $0) ? $0 : nil } ?? NSHomeDirectory()
         let quoted = "'" + folder.replacingOccurrences(of: "'", with: "'\\''") + "'"
 
-        let dir = fm.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("ClaudeUsage")
+        let dir = fm.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("Wyrmwatch")
         let file = dir.appendingPathComponent("resume-\(sessionId.prefix(8)).command")
         let script = "#!/bin/zsh -l\ncd \(quoted) && clear && exec claude --resume \(sessionId)\n"
         do {
