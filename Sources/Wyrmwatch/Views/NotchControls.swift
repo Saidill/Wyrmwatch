@@ -1,21 +1,58 @@
 import SwiftUI
 
-/// A 4 pt bar: track #2A2B2F, filled silver (or a warning colour).
+/// The Wyrmwatch progress bar: a row of small overlapping scales (8 pt). Filled scales are silver (or `color`),
+/// the rest #2C2C2E. When the value grows, the newly filled scales light one after another, 20 ms apart.
+/// (Kept under its old name so every bar in the app draws this way.)
 struct ThinBar: View {
     let fraction: Double
     var color: Color = Palette.silver
-    var height: CGFloat = 4
+    var height: CGFloat = 8
+    @State private var shown = 0
+    @State private var from = 0
+    @Environment(\.reduceMotion) private var reduceMotion
+
+    /// Scale width and step: each scale overlaps the one before by a third.
+    private var scale: CGFloat { height }
+    private var step: CGFloat { height * 2 / 3 }
 
     var body: some View {
         GeometryReader { geo in
+            let count = max(1, Int((geo.size.width - scale) / step) + 1)
+            let target = Int((min(max(fraction, 0), 1) * Double(count)).rounded())
             ZStack(alignment: .leading) {
-                Capsule().fill(Palette.track)
-                Capsule().fill(color)
-                    .frame(width: geo.size.width * min(max(fraction, 0), 1))
+                ForEach(0..<count, id: \.self) { i in
+                    ScaleShape()
+                        .fill(i < shown ? color : Palette.button)
+                        .overlay(ScaleShape().stroke(Palette.bg, lineWidth: 1))
+                        .frame(width: scale, height: height)
+                        .offset(x: CGFloat(i) * step)
+                        .animation(reduceMotion ? nil : .easeOut(duration: 0.12).delay(Double(max(0, i - from)) * 0.02), value: shown)
+                }
+            }
+            .onAppear { shown = target; from = target }
+            .onChange(of: target) { old, new in
+                from = min(old, new)
+                shown = new
             }
         }
         .frame(height: height)
-        .animation(Motion.smooth, value: fraction)
+        .accessibilityElement()
+        .accessibilityValue("\(Int((fraction * 100).rounded())) percent")
+    }
+}
+
+/// One scale: flat on top, rounded below, like a fish scale seen from the side.
+struct ScaleShape: Shape {
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: r.minX, y: r.minY + r.height * 0.15))
+        p.addQuadCurve(to: CGPoint(x: r.maxX, y: r.minY + r.height * 0.15), control: CGPoint(x: r.midX, y: r.minY - r.height * 0.15))
+        p.addCurve(to: CGPoint(x: r.midX, y: r.maxY), control1: CGPoint(x: r.maxX, y: r.minY + r.height * 0.7),
+                   control2: CGPoint(x: r.midX + r.width * 0.3, y: r.maxY))
+        p.addCurve(to: CGPoint(x: r.minX, y: r.minY + r.height * 0.15), control1: CGPoint(x: r.midX - r.width * 0.3, y: r.maxY),
+                   control2: CGPoint(x: r.minX, y: r.minY + r.height * 0.7))
+        p.closeSubpath()
+        return p
     }
 }
 
@@ -75,11 +112,11 @@ struct NotchChip: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.app(11, .medium))
+                .font(.app(11))
                 .foregroundStyle(selected ? Palette.onSilver : Palette.text)
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
-                .frame(maxWidth: .infinity, minHeight: 26)
+                .frame(maxWidth: .infinity, minHeight: 28)
                 .background(Capsule().fill(selected ? Palette.silver : (hovering ? Palette.buttonHi : Palette.button)))
                 .contentShape(Capsule())
         }
@@ -101,7 +138,7 @@ struct SeekRow: View {
             let now = dragging ?? bridge.currentPosition(at: context.date)
             HStack(spacing: 8) {
                 Text(Self.format(now))
-                    .frame(width: 30, alignment: .leading)
+                    .frame(width: 32, alignment: .leading)
                     .probe(probePrefix.map { $0 + "elapsed" } ?? "")
                 GeometryReader { geo in
                     ThinBar(fraction: now / duration)
@@ -117,10 +154,10 @@ struct SeekRow: View {
                 .frame(height: 12)
                 .probe(probePrefix.map { $0 + "progress" } ?? "")
                 Text(Self.format(duration))
-                    .frame(width: 30, alignment: .trailing)
+                    .frame(width: 32, alignment: .trailing)
                     .probe(probePrefix.map { $0 + "length" } ?? "")
             }
-            .font(.app(10))
+            .font(.app(11))
             .foregroundStyle(Palette.text2)
             .monospacedDigit()
             .lineLimit(1)
@@ -162,9 +199,9 @@ struct CardButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 6) {
-                if let systemName { Image(systemName: systemName).font(.system(size: 12, weight: .semibold)) }
-                if let title { Text(title).font(.app(12, .medium)).lineLimit(1).minimumScaleFactor(0.85) }
+            HStack(spacing: 8) {
+                if let systemName { Image(systemName: systemName).font(.system(size: 13, weight: .semibold)) }
+                if let title { Text(title).font(.app(13, .semibold)).lineLimit(1).minimumScaleFactor(0.85) }
             }
             .foregroundStyle(Palette.text)
             .frame(maxWidth: .infinity, minHeight: height, maxHeight: height)
@@ -187,11 +224,11 @@ struct PresetButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.app(12.5, .medium))
+                .font(.app(13, .semibold))
                 .monospacedDigit()
                 .foregroundStyle(Palette.text)
                 .lineLimit(1)
-                .frame(maxWidth: .infinity, minHeight: 34, maxHeight: 34)
+                .frame(maxWidth: .infinity, minHeight: 32, maxHeight: 32)
                 .background(Radius.shape(Radius.preset).fill(selected || hovering ? Palette.buttonHi : Palette.button))
                 .contentShape(Radius.shape(Radius.preset))
         }

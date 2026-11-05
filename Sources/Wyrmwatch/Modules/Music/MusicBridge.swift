@@ -22,9 +22,10 @@ struct PlaylistTrack: Identifiable, Equatable {
     var id: Int { index }
 }
 
-/// Talks to Music.app. Song changes and play/pause arrive as a system notification (no polling);
-/// AppleScript is used only for what the notification lacks, always off the main thread, and never
-/// when Music isn't running (it would launch it).
+/// What's playing. Apple Music: song changes and play/pause arrive as a system notification (no polling), and
+/// AppleScript fills in what the notification lacks (playlist, favourite, shuffle, repeat), always off the main
+/// thread and never when Music isn't running (it would launch it). Any other player (Spotify, browsers, ...):
+/// mediaremote-adapter's stream, with its own play/pause/next/previous/seek, and no playlist.
 @MainActor
 final class MusicBridge: ObservableObject {
     @Published private(set) var track: NowPlaying?
@@ -47,6 +48,19 @@ final class MusicBridge: ObservableObject {
     @Published private(set) var favorite = false
     /// Music's song repeat: off, one or all.
     @Published private(set) var repeatMode: RepeatMode = .off
+    /// The app playing `track`. Playlists, favourites, shuffle and repeat only exist for Apple Music.
+    @Published private(set) var source = MusicBridge.bundleID
+    var isMusicApp: Bool { source == Self.bundleID }
+    /// "Spotify", "Safari", ...: shown when another app than Music is playing.
+    var sourceName: String {
+        if let name = NSRunningApplication.runningApplications(withBundleIdentifier: source).first?.localizedName { return name }
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: source) {
+            return FileManager.default.displayName(atPath: url.path).replacingOccurrences(of: ".app", with: "")
+        }
+        // "com.spotify.client" → "Spotify"
+        let parts = source.split(separator: ".")
+        return (parts.count > 1 ? String(parts[1]) : source).capitalized
+    }
 
     enum RepeatMode: String { case off, one, all }
 
@@ -59,6 +73,7 @@ final class MusicBridge: ObservableObject {
     private let artworkCache = ArtworkCache()
     private var playlistKey: String?
     private var observer: Any?
+    private let adapter: NowPlayingAdapter?
     /// Self-test: no AppleScript and no real notifications.
     private let offline: Bool
 
@@ -66,7 +81,10 @@ final class MusicBridge: ObservableObject {
 
     init(offline: Bool = false) {
         self.offline = offline
+        adapter = offline ? nil : NowPlayingAdapter()
         guard !offline else { return }
+        adapter?.onChange = { [weak self] item in self?.adapterChanged(item) }
+        adapter?.start()
         observer = DistributedNotificationCenter.default().addObserver(
             forName: NSNotification.Name("com.apple.Music.playerInfo"), object: nil, queue: .main) { [weak self] note in
             let info = note.userInfo ?? [:]
@@ -90,6 +108,9 @@ final class MusicBridge: ObservableObject {
 
     private func handle(_ info: [AnyHashable: Any]) {
         let state = info["Player State"] as? String ?? ""
+        // Music stopping says nothing about another app that is playing.
+        if state == "Stopped", !isMusicApp { return }
+        if state != "Stopped" { takeOver(Self.bundleID) }
         if state == "Stopped" {
             setPlaying(false)
             track = nil
@@ -138,6 +159,63 @@ final class MusicBridge: ObservableObject {
         }
     }
 
+    // MARK: Other players
+
+    private func adapterChanged(_ item: NowPlayingAdapter.Item?) {
+        guard let item else {
+            // Nothing plays any more. Music's own notifications speak for Music.
+            if !isMusicApp { setPlaying(false); track = nil; takeOver(Self.bundleID) }
+            return
+        }
+        if item.bundleID == Self.bundleID {
+            // Back to Music: read it the richer way.
+            if !isMusicApp { takeOver(Self.bundleID); refreshAll() }
+            return
+        }
+        // Another app took over only when it plays; a paused one in the background doesn't push Music aside.
+        guard item.playing || !isMusicApp || track == nil else { return }
+        takeOver(item.bundleID)
+        let next = NowPlaying(id: item.id, title: item.title, artist: item.artist, album: item.album, duration: item.duration)
+        if next != track {
+            let first = track == nil
+            let newSong = next.id != track?.id
+            track = next
+            if newSong {
+                if let data = item.artwork, let image = NSImage(data: data) {
+                    let entry = artworkCache.store(image, for: next.id)
+                    artwork = entry.image
+                    accent = entry.accent
+                } else {
+                    loadArtwork(for: next)
+                }
+                if !first { trackChanged.send(next) }
+            }
+        } else if artwork == nil, let data = item.artwork, let image = NSImage(data: data) {
+            let entry = artworkCache.store(image, for: next.id)
+            artwork = entry.image
+            accent = entry.accent
+        }
+        isPlaying = item.playing
+        position = item.elapsed + (item.playing ? Date().timeIntervalSince(item.stamp) : 0)
+        positionDate = Date()
+    }
+
+    /// Switches whose song is shown; the Music-only parts are cleared when another app takes over.
+    private func takeOver(_ bundle: String) {
+        guard source != bundle else { return }
+        source = bundle
+        if bundle != Self.bundleID {
+            playlist = []
+            playlistKey = nil
+            currentIndex = nil
+            favorite = false
+            shuffle = false
+            repeatMode = .off
+        } else {
+            playlist = nil
+        }
+    }
+
     /// The same song seen through the notification (stream fallback ID) and through AppleScript (persistent ID).
     private func sameSong(_ a: NowPlaying, _ b: NowPlaying?) -> Bool {
         guard let b, a.id.hasPrefix("stream:") || b.id.hasPrefix("stream:") else { return false }
@@ -154,7 +232,7 @@ final class MusicBridge: ObservableObject {
 
     /// Reads everything once: state, song, position, artwork. Used at launch and when the panel opens.
     func refreshAll() {
-        guard !offline, Self.isRunning else { return }
+        guard !offline, isMusicApp, Self.isRunning else { return }
         run("""
         tell application "Music"
             if player state is stopped then return "stopped"
@@ -190,7 +268,7 @@ final class MusicBridge: ObservableObject {
 
     /// Reads the playing playlist in one go (names, artists, durations) unless it is already loaded.
     func loadPlaylist(force: Bool = false) {
-        guard !offline, Self.isRunning else { return }
+        guard !offline, isMusicApp, Self.isRunning else { return }
         run("""
         tell application "Music"
             try
@@ -249,7 +327,7 @@ final class MusicBridge: ObservableObject {
         }
         artwork = nil
         accent = nil
-        guard !offline, Self.isRunning else { return }
+        guard !offline, isMusicApp, Self.isRunning else { return }
         run("""
         tell application "Music"
             try
@@ -270,10 +348,10 @@ final class MusicBridge: ObservableObject {
 
     func playPause() {
         setPlaying(!isPlaying) // feels instant; the notification confirms it
-        command("playpause")
+        if isMusicApp { command("playpause") } else { adapter?.send(.togglePlayPause) }
     }
 
-    func next() { command("next track") }
+    func next() { if isMusicApp { command("next track") } else { adapter?.send(.next) } }
 
     func toggleShuffle() {
         shuffle.toggle()
@@ -304,12 +382,12 @@ final class MusicBridge: ObservableObject {
         repeatMode = switch repeatMode { case .off: .all; case .all: .one; case .one: .off }
         command("set song repeat to \(repeatMode.rawValue)")
     }
-    func previous() { command("previous track") }
+    func previous() { if isMusicApp { command("previous track") } else { adapter?.send(.previous) } }
 
     func seek(to seconds: Double) {
         position = seconds
         positionDate = Date()
-        command("set player position to \(String(format: "%.2f", seconds))")
+        if isMusicApp { command("set player position to \(String(format: "%.2f", seconds))") } else { adapter?.seek(to: seconds) }
     }
 
     func play(_ item: PlaylistTrack) {
@@ -320,13 +398,13 @@ final class MusicBridge: ObservableObject {
     func pause() {
         guard isPlaying else { return }
         setPlaying(false)
-        command("pause")
+        if isMusicApp { command("pause") } else { adapter?.send(.pause) }
     }
 
     func play() {
         guard !isPlaying, track != nil else { return }
         setPlaying(true)
-        command("play")
+        if isMusicApp { command("play") } else { adapter?.send(.play) }
     }
 
     /// Opens the Automation pane so the user can allow this app to control Music.
@@ -361,9 +439,13 @@ final class MusicBridge: ObservableObject {
     /// Feeds a made-up playerInfo notification through the real handler.
     func handleForTesting(_ info: [AnyHashable: Any]) { handle(info) }
 
+    /// Feeds a made-up adapter state (the JSON payload) through the real handler.
+    func adapterForTesting(_ state: [String: Any]?) { adapterChanged(state.flatMap(NowPlayingAdapter.item(from:))) }
+
     func injectForTesting(track: NowPlaying?, playing: Bool, position: Double = 0, artwork: NSImage? = nil,
                           playlist: [PlaylistTrack]? = nil, currentIndex: Int? = nil) {
         let changed = track != nil && self.track != nil && track?.id != self.track?.id
+        takeOver(Self.bundleID)
         self.track = track
         isPlaying = playing
         self.position = position

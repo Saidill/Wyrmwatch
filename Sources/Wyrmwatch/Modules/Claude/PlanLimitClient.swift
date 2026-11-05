@@ -176,7 +176,7 @@ final class PlanLimitClient: ObservableObject {
             if defaults.bool(forKey: Settings.resetPingKey), session.utilization >= threshold,
                let reset = session.resetsAt, reset > now {
                 Notifier.shared.notify(id: "reset.five_hour", title: "Your session limit has reset",
-                                       body: "Back to full speed ✨", at: reset,
+                                       body: "You can use Claude at full speed again.", at: reset,
                                        sound: defaults.bool(forKey: Settings.soundEnabledKey))
             } else {
                 Notifier.shared.cancel(id: "reset.five_hour")

@@ -19,6 +19,25 @@ cp "$BIN/Wyrmwatch" "$APP/Contents/MacOS/Wyrmwatch"
 mkdir -p "$APP/Contents/Frameworks"
 cp -R "$BIN/RiveRuntime.framework" "$APP/Contents/Frameworks/"
 install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/Wyrmwatch" 2>/dev/null || true
+# Now playing from any app (Spotify, browsers, ...): mediaremote-adapter (BSD 3-Clause, vendored at v0.7.7).
+# Built with CMake once and again only when its sources change; without CMake the app falls back to Music only.
+MRA_SRC="$ROOT/Vendor/mediaremote-adapter"
+MRA_OUT="$ROOT/.build/mediaremote-adapter"
+CMAKE="$(command -v cmake || true)"
+[[ -z "$CMAKE" && -x /opt/homebrew/bin/cmake ]] && CMAKE=/opt/homebrew/bin/cmake
+[[ -z "$CMAKE" ]] && CMAKE="$(ls /Library/Frameworks/Python.framework/Versions/*/bin/cmake 2>/dev/null | tail -1 || true)"
+if [[ -n "$CMAKE" ]]; then
+    if [[ ! -d "$MRA_OUT/MediaRemoteAdapter.framework" || -n "$(find "$MRA_SRC" -newer "$MRA_OUT/MediaRemoteAdapter.framework" -type f | head -1)" ]]; then
+        "$CMAKE" -S "$MRA_SRC" -B "$MRA_OUT" -DCMAKE_BUILD_TYPE=Release >/dev/null
+        "$CMAKE" --build "$MRA_OUT" --target MediaRemoteAdapter >/dev/null
+        touch "$MRA_OUT/MediaRemoteAdapter.framework"
+    fi
+    cp -R "$MRA_OUT/MediaRemoteAdapter.framework" "$APP/Contents/Frameworks/"
+    cp "$MRA_SRC/bin/mediaremote-adapter.pl" "$APP/Contents/Resources/"
+    cp "$MRA_SRC/LICENSE" "$APP/Contents/Resources/mediaremote-adapter-LICENSE"
+else
+    echo "warning: cmake not found, building without mediaremote-adapter (now playing from Music only)" >&2
+fi
 # The mascot itself, when there is one.
 if [[ -f "$ROOT/Resources/wyrm.riv" ]]; then cp "$ROOT/Resources/wyrm.riv" "$APP/Contents/Resources/"; fi
 
@@ -58,6 +77,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 PLIST
 
 codesign --force --sign - "$APP/Contents/Frameworks/RiveRuntime.framework"
+[[ -d "$APP/Contents/Frameworks/MediaRemoteAdapter.framework" ]] && codesign --force --sign - "$APP/Contents/Frameworks/MediaRemoteAdapter.framework"
 codesign --force --sign - "$APP"
 echo "Built $APP"
 

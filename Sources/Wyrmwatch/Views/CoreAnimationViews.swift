@@ -191,3 +191,102 @@ final class WorkingDotsHost: NSView {
         }
     }
 }
+
+// MARK: - Ember Edge
+
+/// What the notch's bottom edge says about Claude.
+enum EmberMode: Equatable { case off, working, waiting }
+
+/// The notch's bottom edge: a thin red line with an ember drifting along it while Claude works, a slow white
+/// pulse while it waits for you, nothing when idle. Core Animation, at most 30 fps, stopped when not `running`.
+struct EmberEdge: NSViewRepresentable {
+    var mode: EmberMode
+    var running: Bool
+
+    func makeNSView(context: Context) -> EmberEdgeHost { EmberEdgeHost() }
+
+    func updateNSView(_ view: EmberEdgeHost, context: Context) {
+        view.update(mode: mode, running: running)
+    }
+}
+
+final class EmberEdgeHost: NSView {
+    private let line = CALayer()
+    private let ember = CAGradientLayer()
+    private var state: (EmberMode, Bool, CGFloat)?
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        layer?.masksToBounds = true
+        ember.startPoint = CGPoint(x: 0, y: 0.5)
+        ember.endPoint = CGPoint(x: 1, y: 0.5)
+        layer?.addSublayer(line)
+        layer?.addSublayer(ember)
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func layout() {
+        super.layout()
+        if let state { apply(state.0, running: state.1) }
+    }
+
+    func update(mode: EmberMode, running: Bool) {
+        if let state, state == (mode, running, bounds.width) { return }
+        apply(mode, running: running)
+    }
+
+    private func apply(_ mode: EmberMode, running: Bool) {
+        state = (mode, running, bounds.width)
+        line.removeAllAnimations()
+        ember.removeAllAnimations()
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        line.frame = bounds
+        let red = NSColor(Palette.red)
+        switch mode {
+        case .off:
+            line.opacity = 0
+            ember.opacity = 0
+        case .working:
+            line.backgroundColor = red.withAlphaComponent(0.55).cgColor
+            line.opacity = 1
+            ember.colors = [red.withAlphaComponent(0).cgColor, red.cgColor, NSColor.white.withAlphaComponent(0.85).cgColor,
+                            red.cgColor, red.withAlphaComponent(0).cgColor]
+            ember.locations = [0, 0.35, 0.5, 0.65, 1]
+            ember.frame = CGRect(x: -48, y: 0, width: 48, height: bounds.height)
+            ember.opacity = running ? 1 : 0
+        case .waiting:
+            line.backgroundColor = NSColor(Palette.text).cgColor
+            line.opacity = 0.7
+            ember.opacity = 0
+        }
+        CATransaction.commit()
+        guard running else { return }
+        let thirty = CAFrameRateRange(minimum: 10, maximum: 30, preferred: 30)
+        switch mode {
+        case .working:
+            let drift = CABasicAnimation(keyPath: "position.x")
+            drift.fromValue = -24
+            drift.toValue = bounds.width + 24
+            drift.duration = max(2.4, Double(bounds.width) / 110)
+            drift.repeatCount = .infinity
+            drift.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            drift.preferredFrameRateRange = thirty
+            ember.add(drift, forKey: "drift")
+        case .waiting:
+            let pulse = CABasicAnimation(keyPath: "opacity")
+            pulse.fromValue = 0.75
+            pulse.toValue = 0.2
+            pulse.duration = 1.1
+            pulse.autoreverses = true
+            pulse.repeatCount = .infinity
+            pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            pulse.preferredFrameRateRange = thirty
+            line.add(pulse, forKey: "pulse")
+        case .off:
+            break
+        }
+    }
+}

@@ -26,6 +26,8 @@ enum SelfTest {
         let notch = NotchWindowController.shared
         let original = display.setting
         let originalNotchTab = UserDefaults.standard.object(forKey: NotchTab.storageKey)
+        // The test starts and stops many focus sessions; none of that belongs in the real task log.
+        let savedTasks = savedSettings(prefix: "focus."), savedTimer = savedSettings(prefix: "timer.")
         notch.holdOpenForTesting = true
         // A real pointer resting on the notch would hold pops open; the timing checks must not depend on it.
         notch.model.registry.popQueue.isHovering = { false }
@@ -123,13 +125,18 @@ enum SelfTest {
         checkCore()
         await checkPomodoro()
         await checkMusic()
+        await checkOtherPlayers()
         await checkInfo()
+        await checkDesignStates()
         await checkReduceMotion()
         renderSettings()
         await checkVirtualNotch()
 
         display.setting = original
         UserDefaults.standard.set(originalNotchTab, forKey: NotchTab.storageKey)
+        restoreSettings(savedTasks, prefix: "focus.")
+        restoreSettings(savedTimer, prefix: "timer.")
+        TaskLog.shared.reloadForTesting()
         log(failures == 0 ? "ALL PASSED" : "\(failures) FAILED")
         try? report.joined(separator: "\n").write(to: out.appendingPathComponent("report.txt"), atomically: true, encoding: .utf8)
         NSApp.terminate(nil)
@@ -301,10 +308,85 @@ enum SelfTest {
         notch.dismissPop()
         timer.stopToSetup()
 
+        await checkTasksAndTimer()
+
         timer.reset()
         restoreSettings(saved, prefix: "pomodoro.")
         timer.restore()
         await wait(0.4)
+    }
+
+    /// Task names, today's log and the Timer mode (free h:m:s, +1/+5, a labelled pop when it ends).
+    private static func checkTasksAndTimer() async {
+        let notch = NotchWindowController.shared
+        let timer = AppModels.pomodoro.timer
+        let tasks = TaskLog.shared
+        log("— Tasks and Timer")
+
+        // The log on its own, in a throwaway domain.
+        let scratch = UserDefaults(suiteName: "wyrmwatch.selftest.tasks")!
+        scratch.removePersistentDomain(forName: "wyrmwatch.selftest.tasks")
+        let book = TaskLog(defaults: scratch)
+        book.add(minutes: 25, task: "Revise chapter 3")
+        book.add(minutes: 10, task: " Revise chapter 3 ")
+        book.add(minutes: 0.2, task: "Too short")
+        book.add(minutes: 5, task: "")
+        check(book.today.map(\.task) == ["Revise chapter 3", TaskLog.untitled] && book.today.first?.minutes == 35,
+              "today adds minutes per task, longest first, and skips blips")
+        for name in ["a", "b", "c", "d", "e", "f", "B"] { book.use(name) }
+        check(book.recent == ["B", "f", "e", "d", "c"], "the last five task names, newest first, no repeats")
+        check(TaskLog(defaults: scratch).today.first?.minutes == 35, "the log is kept on disk")
+        scratch.removePersistentDomain(forName: "wyrmwatch.selftest.tasks")
+
+        check(PomodoroDigits.format(3725) == "1:02:05" && PomodoroDigits.format(65) == "1:05", "times from an hour up show h:mm:ss")
+        check(PomodoroModule.titled("Focus done", "Revise chapter 3") == "Focus done · Revise chapter 3"
+              && PomodoroModule.titled("Time's up", " ") == "Time's up", "done titles carry the task name")
+
+        // Stopping a focus counts the part that ran.
+        timer.stopToSetup()
+        timer.task = "Self-test focus"
+        let before = tasks.today.first { $0.task == "Self-test focus" }?.minutes ?? 0
+        timer.runForTesting(phase: .focus, secondsLeft: timer.duration(of: .focus) - 180)
+        timer.stopToSetup()
+        let after = tasks.today.first { $0.task == "Self-test focus" }?.minutes ?? 0
+        check(after - before == 3, "stopping a focus logs its elapsed minutes (\(after - before))")
+
+        // The setup with recent names and today's tasks, in both modes (a tidy log, not the test's leftovers).
+        UserDefaults.standard.removeObject(forKey: "focus.log")
+        UserDefaults.standard.removeObject(forKey: "focus.recentTasks")
+        tasks.reloadForTesting()
+        tasks.add(minutes: 75, task: "Revise chapter 3")
+        tasks.add(minutes: 30, task: "Reply to reviewers")
+        tasks.add(minutes: 10, task: "")
+        for name in ["Reply to reviewers", "Meeting", "Revise chapter 3"] { tasks.use(name) }
+        timer.task = "Revise chapter 3"
+        tasks.use("Revise chapter 3")
+        UserDefaults.standard.set("pomodoro", forKey: "focus.pageMode")
+        await snapshotExpanded(tab: .focus, "16-focus-tasks")
+        UserDefaults.standard.set("countdown", forKey: "focus.pageMode")
+        UserDefaults.standard.set(5400, forKey: "timer.seconds")
+        await snapshotExpanded(tab: .focus, "16-timer-setup")
+
+        // A timer: any length to the second, +1 / +5 while it runs.
+        timer.task = "Meeting"
+        timer.startCountdown(seconds: 90)
+        check(timer.mode == .countdown && abs(timer.remaining() - 90) < 1, "the timer runs for the exact length")
+        check(tasks.recent.first == "Meeting", "starting remembers the task name")
+        timer.addMinutes(1)
+        check(abs(timer.remaining() - 150) < 1, "+1 min adds a minute")
+        timer.addMinutes(5)
+        check(abs(timer.remaining() - 450) < 1, "+5 min adds five minutes")
+        await snapshotExpanded(tab: .focus, "16-timer-running")
+
+        notch.model.registry.popQueue.clear()
+        timer.startCountdown(seconds: 1)
+        await wait(1.8)
+        check(!timer.isActive && timer.lastFinishedTask == "Meeting", "a finished timer stops, keeping its label for the pop")
+        check(pomodoroPopped(), "a finished timer pops")
+        if let w = notch.window { snapshot(w, "16-timer-done") }
+        notch.dismissPop()
+        await wait(0.6)
+
     }
 
     /// Music, fed a made-up song and playlist (the self-test never scripts the real Music app).
@@ -393,6 +475,41 @@ enum SelfTest {
         await wait(0.6)
     }
 
+    /// Another app than Music playing, as mediaremote-adapter reports it (fed made-up payloads, no real process).
+    private static func checkOtherPlayers() async {
+        let bridge = AppModels.music.bridge
+        let registry = NotchWindowController.shared.model.registry
+        log("— Other players")
+        registry.onlyForTesting = ["music"]
+        bridge.injectForTesting(track: nil, playing: false)
+        let spotify: [String: Any] = [
+            "bundleIdentifier": "com.spotify.client", "title": "Holocene", "artist": "Bon Iver", "album": "Bon Iver",
+            "duration": 337.0, "elapsedTime": 40.0, "playing": true, "uniqueIdentifier": 42,
+            "timestamp": ISO8601DateFormatter().string(from: Date()),
+        ]
+        check(NowPlayingAdapter.item(from: ["title": "", "bundleIdentifier": "x"]) == nil, "media without a title is ignored")
+        bridge.adapterForTesting(spotify)
+        check(bridge.source == "com.spotify.client" && !bridge.isMusicApp, "another app playing becomes the source")
+        check(bridge.track?.title == "Holocene" && bridge.isPlaying && abs(bridge.currentPosition() - 40) < 2,
+              "its song, play state and position come from the adapter")
+        check(bridge.playlist?.isEmpty == true, "another app has no playlist to show")
+        bridge.handleForTesting(["Player State": "Stopped"])
+        check(bridge.track?.title == "Holocene", "Music stopping doesn't clear another app's song")
+        await snapshotExpanded(tab: .music, "18-music-other-app")
+        var paused = spotify
+        paused["playing"] = false
+        bridge.adapterForTesting(paused)
+        check(!bridge.isPlaying, "pausing in the other app shows as paused")
+        bridge.adapterForTesting(["bundleIdentifier": MusicBridge.bundleID, "title": "Song", "playing": true])
+        check(bridge.isMusicApp, "Music playing again takes back over (and is read the richer way)")
+        bridge.adapterForTesting(spotify)
+        bridge.adapterForTesting(nil)
+        check(bridge.track == nil && bridge.isMusicApp, "nothing playing anywhere clears the song")
+        bridge.injectForTesting(track: nil, playing: false)
+        registry.onlyForTesting = nil
+        await wait(0.4)
+    }
+
     /// The next calendar event (fed a made-up one); Info never takes the live notch and never pops.
     private static func checkInfo() async {
         let info = AppModels.info
@@ -405,6 +522,39 @@ enum SelfTest {
                                   now: Date()) == "now", "an event under way shows as now")
         await snapshotExpanded(tab: .focus, "22-info-header")
         info.calendar.injectForTesting(nil)
+    }
+
+    /// Pictures of every Claude state for the design review, and the signature motion (Ember Edge, wyrm)
+    /// stopping once the notch is closed.
+    private static func checkDesignStates() async {
+        let notch = NotchWindowController.shared
+        let sessions = AppModels.sessions
+        let registry = notch.model.registry
+        log("— Design states")
+        func session(_ status: String) -> LiveSession {
+            LiveSession(pid: 1, sessionId: "test", cwd: NSHomeDirectory() + "/Projects/thesis", name: nil, status: status,
+                        kind: nil, startedAt: Date().timeIntervalSince1970 * 1000 - 600_000,
+                        statusUpdatedAt: Date().timeIntervalSince1970 * 1000 - 90_000)
+        }
+        for (status, name) in [(nil, "idle"), ("busy", "working"), ("waiting", "waiting")] as [(String?, String)] {
+            sessions.injectForTesting(status.map { [session($0)] } ?? [])
+            await snapshotExpanded(tab: .home, "design-home-claude-\(name)")
+            await snapshotExpanded(tab: .claude, "design-claude-\(name)")
+        }
+
+        // Working: the edge glows while open; closed, nothing moves (no live module, so the notch really closes).
+        sessions.injectForTesting([session("busy")])
+        notch.open()
+        await wait(1.0)
+        if let w = notch.window { check(await animationsRunning(in: w), "the Ember Edge moves while Claude works") }
+        registry.onlyForTesting = []
+        notch.close()
+        await wait(1.0)
+        check(notch.model.state(on: notch.screens.first?.screen.display ?? 0) == .closed, "the notch is closed")
+        if let w = notch.window { check(!(await animationsRunning(in: w)), "closed: the Ember Edge and the wyrm stop") }
+        registry.onlyForTesting = nil
+        sessions.injectForTesting(nil)
+        await wait(0.6)
     }
 
     /// With Reduce Motion forced on, nothing repeats: the dragon in the open notch holds still.
@@ -581,7 +731,8 @@ enum SelfTest {
         func layers(_ layer: CALayer) -> [CALayer] { [layer] + (layer.sublayers ?? []).flatMap(layers) }
         guard let root = window.contentView?.layer else { return false }
         let animating = layers(root).filter { !($0.animationKeys() ?? []).isEmpty }
-        log("   \(animating.count) animating layers")
+        log("   \(animating.count) animating layers"
+            + animating.prefix(4).map { " \(type(of: $0)) \($0.animationKeys() ?? [])" }.joined())
         return !animating.isEmpty
     }
 
@@ -603,7 +754,8 @@ enum SelfTest {
         for tab in NotchTab.allCases {
             UserDefaults.standard.set(tab.rawValue, forKey: NotchTab.storageKey)
             if !notch.model.expanded { notch.open(on: screen.display) }
-            await wait(1.0)
+            await wait(0.2)
+            await waitForPage(tab)
             heights[tab] = notch.model.contentHeight
             let size = screen.size(for: .expanded, contentHeight: notch.model.contentHeight)
             check(abs(size.width - (ExpandedPanel.width + 20)) < 0.5 && notch.window?.frame.size == NotchWindowController.windowSize,
@@ -621,17 +773,26 @@ enum SelfTest {
             await wait(0.8)
             verify("Home with the Pomodoro running", "tab-home-focus-\(label)")
             UserDefaults.standard.set(NotchTab.focus.rawValue, forKey: NotchTab.storageKey)
-            await wait(0.8)
+            await waitForPage(.focus)
             verify("Focus while running", "tab-focus-running-\(label)")
             timer.stopToSetup()
             AppModels.music.bridge.injectForTesting(track: nil, playing: false)
             UserDefaults.standard.set(NotchTab.home.rawValue, forKey: NotchTab.storageKey)
-            await wait(0.8)
+            await waitForPage(.home)
             check(LayoutProbe.frames["home.startMusic"] != nil, "\(label): Home offers Play music when nothing plays")
             verify("Home with no music", "tab-home-nomusic-\(label)")
         }
         notch.close()
         await wait(0.6)
+    }
+
+    /// Waits (up to 2 s) until only `tab`'s page is left: the one switched away from has faded out with its probes.
+    private static func waitForPage(_ tab: NotchTab) async {
+        await wait(0.8)
+        let others = NotchTab.allCases.filter { $0 != tab }.map { $0.rawValue + "." }
+        for _ in 0..<12 where LayoutProbe.frames.keys.contains(where: { key in others.contains { key.hasPrefix($0) } }) {
+            await wait(0.1)
+        }
     }
 
     /// Opens the notch on one page, saves a picture of it, and closes it again.

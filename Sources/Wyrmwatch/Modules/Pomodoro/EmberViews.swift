@@ -8,9 +8,16 @@ func emberColor(_ phase: PomodoroTimer.Phase) -> Color {
 /// Time left as "24:59". Changes once a second, rolling digits; in the last 10 seconds it turns bright
 /// and swells a touch on each tick. Nothing redraws while paused.
 struct PomodoroDigits: View {
+    /// "4:05", or "1:04:05" from an hour up.
+    static func format(_ seconds: Int) -> String {
+        seconds >= 3600
+            ? String(format: "%d:%02d:%02d", seconds / 3600, seconds / 60 % 60, seconds % 60)
+            : String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+
     @ObservedObject var timer: PomodoroTimer
     var size: CGFloat = 11
-    var weight: Font.Weight = .medium
+    var weight: Font.Weight = .regular
     var color: Color = Palette.text2
     /// Roll the digits on each tick (off in the live notch, where it's too small to see and costs a redraw).
     var rolling = true
@@ -30,7 +37,7 @@ struct PomodoroDigits: View {
     private func label(_ remaining: TimeInterval) -> some View {
         let seconds = Int(remaining.rounded(.up))
         let final = timer.isRunning && seconds <= 10
-        return Text(String(format: "%d:%02d", seconds / 60, seconds % 60))
+        return Text(Self.format(seconds))
             .font(.app(size, weight))
             .monospacedDigit()
             .foregroundStyle(final ? Palette.text : color)
@@ -49,10 +56,14 @@ struct PomodoroDigits: View {
 struct PhaseRing: View {
     @ObservedObject var timer: PomodoroTimer
     var diameter: CGFloat = 11
+    /// Drawn for this moment by a parent's timeline, instead of running a timeline of its own.
+    var at: Date?
 
     var body: some View {
         Group {
-            if let end = timer.endDate {
+            if let at {
+                ring(timer.fractionLeft(at: at))
+            } else if let end = timer.endDate {
                 TimelineView(.periodic(from: end.addingTimeInterval(-100_000), by: 1)) { context in
                     ring(timer.fractionLeft(at: context.date))
                 }
@@ -92,7 +103,7 @@ struct TickScale: View {
                 scale(1 - timer.fractionLeft())
             }
         }
-        .frame(height: 14)
+        .frame(height: 16)
         .opacity(timer.isPaused ? 0.6 : 1)
     }
 

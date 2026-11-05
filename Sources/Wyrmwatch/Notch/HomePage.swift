@@ -8,7 +8,7 @@ struct HomePage: View {
     @ObservedObject var limits: PlanLimitClient
     @ObservedObject var sessions: SessionMonitor
     var coverSpace: Namespace.ID?
-    static let height: CGFloat = 118
+    static let height: CGFloat = 120
 
     var body: some View {
         GeometryReader { geo in
@@ -34,7 +34,7 @@ struct HomePage: View {
 
 // MARK: - Claude
 
-/// "Claude · session" (with a red dot and "working" while busy), the session limit as the big number,
+/// "Claude" (with a red dot and "working" while busy), the session limit as the big number,
 /// and one status line: what Claude is doing, and when the limit resets.
 private struct ClaudeCard: View {
     @ObservedObject var limits: PlanLimitClient
@@ -43,13 +43,13 @@ private struct ClaudeCard: View {
     var body: some View {
         let percent = limits.fiveHourPercent
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 6) {
-                Text("Claude · session").cardLabel()
+            HStack(spacing: 8) {
+                Text("Claude").cardLabel()
                 Spacer(minLength: 4)
                 if sessions.busyCount > 0 || sessions.waitingCount > 0 {
                     HStack(spacing: 4) {
                         ClaudeStatusDot(working: sessions.busyCount > 0, waiting: sessions.waitingCount > 0)
-                        Text(sessions.busyCount > 0 ? "working" : "waiting").font(.app(10.5)).foregroundStyle(Palette.text2)
+                        Text(sessions.busyCount > 0 ? "working" : "waiting").font(.app(11)).foregroundStyle(Palette.text2)
                     }
                     .fixedSize()
                 }
@@ -67,14 +67,15 @@ private struct ClaudeCard: View {
             Spacer(minLength: 6)
             Text(statusLine).cardLabel()
         }
-        .notchCard()
+        .notchCard(active: sessions.busyCount > 0)
     }
 
     /// "Editing HomePage.swift · resets in 3h 20m", or the project name when there's no activity to show.
     private var statusLine: String {
         let active = sessions.sessions.first { $0.isWaiting } ?? sessions.sessions.first { $0.isBusy }
         let what: String? = active.map { session in
-            session.isWaiting ? "Waiting for you" : (sessions.activity[session.pid] ?? session.displayName)
+            // The dot already says waiting; the line says where.
+            session.isWaiting ? session.displayName : (sessions.activity[session.pid] ?? session.displayName)
         } ?? sessions.sessions.first?.displayName
         let reset = limits.windows.first { $0.id == "five_hour" }?.resetsAt.map(formatReset)
         return [what, reset].compactMap { $0 }.joined(separator: " · ").ifEmpty("No session running")
@@ -93,7 +94,7 @@ private struct MusicCard: View {
         Group {
             if let track = bridge.track {
                 VStack(alignment: .leading, spacing: 0) {
-                    HStack(spacing: 10) {
+                    HStack(spacing: 8) {
                         CoverArt(image: bridge.artwork, id: track.id, size: 46, radius: Radius.preset)
                             .modifier(MatchedCover(space: coverSpace))
                             .probe("home.cover")
@@ -108,12 +109,12 @@ private struct MusicCard: View {
                     TimelineView(.animation(minimumInterval: 1, paused: paused || !bridge.isPlaying)) { context in
                         ThinBar(fraction: bridge.currentPosition(at: context.date) / max(track.duration, 1))
                     }
-                    .frame(height: 4)
+                    .frame(height: 8)
                     .probe("home.progress")
                     Spacer(minLength: 6)
                     GeometryReader { geo in
                         let unit = (geo.size.width - 12) / 3.3
-                        HStack(spacing: 6) {
+                        HStack(spacing: 8) {
                             CardButton(systemName: "backward.fill", help: "Previous") { bridge.previous() }
                                 .frame(width: unit)
                             CardButton(systemName: bridge.isPlaying ? "pause.fill" : "play.fill", active: true,
@@ -123,14 +124,14 @@ private struct MusicCard: View {
                                 .frame(width: unit)
                         }
                     }
-                    .frame(height: 30)
+                    .frame(height: 32)
                     .probe("home.controls")
                 }
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Music").cardLabel()
                     Spacer(minLength: 0)
-                    CardButton(systemName: "play.fill", title: "Play music", active: true, height: 34) { bridge.startMusic() }
+                    CardButton(systemName: "play.fill", title: "Play music", active: true, height: 32) { bridge.startMusic() }
                         .probe("home.startMusic")
                 }
             }
@@ -157,8 +158,10 @@ private struct FocusCard: View {
                     .minimumScaleFactor(0.7)
                     .opacity(timer.isPaused ? 0.6 : 1)
                     .probe("home.focus.time")
-                Spacer(minLength: 6)
-                HStack(spacing: 6) {
+                PhaseBar(timer: timer)
+                    .probe("home.focus.bar")
+                Spacer(minLength: 8)
+                HStack(spacing: 8) {
                     CardButton(systemName: timer.isPaused ? "play.fill" : "pause.fill", active: true,
                                help: timer.isPaused ? "Resume" : "Pause") { timer.toggle() }
                     CardButton(systemName: "stop.fill", help: "Stop") { timer.stopToSetup() }
@@ -167,14 +170,14 @@ private struct FocusCard: View {
             } else {
                 Text("Focus").cardLabel()
                 Spacer(minLength: 0)
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     PresetButton(title: "25/5") { timer.startPomodoro(.classic) }
                     PresetButton(title: "50/10") { timer.startPomodoro(.long) }
                 }
                 .probe("home.focus.presets")
             }
         }
-        .notchCard()
+        .notchCard(active: timer.isActive)
     }
 
     private var label: String {
@@ -202,4 +205,20 @@ struct MatchedCover: ViewModifier {
 
 extension String {
     func ifEmpty(_ fallback: String) -> String { isEmpty ? fallback : self }
+}
+
+/// The running phase's elapsed time as a scale bar; moves once a second, still while paused.
+struct PhaseBar: View {
+    @ObservedObject var timer: PomodoroTimer
+
+    var body: some View {
+        if let end = timer.endDate {
+            TimelineView(.periodic(from: end.addingTimeInterval(-100_000), by: 1)) { context in
+                ThinBar(fraction: 1 - timer.fractionLeft(at: context.date))
+            }
+            .frame(height: 8)
+        } else {
+            ThinBar(fraction: 1 - timer.fractionLeft())
+        }
+    }
 }

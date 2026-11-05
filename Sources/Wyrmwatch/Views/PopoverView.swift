@@ -81,8 +81,8 @@ struct PopoverView: View {
                     .cardAppear(1)
                 BigNumberCard(label: "Sessions running", number: "\(sessions.sessions.count)",
                               detail: sessions.waitingCount > 0 ? "\(sessions.waitingCount) waiting for you"
-                                  : sessions.busyCount > 0 ? "\(sessions.busyCount) working" : "All caught up",
-                              working: sessions.busyCount > 0, waiting: sessions.waitingCount > 0)
+                                  : sessions.busyCount > 0 ? "\(sessions.busyCount) working" : "Nothing working",
+                              working: sessions.busyCount > 0, waiting: sessions.waitingCount > 0, active: sessions.busyCount > 0)
                     .probe("claude.running")
                     .cardAppear(2)
             }
@@ -100,7 +100,7 @@ struct PopoverView: View {
                 .id(tab)
                 .transition(.opacity.combined(with: .offset(y: 5)))
             }
-            .frame(height: 130)
+            .frame(height: 128)
             .probe("claude.list")
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -180,27 +180,22 @@ struct PopoverView: View {
     // MARK: Header
 
     private var header: some View {
-        let greeting = Greeting.now
-        return HStack(spacing: 8) {
+        HStack(spacing: 8) {
             ZStack {
                 Radius.shape(Radius.button).fill(Palette.card)
-                if WyrmSlot.available {
-                    WyrmSlot(state: WyrmState.current(sessions: sessions, idleFor: 0), look: nil, size: 30)
-                } else {
-                    ClaudeStatusDot(working: sessions.busyCount > 0, waiting: sessions.waitingCount > 0, diameter: 8)
-                }
+                WyrmSlot(state: WyrmState.current(sessions: sessions, idleFor: ExpandedPanel.userIdleTime), look: nil, size: 28)
             }
-            .frame(width: 38, height: 38)
+            .frame(width: 40, height: 40)
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(showSettings ? "Settings" : greeting.text)
-                    .font(.app(16, .medium))
+                Text(showSettings ? "Settings" : "Claude")
+                    .font(.app(16, .semibold))
                     .foregroundStyle(Palette.text)
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
                     .contentTransition(.opacity)
                 Text(statusLine)
-                    .font(.app(11.5))
+                    .font(.app(11))
                     .foregroundStyle(Palette.text2)
                     .lineLimit(1)
                     .contentTransition(.opacity)
@@ -231,9 +226,11 @@ struct PopoverView: View {
 
     private var statusLine: String {
         let busy = sessions.busyCount
-        if sessions.sessions.isEmpty { return "All quiet. Nothing running." }
-        if busy == 0 { return "All caught up" }
-        return busy == 1 ? "1 session working…" : "\(busy) sessions working…"
+        let waiting = sessions.waitingCount
+        if sessions.sessions.isEmpty { return "No sessions running" }
+        if busy > 0 { return busy == 1 ? "1 session working" : "\(busy) sessions working" }
+        if waiting > 0 { return waiting == 1 ? "1 waiting for you" : "\(waiting) waiting for you" }
+        return "Nothing working"
     }
 
     // MARK: Limits
@@ -244,7 +241,7 @@ struct PopoverView: View {
         let extras = limits.windows.filter { !["five_hour", "seven_day"].contains($0.id) }
 
         return VStack(alignment: .leading, spacing: 12) {
-            CardTitle("Plan limits") {
+            SectionTitle("Plan limits") {
                 if let error = limits.error {
                     Image(systemName: "exclamationmark.circle.fill")
                         .foregroundStyle(Palette.text2)
@@ -253,12 +250,12 @@ struct PopoverView: View {
             }
             if limits.windows.isEmpty {
                 Text(limits.error ?? "Checking your limits…")
-                    .font(.app(12))
+                    .font(.app(13))
                     .foregroundStyle(Palette.text2)
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     LimitBar(title: "Session", percent: session?.utilization,
-                             subtitle: session?.resetsAt.map(formatReset) ?? "", shimmering: limits.isRefreshing)
+                             subtitle: session?.resetsAt.map(formatReset) ?? "")
                     if let forecast = limits.forecast {
                         ForecastLine(forecast: forecast)
                             .transition(.opacity.combined(with: .offset(y: -4)))
@@ -266,7 +263,7 @@ struct PopoverView: View {
                 }
                 .animation(Motion.smooth, value: limits.forecast)
                 LimitBar(title: "Week", percent: week?.utilization,
-                         subtitle: week?.resetsAt.map(formatReset) ?? "", shimmering: limits.isRefreshing)
+                         subtitle: week?.resetsAt.map(formatReset) ?? "")
                 ForEach(extras) { w in
                     Chip(label: w.title, value: "\(Int(w.utilization.rounded()))%",
                          color: Palette.level(w.utilization, base: Palette.steel))
@@ -280,13 +277,13 @@ struct PopoverView: View {
 
     private var sessionsCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            CardTitle("Sessions") {
+            SectionTitle("Sessions") {
                 if !sessions.sessions.isEmpty {
                     Text("\(sessions.sessions.count)")
-                        .font(.app(10.5, .semibold))
+                        .font(.app(11, .semibold))
                         .foregroundStyle(Palette.text)
                         .monospacedDigit()
-                        .padding(.horizontal, 7)
+                        .padding(.horizontal, 8)
                         .padding(.vertical, 2)
                         .background(Capsule().fill(Palette.glass))
                         .overlay(Capsule().strokeBorder(Palette.line, lineWidth: 0.5))
@@ -294,9 +291,9 @@ struct PopoverView: View {
                 }
             }
             if sessions.sessions.isEmpty {
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     Text("Start `claude` in a terminal and it shows up here.")
-                        .font(.app(12))
+                        .font(.app(13))
                         .foregroundStyle(Palette.text2)
                 }
                 .padding(.vertical, 4)
@@ -317,12 +314,12 @@ struct PopoverView: View {
 
     private var recentCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            CardTitle("Pick up where you left off")
+            SectionTitle("Pick up where you left off")
             if recent.items.isEmpty {
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     Image(systemName: "clock.arrow.circlepath").foregroundStyle(Palette.text3)
                     Text(recent.loaded ? "No past sessions yet." : "Looking for past sessions…")
-                        .font(.app(12))
+                        .font(.app(13))
                         .foregroundStyle(Palette.text2)
                 }
                 .padding(.vertical, 4)
@@ -351,18 +348,18 @@ struct PopoverView: View {
         }()
 
         return VStack(alignment: .leading, spacing: 12) {
-            CardTitle("Tokens") {
+            SectionTitle("Tokens") {
                 PillToggle(options: ["Today", "Week"], selection: $range)
             }
 
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(formatTokens(bigNumber))
                     .font(.app(34, .ultraLight))
                     .foregroundStyle(hoveredBar == nil ? AnyShapeStyle(Palette.text) : AnyShapeStyle(Palette.silverGradient))
                     .contentTransition(.numericText())
                     .animation(Motion.quick, value: bigNumber)
                 Text(caption)
-                    .font(.app(12))
+                    .font(.app(13))
                     .foregroundStyle(Palette.text2)
             }
 
@@ -422,10 +419,11 @@ struct BigNumberCard: View {
     var fraction: Double?
     var working = false
     var waiting = false
+    var active = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 6) {
+            HStack(spacing: 8) {
                 Text(label).cardLabel()
                 Spacer(minLength: 4)
                 ClaudeStatusDot(working: working, waiting: waiting)
@@ -444,7 +442,7 @@ struct BigNumberCard: View {
             Spacer(minLength: 4)
             Text(detail).cardLabel()
         }
-        .notchCard()
+        .notchCard(active: active)
     }
 }
 
@@ -466,7 +464,7 @@ struct ModuleCardsRow: View {
     var body: some View {
         let cards = registry.enabledModules.compactMap { module in module.expandedCard().map { (module.id, $0) } }
         if !cards.isEmpty {
-            VStack(spacing: 10) {
+            VStack(spacing: 8) {
                 ForEach(cards, id: \.0) { $0.1 }
             }
         }
@@ -479,7 +477,7 @@ struct SessionRow: View {
     @State private var hovering = false
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             ZStack {
                 Circle()
                     .fill(Palette.glass)
@@ -490,21 +488,21 @@ struct SessionRow: View {
                     WorkingBadge(hovering: hovering)
                         .transition(.scale.combined(with: .opacity))
                 } else {
-                    Image(systemName: "checkmark")
+                    Image(systemName: session.isWaiting ? "questionmark" : "checkmark")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Palette.silver)
+                        .foregroundStyle(session.isWaiting ? Palette.text : Palette.silver)
                         .transition(.scale(scale: 0.6).combined(with: .opacity))
                 }
             }
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(session.displayName)
-                    .font(.app(13, .medium))
+                    .font(.app(13, .semibold))
                     .foregroundStyle(Palette.text)
                     .lineLimit(1)
                 Text(detail)
                     .font(.app(11))
-                    .foregroundStyle(session.isBusy ? Palette.silver : Palette.text3)
+                    .foregroundStyle(session.isBusy || session.isWaiting ? Palette.silver : Palette.text3)
                     .monospacedDigit()
                     .lineLimit(1)
             }
@@ -512,13 +510,13 @@ struct SessionRow: View {
             Spacer(minLength: 4)
 
             Image(systemName: "arrow.up.forward.app")
-                .font(.system(size: 11, weight: .bold))
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(Palette.text3)
                 .opacity(hovering ? 1 : 0)
                 .offset(x: hovering ? 0 : -6)
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(hovering ? Palette.hover : .clear)
@@ -537,7 +535,9 @@ struct SessionRow: View {
 
     private var detail: String {
         let elapsed = session.statusSince.map { formatClock(now.timeIntervalSince($0)) } ?? ""
-        return session.isBusy ? "Working · \(elapsed)" : "Done · \(session.shortFolder)"
+        if session.isBusy { return "Working · \(elapsed)" }
+        if session.isWaiting { return "Waiting for you · \(elapsed)" }
+        return "Done · \(session.shortFolder)"
     }
 }
 
@@ -573,7 +573,7 @@ struct RecentRow: View {
     @State private var hovering = false
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             Image(systemName: hovering ? "play.fill" : "bubble.left")
                 .font(.system(size: 11, weight: hovering ? .semibold : .regular))
                 .foregroundStyle(hovering ? Palette.onSilver : Palette.silver)
@@ -584,7 +584,7 @@ struct RecentRow: View {
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(session.title)
-                    .font(.app(13, .medium))
+                    .font(.app(13, .semibold))
                     .foregroundStyle(Palette.text)
                     .lineLimit(1)
                 Text("\(session.shortFolder) · \(session.lastActive.formatted(.relative(presentation: .named)))")
@@ -595,13 +595,13 @@ struct RecentRow: View {
             Spacer(minLength: 4)
             if hovering {
                 Text("Resume")
-                    .font(.app(11, .medium))
+                    .font(.app(11))
                     .foregroundStyle(Palette.silver)
                     .transition(.opacity.combined(with: .move(edge: .trailing)))
             }
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(hovering ? Palette.hover : .clear)
@@ -631,9 +631,9 @@ struct ForecastLine: View {
     let forecast: LimitForecast
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             Image(systemName: symbol)
-                .font(.system(size: 10, weight: .medium))
+                .font(.system(size: 11, weight: .regular))
                 .contentTransition(.symbolEffect(.replace))
             Text(text)
                 .contentTransition(.opacity)
@@ -668,23 +668,6 @@ struct ForecastLine: View {
     private var color: Color {
         guard let minutesLeft else { return forecast == .idle ? Palette.text3 : Palette.steel }
         return minutesLeft < 30 ? Palette.red : Palette.text2
-    }
-}
-
-// MARK: - Greeting
-
-struct Greeting {
-    let text: String
-    let symbol: String
-    let color: Color
-
-    static var now: Greeting {
-        switch Calendar.current.component(.hour, from: Date()) {
-        case 5..<12: return Greeting(text: "Good morning", symbol: "sun.max.fill", color: Palette.silver)
-        case 12..<17: return Greeting(text: "Good afternoon", symbol: "sun.haze.fill", color: Palette.silver)
-        case 17..<21: return Greeting(text: "Good evening", symbol: "sunset.fill", color: Palette.silver)
-        default: return Greeting(text: "Late night coding", symbol: "moon.stars.fill", color: Palette.silver)
-        }
     }
 }
 

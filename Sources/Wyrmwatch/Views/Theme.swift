@@ -53,7 +53,7 @@ enum Radius {
 extension View {
     /// The one big number of a card: 38 pt semibold, tight tracking, steady digits.
     func bigNumber(_ size: CGFloat = 38) -> some View {
-        font(.system(size: size, weight: .semibold)).tracking(-1).monospacedDigit().foregroundStyle(Palette.text)
+        font(.app(size, .semibold)).tracking(-1).monospacedDigit().foregroundStyle(Palette.text)
     }
 
     /// Small secondary label (11 pt).
@@ -66,11 +66,13 @@ extension View {
         font(.app(13, .semibold)).foregroundStyle(Palette.text).lineLimit(1).truncationMode(.tail)
     }
 
-    /// A card: #1C1C1E, radius 20, padding 12.
-    func notchCard(padding: CGFloat = 12) -> some View {
+    /// A card: #1C1C1E, radius 20, padding 12. An `active` card (Claude working, a timer running) gets a 1 pt
+    /// #3A3A3C edge; the others have none.
+    func notchCard(padding: CGFloat = 12, active: Bool = false) -> some View {
         self.padding(padding)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Radius.shape(Radius.card).fill(Palette.card))
+            .overlay(Radius.shape(Radius.card).strokeBorder(active ? Palette.buttonHi : .clear, lineWidth: 1))
     }
 }
 
@@ -120,6 +122,10 @@ extension NSColor {
 }
 
 extension Font {
+    /// The notch's only text sizes: 11 label, 13 body, 16 card title, 28 and 38 the main numbers; weights regular
+    /// and semibold. (Settings keeps its own system sizes.)
+    static let scale: [CGFloat] = [11, 13, 16, 28, 38]
+
     static func app(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
         .system(size: size, weight: weight)
     }
@@ -175,6 +181,30 @@ extension CardTitle where Trailing == EmptyView {
     init(_ text: String) { self.init(text) { EmptyView() } }
 }
 
+/// A section's name in the notch and the menu bar popover: a plain 11 pt label (no capitals, no letter spacing),
+/// with something on the right.
+struct SectionTitle<Trailing: View>: View {
+    let text: String
+    let trailing: Trailing
+
+    init(_ text: String, @ViewBuilder trailing: () -> Trailing) {
+        self.text = text
+        self.trailing = trailing()
+    }
+
+    var body: some View {
+        HStack {
+            Text(text).cardLabel()
+            Spacer(minLength: 4)
+            trailing
+        }
+    }
+}
+
+extension SectionTitle where Trailing == EmptyView {
+    init(_ text: String) { self.init(text) { EmptyView() } }
+}
+
 // MARK: - Controls
 
 /// Round glass toolbar button that brightens on hover.
@@ -213,10 +243,10 @@ struct PillToggle: View {
         HStack(spacing: 2) {
             ForEach(options.indices, id: \.self) { i in
                 Text(options[i])
-                    .font(.app(11.5, .medium))
+                    .font(.app(11))
                     .foregroundStyle(selection == i ? Palette.text : Palette.text2)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, fill ? 6 : 4)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, fill ? 8 : 4)
                     .frame(maxWidth: fill ? .infinity : nil)
                     .background {
                         if selection == i {
@@ -238,15 +268,15 @@ struct Chip: View {
     let color: Color
 
     var body: some View {
-        HStack(spacing: 6) {
-            Circle().fill(color).frame(width: 5, height: 5)
+        HStack(spacing: 8) {
+            Circle().fill(color).frame(width: 4, height: 4)
             Text(label).foregroundStyle(Palette.text2)
             Spacer(minLength: 2)
             Text(value).fontWeight(.medium).foregroundStyle(Palette.text).monospacedDigit()
         }
         .font(.app(11))
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 8)
         .background(Capsule().fill(Palette.glass))
         .overlay(Capsule().strokeBorder(Palette.line, lineWidth: 0.5))
     }
@@ -254,59 +284,30 @@ struct Chip: View {
 
 // MARK: - Gauges
 
-/// Slim progress bar for one plan limit. It glides when the value changes and shimmers while refreshing.
+/// Slim progress bar for one plan limit. It glides when the value changes.
 struct LimitBar: View {
     let title: String
     let percent: Double?
     let subtitle: String
-    var shimmering = false
 
     private var value: Double { min(max(percent ?? 0, 0), 100) }
     private var warning: Color? { value < 70 ? nil : Palette.level(value, base: Palette.silver) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                Text(title).font(.app(13, .medium)).foregroundStyle(Palette.text)
+                Text(title).font(.app(13, .semibold)).foregroundStyle(Palette.text)
                 Text(subtitle).font(.app(11)).foregroundStyle(Palette.text3)
                 Spacer()
                 Text(percent == nil ? "–" : "\(Int(value.rounded()))%")
-                    .font(.app(15, .light))
+                    .font(.app(16))
                     .foregroundStyle(warning ?? Palette.text)
                     .monospacedDigit()
                     .contentTransition(.numericText())
             }
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Palette.line)
-                    Group {
-                        if let warning { Capsule().fill(warning) } else { Capsule().fill(Palette.silverGradient) }
-                    }
-                    .frame(width: value > 0 ? max(6, geo.size.width * value / 100) : 0)
-                    .overlay { if shimmering { Shimmer().clipShape(Capsule()) } }
-                }
-            }
-            .frame(height: 6)
+            ThinBar(fraction: value / 100, color: warning ?? Palette.silver)
         }
         .animation(Motion.smooth, value: value)
-    }
-}
-
-/// A soft band of light that sweeps across its container.
-private struct Shimmer: View {
-    @Environment(\.animationsPaused) private var paused
-
-    var body: some View {
-        // A highlight sweeping across every 1.2 s; it stops with everything else when out of sight.
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: paused)) { context in
-            let t = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1.2) / 1.2
-            let phase = paused ? -1 : -1 + 2 * (t * t * (3 - 2 * t))
-            GeometryReader { geo in
-                LinearGradient(colors: [.clear, .white.opacity(0.6), .clear], startPoint: .leading, endPoint: .trailing)
-                    .frame(width: geo.size.width * 0.6)
-                    .offset(x: phase * geo.size.width * 1.6)
-            }
-        }
     }
 }
 
@@ -337,16 +338,16 @@ struct InteractiveBars: View {
 
     var body: some View {
         let maxValue = max(values.max() ?? 0, 1)
-        VStack(spacing: 6) {
-            HStack(alignment: .bottom, spacing: 3) {
+        VStack(spacing: 8) {
+            HStack(alignment: .bottom, spacing: 4) {
                 ForEach(values.indices, id: \.self) { i in
                     bar(i, maxValue: maxValue)
                 }
             }
-            HStack(spacing: 3) {
+            HStack(spacing: 4) {
                 ForEach(labels.indices, id: \.self) { i in
                     Text(labels[i])
-                        .font(.app(9, .medium))
+                        .font(.app(11))
                         .foregroundStyle(Palette.text3)
                         .frame(maxWidth: .infinity, alignment: labels.count == values.count ? .center : .leading)
                 }

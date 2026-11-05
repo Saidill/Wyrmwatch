@@ -85,7 +85,21 @@ final class SessionMonitor: ObservableObject {
         dirSource = source
     }
 
+    /// Self-test: these sessions instead of the real ones on disk.
+    private var testSessions: [LiveSession]?
+
+    func injectForTesting(_ sessions: [LiveSession]?) {
+        testSessions = sessions
+        firstScan = true
+        scan()
+    }
+
     func scan() {
+        if let testSessions {
+            if testSessions != sessions { sessions = testSessions }
+            firstScan = false
+            return
+        }
         let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
         var found: [LiveSession] = []
         for url in files where url.pathExtension == "json" {

@@ -34,8 +34,15 @@ final class PomodoroModule: NotchModule {
         case .breakDone:
             popSink.yield(NotchPop(kind: .pomodoro, duration: 8) { BreakDonePop(timer: self.timer) })
         case .countdownDone:
-            popSink.yield(NotchPop(kind: .pomodoro, duration: 8) { TimesUpPop() })
+            let label = timer.lastFinishedTask
+            popSink.yield(NotchPop(kind: .pomodoro, duration: 8) { TimesUpPop(label: label) })
         }
+    }
+
+    /// "Focus done · Revise chapter 3", or just "Focus done" without a task.
+    static func titled(_ head: String, _ task: String) -> String {
+        let name = task.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? head : "\(head) · \(name)"
     }
 
     private func phaseEnded(_ event: PomodoroTimer.Event) {
@@ -49,9 +56,9 @@ final class PomodoroModule: NotchModule {
             pop(event)
         } else {
             switch event {
-            case .focusDone: Notifier.shared.notify(title: "Focus done", body: "Your break has started.")
+            case .focusDone: Notifier.shared.notify(title: Self.titled("Focus done", timer.lastFinishedTask), body: "Your break has started.")
             case .breakDone: Notifier.shared.notify(title: "Break over", body: "Ready to focus again?")
-            case .countdownDone: Notifier.shared.notify(title: "Time's up", body: "Your countdown has finished.")
+            case .countdownDone: Notifier.shared.notify(title: Self.titled("Time's up", timer.lastFinishedTask), body: "Your timer has finished.")
             }
         }
     }
@@ -62,27 +69,57 @@ final class PomodoroModule: NotchModule {
 /// Left of the camera: the dragon keeping watch while focusing, coiled asleep while resting.
 private struct PomodoroLiveDragon: View {
     @ObservedObject var timer: PomodoroTimer
+    @ObservedObject var sessions = AppModels.sessions
 
     var body: some View {
-        FocusIcon()
-            .stroke(style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
-            .foregroundStyle(Palette.text2)
-            .frame(width: 13, height: 13)
+        WyrmSlot(state: WyrmState.current(sessions: sessions, idleFor: 0), look: nil, size: 24)
             .opacity(timer.isPaused ? 0.6 : 1)
     }
 }
 
-/// Right of the camera: time left.
+/// Right of the camera: time left, taking turns every 4 s with the task name when there is one.
+/// One timeline (once a second, on the second) drives the ring, the digits and the turns; nesting a second
+/// timeline for the turns cost about 1% CPU.
 private struct PomodoroLiveTime: View {
     @ObservedObject var timer: PomodoroTimer
 
     var body: some View {
-        HStack(spacing: 4) {
-            PhaseRing(timer: timer, diameter: 10)
-            PomodoroDigits(timer: timer, size: 10.5, color: Palette.silverBright, rolling: false)
-                .fixedSize()
+        Group {
+            if let end = timer.endDate {
+                TimelineView(.periodic(from: end.addingTimeInterval(-100_000), by: 1)) { context in
+                    content(at: context.date)
+                }
+            } else {
+                content(at: Date())
+            }
         }
         .opacity(timer.isPaused ? 0.6 : 1)
+    }
+
+    private var task: String { timer.task.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    @ViewBuilder private func content(at date: Date) -> some View {
+        let showName = timer.isRunning && timer.phase == .focus && !task.isEmpty
+            && Int(date.timeIntervalSinceReferenceDate.rounded()) / 4 % 2 == 1
+        ZStack {
+            if showName {
+                Text(task)
+                    .font(.app(11))
+                    .foregroundStyle(Palette.silverBright)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                HStack(spacing: 4) {
+                    PhaseRing(timer: timer, diameter: 12, at: date)
+                    Text(PomodoroDigits.format(Int(timer.remaining(at: date).rounded(.up))))
+                        .font(.app(11))
+                        .monospacedDigit()
+                        .foregroundStyle(Palette.silverBright)
+                        .fixedSize()
+                }
+            }
+        }
     }
 }
 
@@ -97,7 +134,7 @@ private struct PopButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.app(11.5, .medium))
+                .font(.app(11))
                 .foregroundStyle(primary ? Palette.onSilver : Palette.text)
                 .lineLimit(1)
                 .padding(.horizontal, 12)
@@ -119,10 +156,11 @@ private struct FocusDonePop: View {
         HStack(spacing: 4) {
             PopIcon(systemName: "checkmark")
             VStack(alignment: .leading, spacing: 4) {
-                Text("Focus done")
-                    .font(.app(13, .medium))
+                Text(PomodoroModule.titled("Focus done", timer.lastFinishedTask))
+                    .font(.app(13, .semibold))
                     .foregroundStyle(Palette.text)
-                HStack(spacing: 6) {
+                    .lineLimit(1)
+                HStack(spacing: 8) {
                     Text(timer.phase == .longBreak ? "Long break" : "Break")
                         .font(.app(11))
                         .foregroundStyle(Palette.text2)
@@ -153,10 +191,10 @@ private struct BreakDonePop: View {
     @State private var awake = false
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             PopIcon(systemName: "timer")
             Text("Ready to focus again?")
-                .font(.app(13, .medium))
+                .font(.app(13, .semibold))
                 .foregroundStyle(Palette.text)
                 .lineLimit(1)
             Spacer(minLength: 6)
@@ -180,7 +218,7 @@ private struct FocusCard: View {
     @ObservedObject var timer: PomodoroTimer
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(timer.isActive ? (timer.phase.isBreak ? "Break" : "Focus \(timer.sessionNumber)/\(timer.sessionsTarget)") : "Focus")
                     .cardLabel()
@@ -209,7 +247,7 @@ struct PopIcon: View {
 
     var body: some View {
         Image(systemName: systemName)
-            .font(.system(size: 15, weight: .bold))
+            .font(.system(size: 16, weight: .semibold))
             .foregroundStyle(Palette.text)
             .frame(width: 40, height: 40)
             .background(Radius.shape(Radius.button).fill(Palette.button))
@@ -217,14 +255,17 @@ struct PopIcon: View {
     }
 }
 
-/// A countdown has finished.
+/// A timer has finished.
 private struct TimesUpPop: View {
+    let label: String
+
     var body: some View {
         HStack(spacing: 4) {
             PopIcon(systemName: "timer")
-            Text("Time's up")
-                .font(.app(13, .medium))
+            Text(PomodoroModule.titled("Time's up", label))
+                .font(.app(13, .semibold))
                 .foregroundStyle(Palette.text)
+                .lineLimit(1)
             Spacer(minLength: 6)
             PopButton(title: "OK", primary: false) { NotchWindowController.shared.dismissPop() }
         }

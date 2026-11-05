@@ -26,9 +26,12 @@ final class PomodoroTimer: ObservableObject {
     }
 
     /// Allowed focus lengths and session counts in the setup.
-    static let focusRange = 5...90
-    static let breakRange = 1...30
-    static let sessionsRange = 1...8
+    static let focusRange = 1...180
+    static let breakRange = 1...60
+    static let longBreakRange = 1...60
+    static let sessionsRange = 1...12
+    /// The task of the phase that just ended, for its pop and notification.
+    @Published private(set) var lastFinishedTask = ""
 
     @Published private(set) var phase: Phase = .focus
     /// When the running phase ends; nil while stopped or paused.
@@ -135,7 +138,10 @@ final class PomodoroTimer: ObservableObject {
 
     /// Starts the current phase, or resumes it when paused.
     func start() {
-        if pausedRemaining == nil { phaseLength = duration(of: phase) }
+        if pausedRemaining == nil {
+            phaseLength = duration(of: phase)
+            if phase == .focus { TaskLog.shared.use(task) }
+        }
         let left = pausedRemaining ?? duration(of: phase)
         pausedRemaining = nil
         endDate = Date().addingTimeInterval(left)
@@ -161,20 +167,31 @@ final class PomodoroTimer: ObservableObject {
     }
 
     /// Five more minutes on the running (or paused) phase.
-    func addFiveMinutes() {
+    func addFiveMinutes() { addMinutes(5) }
+
+    /// `minutes` more on the running (or paused) phase.
+    func addMinutes(_ minutes: Int) {
         guard isActive else { return }
-        phaseLength += 300
+        let extra = TimeInterval(minutes * 60)
+        phaseLength += extra
         if let endDate {
-            self.endDate = endDate.addingTimeInterval(300)
+            self.endDate = endDate.addingTimeInterval(extra)
             schedule()
         } else if let pausedRemaining {
-            self.pausedRemaining = pausedRemaining + 300
+            self.pausedRemaining = pausedRemaining + extra
         }
         save()
     }
 
+    /// Counts the part of a focus or timer that ran before it was stopped or skipped.
+    private func logElapsed() {
+        guard isActive, mode == .countdown || phase == .focus else { return }
+        TaskLog.shared.add(minutes: max(0, phaseLength - remaining()) / 60, task: task)
+    }
+
     /// Ends the cycle and goes back to the setup: focus first, no sessions done.
     func stopToSetup() {
+        logElapsed()
         halt()
         mode = .pomodoro
         phase = .focus
@@ -184,6 +201,7 @@ final class PomodoroTimer: ObservableObject {
 
     /// Moves straight on to the next phase without counting this one, and leaves it ready to start.
     func skip() {
+        logElapsed()
         halt()
         phase = phase.isBreak ? .focus : (completedInCycle + 1 >= sessionsTarget ? .longBreak : .shortBreak)
         if phase == .focus, completedInCycle >= sessionsTarget { completedInCycle = 0 }
@@ -208,11 +226,15 @@ final class PomodoroTimer: ObservableObject {
     }
 
     /// Starts a plain countdown of `minutes` (no break afterwards).
-    func startCountdown(minutes: Int) {
+    func startCountdown(minutes: Int) { startCountdown(seconds: minutes * 60) }
+
+    /// Starts a plain countdown of `seconds` (no break afterwards).
+    func startCountdown(seconds: Int) {
         halt()
         mode = .countdown
         phase = .focus
-        phaseLength = TimeInterval(max(minutes, 1) * 60)
+        TaskLog.shared.use(task)
+        phaseLength = TimeInterval(max(seconds, 1))
         endDate = Date().addingTimeInterval(phaseLength)
         save()
         schedule()
@@ -262,7 +284,9 @@ final class PomodoroTimer: ObservableObject {
     /// over too, it ends as well and the next focus waits to be started.
     private func finish(endedAt: Date) {
         if mode == .countdown {
-            // A countdown just ends: no break, no Pomodoro stats.
+            // A countdown just ends: no break, no Pomodoro stats, but its time counts for its task.
+            TaskLog.shared.add(minutes: phaseLength / 60, task: task)
+            lastFinishedTask = task
             halt()
             mode = .pomodoro
             phase = .focus
@@ -275,6 +299,8 @@ final class PomodoroTimer: ObservableObject {
         halt()
         rollDay()
         if finished == .focus {
+            TaskLog.shared.add(minutes: length / 60, task: task)
+            lastFinishedTask = task
             todaySessions += 1
             todayMinutes += Int((length / 60).rounded())
             completedInCycle = min(completedInCycle + 1, sessionsTarget)

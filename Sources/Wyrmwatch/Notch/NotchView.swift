@@ -45,6 +45,13 @@ struct NotchView: View {
     @ObservedObject var model: NotchModel
     @ObservedObject var screen: NotchScreen
     @EnvironmentObject var limits: PlanLimitClient
+    @EnvironmentObject var sessions: SessionMonitor
+
+    private var emberMode: EmberMode {
+        if sessions.busyCount > 0 { return .working }
+        if sessions.waitingCount > 0 { return .waiting }
+        return .off
+    }
     @EnvironmentObject var usage: UsageTracker
     @ObservedObject private var motion = MotionPreference.shared
     /// The album cover flies between the live notch and Home.
@@ -103,6 +110,13 @@ struct NotchView: View {
                 }
                 .padding(.horizontal, flare)
                 .frame(width: size.width, height: size.height, alignment: .top)
+                // Ember Edge: Claude's state along the straight part of the bottom edge.
+                .overlay(alignment: .bottom) {
+                    EmberEdge(mode: emberMode, running: state != .closed && !motion.reduce)
+                        .frame(width: max(0, size.width - 2 * flare - 2 * NotchShape.radius(for: state)), height: 1.5)
+                        .allowsHitTesting(false)
+                        .opacity(state == .closed ? 0 : 1)
+                }
                 .clipShape(shape)
             }
             .frame(width: size.width, height: size.height)
@@ -154,15 +168,15 @@ private struct LiveRow: View {
         ZStack {
             HStack(spacing: 0) {
                 module.liveLeading()
-                    .frame(width: 50)
+                    .frame(width: NotchScreen.liveWing)
                 Spacer(minLength: notch.width)
                 module.liveTrailing()
-                    .frame(width: 50)
+                    .frame(width: NotchScreen.liveWing)
             }
             .overlay(alignment: .bottom) {
                 // Inside the rounded bottom corners.
                 module.liveAccent()?
-                    .frame(width: notch.width + 100 - 24, height: 6)
+                    .frame(width: notch.width + 2 * NotchScreen.liveWing - 24, height: 6)
             }
             .id(module.id)
             .transition(.asymmetric(insertion: .opacity.combined(with: .offset(y: 6)),
@@ -170,7 +184,7 @@ private struct LiveRow: View {
         }
         .animation(Motion.smooth, value: module.id)
         // Exactly as wide as the live shape, so the two sides sit just either side of the notch.
-        .frame(width: notch.width + 100, height: notch.height)
+        .frame(width: notch.width + 2 * NotchScreen.liveWing, height: notch.height)
         .clipped()
     }
 }

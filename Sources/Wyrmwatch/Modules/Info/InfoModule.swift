@@ -34,7 +34,7 @@ struct NextEventLabel: View {
         if let event = calendar.next {
             HStack(spacing: 4) {
                 Image(systemName: "calendar")
-                    .font(.system(size: 9.5, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Palette.silver)
                 Text(event.title)
                     .foregroundStyle(Palette.text2)
@@ -65,7 +65,7 @@ struct InfoStrip: View {
     var body: some View {
         // Redraws once a minute, on the minute.
         TimelineView(.everyMinute) { context in
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 Text(context.date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))
                     .foregroundStyle(Palette.text2)
                 Text(context.date.formatted(date: .omitted, time: .shortened))

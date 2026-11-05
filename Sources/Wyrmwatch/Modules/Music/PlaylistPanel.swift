@@ -62,19 +62,19 @@ private struct PlaylistRow: View {
                         .scaleEffect(0.75)
                 } else {
                     Text("\(item.index)")
-                        .font(.app(9.5))
+                        .font(.app(11))
                         .foregroundStyle(Palette.text3)
                         .monospacedDigit()
                 }
             }
-            .frame(width: 18)
+            .frame(width: 20)
             VStack(alignment: .leading, spacing: 1) {
                 Text(item.title)
                     .font(.app(11.5, current ? .semibold : .regular))
                     .foregroundStyle(current ? Palette.silver : Palette.text2)
                     .lineLimit(1)
                 Text(item.artist)
-                    .font(.app(10))
+                    .font(.app(11))
                     .foregroundStyle(Palette.text3)
                     .lineLimit(1)
             }
