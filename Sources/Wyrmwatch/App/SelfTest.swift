@@ -26,6 +26,8 @@ enum SelfTest {
         let notch = NotchWindowController.shared
         let original = display.setting
         let originalNotchTab = UserDefaults.standard.object(forKey: NotchTab.storageKey)
+        // The test starts and stops many focus sessions; none of that belongs in the real task log.
+        let savedTasks = savedSettings(prefix: "focus."), savedTimer = savedSettings(prefix: "timer.")
         notch.holdOpenForTesting = true
         // A real pointer resting on the notch would hold pops open; the timing checks must not depend on it.
         notch.model.registry.popQueue.isHovering = { false }
@@ -130,6 +132,9 @@ enum SelfTest {
 
         display.setting = original
         UserDefaults.standard.set(originalNotchTab, forKey: NotchTab.storageKey)
+        restoreSettings(savedTasks, prefix: "focus.")
+        restoreSettings(savedTimer, prefix: "timer.")
+        TaskLog.shared.reloadForTesting()
         log(failures == 0 ? "ALL PASSED" : "\(failures) FAILED")
         try? report.joined(separator: "\n").write(to: out.appendingPathComponent("report.txt"), atomically: true, encoding: .utf8)
         NSApp.terminate(nil)
@@ -314,8 +319,6 @@ enum SelfTest {
         let notch = NotchWindowController.shared
         let timer = AppModels.pomodoro.timer
         let tasks = TaskLog.shared
-        let savedLog = savedSettings(prefix: "focus.")
-        let savedTimer = savedSettings(prefix: "timer.")
         log("— Tasks and Timer")
 
         // The log on its own, in a throwaway domain.
@@ -346,7 +349,14 @@ enum SelfTest {
         let after = tasks.today.first { $0.task == "Self-test focus" }?.minutes ?? 0
         check(after - before == 3, "stopping a focus logs its elapsed minutes (\(after - before))")
 
-        // The setup with recent names and today's tasks, in both modes.
+        // The setup with recent names and today's tasks, in both modes (a tidy log, not the test's leftovers).
+        UserDefaults.standard.removeObject(forKey: "focus.log")
+        UserDefaults.standard.removeObject(forKey: "focus.recentTasks")
+        tasks.reloadForTesting()
+        tasks.add(minutes: 75, task: "Revise chapter 3")
+        tasks.add(minutes: 30, task: "Reply to reviewers")
+        tasks.add(minutes: 10, task: "")
+        for name in ["Reply to reviewers", "Meeting", "Revise chapter 3"] { tasks.use(name) }
         timer.task = "Revise chapter 3"
         tasks.use("Revise chapter 3")
         UserDefaults.standard.set("pomodoro", forKey: "focus.pageMode")
@@ -375,9 +385,6 @@ enum SelfTest {
         notch.dismissPop()
         await wait(0.6)
 
-        restoreSettings(savedLog, prefix: "focus.")
-        restoreSettings(savedTimer, prefix: "timer.")
-        tasks.reloadForTesting()
     }
 
     /// Music, fed a made-up song and playlist (the self-test never scripts the real Music app).
