@@ -276,3 +276,52 @@ Hasil (sesi Claude ini aktif selama pengukuran): closed ±0,1–1%, live 0,9–1
 - Klik kanan notch → Settings…
 - Status Claude saat menunggu izin: titik putih dan "waiting", tanpa pop "finished".
 - Remote git lokal masih menunjuk `claude-usage-ui`. GitHub sudah mengalihkan ke `Saidill/Wyrmwatch`, tapi perintah `git remote set-url` tidak dijalankan karena diblokir pengecekan izin.
+
+## Identitas Wyrmwatch: adapter now playing, maskot, elemen khas, Focus, desain (`feat/wyrmwatch-identity`)
+
+**A. mediaremote-adapter (riset dan keputusan)**
+- Lisensi **BSD 3-Clause** (aman untuk dipakai dan didistribusikan; teks lisensi wajib ikut, jadi disalin ke `Contents/Resources/mediaremote-adapter-LICENSE`).
+- Diuji di Mac ini (macOS 27.0.1): `test` lulus, `get` dan `stream` membaca Apple Music. Adapter didesain untuk macOS 15.4 ke atas, tempat MediaRemote hanya bisa dibaca proses bertanda tangan Apple. Karena itu adapter berjalan di `/usr/bin/perl`.
+- Tanpa izin sistem. `stream` memakai 0,03 detik CPU saat mulai, lalu 0,00 selama 20 detik diam, dengan RSS 19 MB.
+- Bisa: judul, artis, album, durasi, posisi, status putar, cover, dan bundle ID app sumber; play/pause, next, previous, seek. Tidak bisa: playlist, favorit.
+- **Keputusan:** dipakai sebagai sumber untuk semua pemutar **selain** Apple Music. Apple Music tetap lewat notifikasi + AppleScript (`MusicBridge`), karena hanya jalur itu yang memberi playlist, favorit, shuffle, dan repeat, dan notifikasinya sudah instan. Kalau adapter tidak ada (build tanpa CMake) atau prosesnya mati lebih dari 5 kali, app tetap jalan dengan Apple Music saja.
+- Di-vendor di `Vendor/mediaremote-adapter` (tag v0.7.7, tanpa perubahan) dan dibangun `build-app.sh` dengan CMake (hanya saat sumbernya berubah).
+
+**B. Maskot**
+- 8 kandidat (CC0/CC BY/MIT/Apache; yang lisensinya tidak jelas ditandai) ada di `assets/candidates/` dengan `README.md` dan `preview.png`. Rive Community dan LottieFiles butuh login, jadi hanya link-nya yang dicatat.
+- Dipasang sebagai maskot **sementara**: Tabler "dragon" (MIT), digambar ulang per bagian di `Views/WyrmArt.swift`: mata berkedip, kepala menoleh ke kursor dengan spring, rahang membuka + api saat "done". Kini kepala juga mengikuti kursor tanpa file Rive. Spring tidak jalan saat Reduce Motion atau saat tidak ada kursor yang diikuti.
+
+**C. Tiga elemen khas**: Ember Edge (Core Animation, maks. 30 fps, berhenti saat notch tertutup), wyrm di sarangnya, scale bar (sisik 8 pt, stagger 20 ms). Kartu aktif mendapat tepi 1 pt `#3A3A3C`.
+
+**D. Focus**
+- Pomodoro: preset 25/5, 50/10, 90/15 + Custom (fokus 1–180, istirahat 1–60, istirahat panjang 1–60, sesi 1–12).
+- Timer: durasi jam:menit:detik (ketik atau scroll), preset 5/10/15/30 menit, +1/+5 saat berjalan, selesai dengan suara + notifikasi/pop berlabel.
+- Nama tugas: kolom "What are you working on?" + 5 chip terakhir, nama di kartu waktu (bisa diedit di tempat), di notch live (bergantian dengan waktu), dan di pop selesai. Riwayat hari ini per tugas, disimpan lokal 30 hari (`TaskLog`).
+- Sayap notch live dilebarkan dari 50 ke 64 pt supaya nama tugas muat.
+
+**E–F. Desain**
+- 5 ukuran teks dan 2 ketebalan di notch dan popover, grid 4 pt, tanpa emoji, sapaan dekoratif, shimmer, atau pill yang mengulang tab. Settings tidak diubah (`CardTitle` dan ukuran teksnya tetap).
+- Tiga ronde kritik dari screenshot self-test, ditulis di `docs/DESIGN-REVIEW.md`. Temuan yang berupa bug: sesi yang menunggu tampil sebagai "Done", dan Timer menampilkan durasi Pomodoro sebelum dimulai.
+
+**Self-test**
+- Baru: riwayat tugas, Timer (detik tepat, +1/+5, pop berlabel), sumber pemutar lain (data adapter tiruan), status Claude idle/working/waiting (sesi tiruan), Ember Edge bergerak saat terbuka, dan Ember Edge + wyrm berhenti saat notch tertutup.
+- Self-test tidak lagi mengotori riwayat tugas asli (`focus.*` dan `timer.*` disimpan dan dikembalikan).
+- Cek overlap menunggu halaman lama selesai memudar, bukan jeda tetap (sebelumnya kadang gagal palsu).
+
+**Performa (`--perf`, 15 detik per kondisi, 6 Nov 2026)**
+
+| Kondisi | CPU | Memori | Target |
+| --- | --- | --- | --- |
+| Closed | 0,22% (0,36% setelah dibuka-tutup) | 23–37 MB | < 0,5% |
+| Live Pomodoro / Claude / Musik | 0,55% / 0,16% / 0,25% | 24 MB | < 2% |
+| Expanded (per tab) | 0,76–1,46% | 36–38 MB | < 5% |
+
+- Ember Edge diukur terpisah (build dengan Ember Edge dimatikan): tidak ada beda yang terukur, karena animasinya berjalan di Core Animation.
+- Temuan: nama tugas yang bergantian dengan waktu di live notch sempat memakan +1,1% CPU karena crossfade animasi tiap 4 detik. Sekarang berganti tanpa animasi dan digerakkan oleh timeline 1 detik yang sama dengan angka (live Pomodoro kembali 0,55%).
+- Angka pertama "closed" kadang tinggi (sekali 5,9%) saat pemindaian token 60 detik jatuh di jendela ukur; pengukuran ulang memberi 0,13–0,26%.
+
+**Cek manual yang tersisa**
+- Mengetik di kolom tugas dan durasi Timer di notch (panel harus menerima keyboard).
+- Scroll di angka durasi Timer dengan trackpad dan mouse.
+- Spotify atau YouTube di browser: lagu, cover, play/pause, next, seek muncul dan berfungsi.
+- Klik preset saat timer berjalan (memulai ulang dengan preset itu).
