@@ -258,7 +258,7 @@ struct PopoverView: View {
             CardTitle("Plan limits") {
                 if let error = limits.error {
                     Image(systemName: "exclamationmark.circle.fill")
-                        .foregroundStyle(Palette.amber)
+                        .foregroundStyle(Palette.text2)
                         .help(error)
                 }
             }
@@ -670,7 +670,7 @@ struct ForecastLine: View {
 
     private var color: Color {
         guard let minutesLeft else { return forecast == .idle ? Palette.text3 : Palette.steel }
-        return minutesLeft < 30 ? Palette.rose : Palette.amber
+        return minutesLeft < 30 ? Palette.red : Palette.text2
     }
 }
 

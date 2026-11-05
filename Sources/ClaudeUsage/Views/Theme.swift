@@ -5,52 +5,72 @@ import SwiftUI
 
 /// Black, silver and glass. Always dark, whatever the system appearance.
 enum Palette {
-    /// Background: plain black, like the notch itself.
     static let bg = Color.black
-    static let text = Color(hex: 0xF2F3F5)
-    static let text2 = Color(hex: 0x8D9096)
+    /// Cards.
+    static let card = Color(hex: 0x1C1C1E)
+    /// Buttons at rest, and the empty part of bars.
+    static let button = Color(hex: 0x2C2C2E)
+    /// Active or hovered buttons and tabs.
+    static let buttonHi = Color(hex: 0x3A3A3C)
+    static let text = Color(hex: 0xF5F5F7)
+    static let text2 = Color(hex: 0x8E8E93)
     /// Faintest text (hints, counters).
-    static let text3 = Color(hex: 0x5F6268)
-    /// Dividers and card edges.
-    static let line = Color(hex: 0x1C1D20)
-    /// Empty part of bars and progress, and the active tab capsule.
-    static let track = Color(hex: 0x2A2B2F)
-    /// Card fill.
-    static let glass = Color(hex: 0x1C1D20)
-    /// Row highlight on hover.
-    static let hover = Color(hex: 0x2A2B2F)
-    /// Buttons: resting and pressed / hovered.
-    static let button = Color(hex: 0x24262B)
-    static let buttonHi = Color(hex: 0x3A3D44)
+    static let text3 = Color(hex: 0x636366)
+    /// Progress and the visualizer.
+    static let silver = Color(hex: 0xD1D5DB)
+    /// The only colour: Claude's "working" dot and usage above 90%.
+    static let red = Color(hex: 0xE5322B)
 
-    /// The accent: progress, visualizer.
-    static let silver = Color(hex: 0xC9CDD3)
-    /// The timer digits.
-    static let silverBright = Color(hex: 0xD5D8DD)
-    /// Muted accent (same as secondary text).
-    static let steel = Color(hex: 0x8D9096)
-    /// Text or icons placed on a silver fill.
-    static let onSilver = Color(hex: 0x0E0F11)
-    /// The dragon's red; also the only bright colour besides the usage warnings.
-    static let dragon = Color(hex: 0xC8202C)
-    /// Usage warnings only.
-    static let amber = Color(hex: 0xE3B26A)
-    static let rose = Color(hex: 0xE07A72)
+    // Older names, kept so every view speaks the same palette.
+    static let glass = card
+    static let line = button
+    static let track = button
+    static let hover = buttonHi
+    static let silverBright = silver
+    static let steel = text2
+    static let onSilver = Color(hex: 0x111113)
+    static let rose = red
+    static let silverGradient = LinearGradient(colors: [silver, silver], startPoint: .top, endPoint: .bottom)
+    static let rim = LinearGradient(colors: [card, card], startPoint: .top, endPoint: .bottom)
+    static let confetti: [Color] = [.white, silver, text2, red]
 
-    /// Silver fill for bars and the selected pill (static, never animated).
-    static let silverGradient = LinearGradient(colors: [silverBright, silver], startPoint: .top, endPoint: .bottom)
-    /// Card and button edge.
-    static let rim = LinearGradient(colors: [line, line], startPoint: .top, endPoint: .bottom)
+    /// Usage colour: `base` up to 90%, red above. (No other warning colour.)
+    static func level(_ percent: Double, base: Color, warn: Double = 90) -> Color {
+        percent >= 90 ? red : base
+    }
+}
 
-    static let confetti: [Color] = [.white, silver, steel, dragon]
+/// Corner radii, all continuous.
+enum Radius {
+    static let card: CGFloat = 20
+    static let button: CGFloat = 10
+    static let preset: CGFloat = 11
+    static let tab: CGFloat = 8
 
-    /// Base colour while usage is comfortable, then amber from `warn`, then rose from 90% as it gets close to the limit.
-    static func level(_ percent: Double, base: Color, warn: Double = 70) -> Color {
-        switch percent {
-        case ..<warn: return base
-        case ..<90: return amber
-        default: return rose
-        }
+    static func shape(_ r: CGFloat) -> RoundedRectangle { RoundedRectangle(cornerRadius: r, style: .continuous) }
+}
+
+extension View {
+    /// The one big number of a card: 38 pt semibold, tight tracking, steady digits.
+    func bigNumber(_ size: CGFloat = 38) -> some View {
+        font(.system(size: size, weight: .semibold)).tracking(-1).monospacedDigit().foregroundStyle(Palette.text)
+    }
+
+    /// Small secondary label (11 pt).
+    func cardLabel() -> some View {
+        font(.app(11)).foregroundStyle(Palette.text2).lineLimit(1).truncationMode(.tail)
+    }
+
+    /// Song title (13 pt semibold).
+    func songTitle() -> some View {
+        font(.app(13, .semibold)).foregroundStyle(Palette.text).lineLimit(1).truncationMode(.tail)
+    }
+
+    /// A card: #1C1C1E, radius 20, padding 12.
+    func notchCard(padding: CGFloat = 12) -> some View {
+        self.padding(padding)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(Radius.shape(Radius.card).fill(Palette.card))
     }
 }
 
