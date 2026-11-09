@@ -2,7 +2,7 @@
 
 **Guarding your focus, your music, and your AI agents, right from the notch.**
 
-Wyrmwatch is a macOS notch app: a Pomodoro and a timer with task names, what's playing (Apple Music, Spotify, your browser…), and your Claude Code sessions and usage limits, all in the camera notch.
+Wyrmwatch is a macOS notch app: a Pomodoro and a timer with task names, what's playing (Apple Music, Spotify, YouTube Music), and your Claude Code sessions and usage limits, all in the camera notch.
 
 | | |
 |---|---|
@@ -22,7 +22,7 @@ Hover the notch (or click it) to open it. The header is split by the camera: fou
   - **Pomodoro**, for long, repeated focus with breaks: presets 25/5, 50/10 and 90/15, or Custom (focus 1–180 min, break 1–60, long break and number of sessions your choice). It keeps time through sleep and restarts, starts each break by itself and plays a short alarm when a phase ends.
   - **Timer**, for one short task that isn't a focus session ("Meeting"): one run, no breaks. Any length to the second (type it or scroll over the numbers), presets 5/10/15/30 min, and +1 / +5 min while it runs. When it ends: a sound, a notification or a card with its name.
   - Both ask **"What are you working on?"**, with your last five task names one click away. The name shows on the time card (click it to rename), in the live notch and on the done card ("Focus done · Revise chapter 3"). **Today** lists every task with its minutes; the log stays on your Mac for 30 days.
-- **Music**: a large cover, the song with its progress and controls, and the library playlist being played (click a song to play it). Apple Music gets shuffle, repeat and the playlist; any other player (Spotify, a browser, Podcasts…) shows its song, cover and progress with play-pause, previous, next and seek.
+- **Music**: a large cover, the song with its progress and controls, and the library playlist being played (click a song to play it). Apple Music gets shuffle, repeat and the playlist; Spotify and YouTube Music (the desktop app, or a browser tab) show their song, cover and progress with play-pause, previous, next and seek. Other players and YouTube videos are left out. A browser doesn't say which site is playing, so a browser tab counts only when its media has an album name, which YouTube Music songs have and YouTube videos don't; YouTube Music items without an album don't show either.
 - **Claude**: session limit, week limit and sessions running as big numbers, then Now (running sessions, click to jump to their terminal), Recent (click to resume) and Usage (tokens).
 
 When it's closed, the notch shows what matters in a slim "live" strip: the mascot while Claude works or waits, the cover and a visualizer while music plays, the time left with a small ring during a Pomodoro, taking turns with the task name (and with the music every 6 seconds). Short cards drop out of it when a Claude session finishes, a timer ends or the song changes.

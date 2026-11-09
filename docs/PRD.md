@@ -16,7 +16,7 @@ App Claude Usage yang sudah ada dikembangkan menjadi **Wyrmwatch** ("Guarding yo
 **Bukan tujuan (versi ini)**
 
 - File shelf (drag & drop file ke notch).
-- Daftar lagu, favorit, shuffle, dan repeat untuk pemutar selain Apple Music (lagu, cover, dan kontrol dasarnya didukung lewat mediaremote-adapter).
+- Daftar lagu, favorit, shuffle, dan repeat untuk Spotify dan YouTube Music (lagu, cover, dan kontrol dasarnya didukung lewat mediaremote-adapter). Pemutar lain dan video YouTube tidak ditampilkan.
 - Pengganti HUD volume dan brightness.
 - Sinkronisasi antarperangkat dan akun.
 - Distribusi di Mac App Store, karena app ini memakai AppleScript dan berjalan tanpa sandbox.
@@ -177,7 +177,8 @@ Fungsi: melihat dan mengendalikan musik tanpa pindah app.
 **Sumber lagu**
 
 - **Apple Music**: notifikasi sistem `com.apple.Music.playerInfo` + AppleScript (playlist, favorit, shuffle, repeat), seperti sebelumnya.
-- **Pemutar lain** (Spotify, browser, Podcasts, dll.): [mediaremote-adapter](https://github.com/ungive/mediaremote-adapter) v0.7.7 (BSD 3-Clause, di-vendor di `Vendor/mediaremote-adapter`). Sejak macOS 15.4 hanya proses bertanda tangan Apple yang boleh membaca now playing, jadi adapter berjalan di dalam `/usr/bin/perl` dan mengalirkan baris JSON (`stream --debounce=100`). Yang dibaca: judul, artis, album, durasi, posisi, status putar, cover, dan app sumbernya. Kontrolnya: play/pause, next, previous, seek. Tidak perlu izin sistem. Daftar lagu, favorit, shuffle, dan repeat tidak tersedia untuk sumber ini, jadi tombolnya disembunyikan.
+- **Spotify dan YouTube Music** (pemutar lain, termasuk video YouTube dan Podcasts, sengaja tidak ditampilkan): [mediaremote-adapter](https://github.com/ungive/mediaremote-adapter) v0.7.7 (BSD 3-Clause, di-vendor di `Vendor/mediaremote-adapter`). Sejak macOS 15.4 hanya proses bertanda tangan Apple yang boleh membaca now playing, jadi adapter berjalan di dalam `/usr/bin/perl` dan mengalirkan baris JSON (`stream --debounce=100`). Yang dibaca: judul, artis, album, durasi, posisi, status putar, cover, dan app sumbernya. Kontrolnya: play/pause, next, previous, seek. Tidak perlu izin sistem. Daftar lagu, favorit, shuffle, dan repeat tidak tersedia untuk sumber ini, jadi tombolnya disembunyikan.
+- Yang ditampilkan selain Apple Music hanya Spotify, app desktop YouTube Music, dan tab browser yang medianya punya **nama album**. Browser hanya memberi tahu "Chrome sedang memutar", bukan situsnya; lagu YouTube Music membawa album, video YouTube tidak. Batasannya: item YouTube Music tanpa album (video musik, unggahan) juga tidak tampil.
 - Kalau app dibangun tanpa CMake (adapter tidak ada), hanya Apple Music yang terbaca.
 
 **Perilaku**

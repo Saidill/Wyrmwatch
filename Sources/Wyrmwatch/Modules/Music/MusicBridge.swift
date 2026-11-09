@@ -161,7 +161,25 @@ final class MusicBridge: ObservableObject {
 
     // MARK: Other players
 
-    private func adapterChanged(_ item: NowPlayingAdapter.Item?) {
+    /// Players shown besides Apple Music: Spotify and YouTube Music.
+    static let spotifyID = "com.spotify.client"
+    /// YouTube Music desktop apps (th-ch's app and its Pear Desktop successor).
+    static let youTubeMusicApps: Set<String> = ["com.github.th-ch.youtube-music", "com.github.th-ch.pear-desktop"]
+    /// Browsers (and their installed web apps) where YouTube Music may play in a tab.
+    static let browserPrefixes = ["com.google.Chrome", "com.apple.Safari", "company.thebrowser.Browser", "com.brave.Browser",
+                                  "com.microsoft.edgemac", "org.mozilla.firefox", "com.operasoftware.Opera"]
+
+    /// Whether another app's media is shown at all. A browser only says that it plays, not which site, so a
+    /// browser counts only when its media has an album: YouTube Music songs carry one, YouTube videos don't.
+    static func isAllowed(_ item: NowPlayingAdapter.Item) -> Bool {
+        if item.bundleID == spotifyID || youTubeMusicApps.contains(item.bundleID) { return true }
+        let browser = browserPrefixes.contains { item.bundleID == $0 || item.bundleID.hasPrefix($0 + ".") }
+        return browser && !item.album.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    private func adapterChanged(_ incoming: NowPlayingAdapter.Item?) {
+        // Anything else (YouTube videos, podcasts, other players) is treated as nothing playing.
+        let item = incoming.flatMap { $0.bundleID == Self.bundleID || Self.isAllowed($0) ? $0 : nil }
         guard let item else {
             // Nothing plays any more. Music's own notifications speak for Music.
             if !isMusicApp { setPlaying(false); track = nil; takeOver(Self.bundleID) }
