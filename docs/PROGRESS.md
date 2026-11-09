@@ -325,3 +325,12 @@ Hasil (sesi Claude ini aktif selama pengukuran): closed ±0,1–1%, live 0,9–1
 - Scroll di angka durasi Timer dengan trackpad dan mouse.
 - Spotify atau YouTube di browser: lagu, cover, play/pause, next, seek muncul dan berfungsi.
 - Klik preset saat timer berjalan (memulai ulang dengan preset itu).
+
+## Hanya Spotify, Apple Music, dan YouTube Music (`feat/player-allowlist`)
+
+- Permintaan: video YouTube tidak dideteksi; yang tampil hanya Spotify, Apple Music, dan YouTube Music.
+- Di Mac ini tidak ada app Spotify atau YouTube Music, jadi YouTube Music berjalan di tab Chrome/Safari. mediaremote-adapter hanya memberi bundle ID browser, bukan URL. Keputusan pengguna: **aturan album**. Tab browser hanya ditampilkan kalau medianya punya nama album (lagu YouTube Music punya, video YouTube tidak). Tanpa izin baru.
+- Diizinkan: `com.spotify.client`, app desktop YouTube Music (`com.github.th-ch.youtube-music`, `com.github.th-ch.pear-desktop`), dan browser (Chrome, Safari, Arc, Brave, Edge, Firefox, Opera, beserta web app terpasangnya) dengan album. Selain itu dianggap tidak ada yang diputar.
+- Batasan: item YouTube Music tanpa album (video musik, unggahan) tidak tampil.
+- Self-test: video YouTube di browser tidak tampil, lagu YouTube Music di browser tampil, Podcasts tidak tampil. `ALL PASSED`.
+

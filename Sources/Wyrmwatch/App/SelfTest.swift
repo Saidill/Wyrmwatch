@@ -500,6 +500,22 @@ enum SelfTest {
         paused["playing"] = false
         bridge.adapterForTesting(paused)
         check(!bridge.isPlaying, "pausing in the other app shows as paused")
+        // Only Spotify and YouTube Music besides Apple Music; a browser only with an album (YouTube Music, not YouTube).
+        var youtube = spotify
+        youtube["bundleIdentifier"] = "com.google.Chrome"
+        youtube["title"] = "How to cook rice"
+        youtube["album"] = ""
+        bridge.adapterForTesting(youtube)
+        check(bridge.track == nil, "a YouTube video in a browser is not shown")
+        var ytMusic = youtube
+        ytMusic["title"] = "Holocene"
+        ytMusic["album"] = "Bon Iver"
+        bridge.adapterForTesting(ytMusic)
+        check(bridge.track?.title == "Holocene", "a YouTube Music song in a browser is shown")
+        var podcast = spotify
+        podcast["bundleIdentifier"] = "com.apple.podcasts"
+        bridge.adapterForTesting(podcast)
+        check(bridge.track == nil, "other players (Podcasts) are not shown")
         bridge.adapterForTesting(["bundleIdentifier": MusicBridge.bundleID, "title": "Song", "playing": true])
         check(bridge.isMusicApp, "Music playing again takes back over (and is read the richer way)")
         bridge.adapterForTesting(spotify)
