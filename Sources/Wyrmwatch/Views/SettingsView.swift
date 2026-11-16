@@ -31,7 +31,7 @@ struct SettingsView: View {
             case 1:
                 ModulesSettings(registry: AppModels.registry)
             case 2:
-                section("Pomodoro", symbol: "flame.fill", color: Palette.silver) {
+                section("Pomodoro", symbol: "flame.fill", color: SettingsPalette.silver) {
                     row("Focus") { minutes($pomodoro.focusMinutes, 5...120, step: 5) }
                     row("Short break") { minutes($pomodoro.shortBreakMinutes, 1...30, step: 1) }
                     row("Long break (every 4)") { minutes($pomodoro.longBreakMinutes, 5...60, step: 5) }
@@ -40,12 +40,12 @@ struct SettingsView: View {
                     row("Play music while focusing, pause for breaks") { toggle($pomodoroMusicSync) }
                 }
             case 3:
-                section("Music", symbol: "music.note", color: Palette.silver) {
+                section("Music", symbol: "music.note", color: SettingsPalette.silver) {
                     row("Pop up when the song changes") { toggle($musicPop) }
                     row("Show the playlist on hover") { toggle($musicListOnHover) }
                 }
             case 4:
-                section("When Claude finishes", symbol: "bell.fill", color: Palette.silver) {
+                section("When Claude finishes", symbol: "bell.fill", color: SettingsPalette.silver) {
                     row("Play a sound") { toggle($soundEnabled) }
                     row("Sound") {
                         HStack(spacing: 6) {
@@ -60,7 +60,7 @@ struct SettingsView: View {
                                 Notifier.shared.playSound(soundName)
                             } label: {
                                 Image(systemName: "speaker.wave.2.fill")
-                                    .foregroundStyle(Palette.silver)
+                                    .foregroundStyle(SettingsPalette.silver)
                                     .symbolEffect(.variableColor.iterative, options: .nonRepeating, value: previewBounce)
                             }
                             .buttonStyle(.plain)
@@ -71,7 +71,7 @@ struct SettingsView: View {
                     }
                     row("Show a notification") { toggle($notificationsEnabled) }
                 }
-                section("Limit alerts", symbol: "gauge.with.dots.needle.67percent", color: Palette.silver) {
+                section("Limit alerts", symbol: "gauge.with.dots.needle.67percent", color: SettingsPalette.silver) {
                     row("Warn me near the limit") { toggle($limitAlerts) }
                     row("At") {
                         Picker("", selection: $limitThreshold) {
@@ -85,12 +85,12 @@ struct SettingsView: View {
                     row("Ping when the session limit resets") { toggle($resetPing) }
                 }
             case 5:
-                section("Calendar", symbol: "calendar", color: Palette.silver) {
+                section("Calendar", symbol: "calendar", color: SettingsPalette.silver) {
                     row("Show the next calendar event") {
                         toggle(Binding(get: { registry.isEnabled("info") }, set: { registry.setEnabled("info", $0) }))
                     }
                 }
-                section("System", symbol: "power.circle.fill", color: Palette.silver) {
+                section("System", symbol: "power.circle.fill", color: SettingsPalette.silver) {
                     row("Open at login") {
                         toggle($launchAtLogin)
                             .onChange(of: launchAtLogin) { _, enabled in
@@ -104,7 +104,7 @@ struct SettingsView: View {
                     }
                     row("Always reduce motion") { toggle($forceReduceMotion) }
                     if let loginError {
-                        Text(loginError).font(.app(11)).foregroundStyle(Palette.rose).padding(.bottom, 8)
+                        Text(loginError).font(.app(11)).foregroundStyle(SettingsPalette.rose).padding(.bottom, 8)
                     }
                     row("Quit \(AppInfo.name)") {
                         Button("Quit") { NSApp.terminate(nil) }
@@ -113,11 +113,11 @@ struct SettingsView: View {
                 }
                 Text("Token counts come from Claude Code's local history. Plan limits use the same unofficial endpoint as /usage, so they may stop working if Anthropic changes it.")
                     .font(.app(11))
-                    .foregroundStyle(Palette.text3)
+                    .foregroundStyle(SettingsPalette.text3)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 4)
             default:
-                section("Display", symbol: "macbook", color: Palette.silver) {
+                section("Display", symbol: "macbook", color: SettingsPalette.silver) {
                     row("Show the app in") {
                         Picker("", selection: $display.setting) {
                             ForEach(DisplayMode.allCases) { Text($0.title).tag($0) }
@@ -128,11 +128,11 @@ struct SettingsView: View {
                     row("Open when the pointer rests on it") { toggle($openOnHover) }
                     Text("Auto uses the notch on the screen with the menu bar, drawing one on an external monitor. All screens puts a notch on every display.")
                         .font(.app(11))
-                        .foregroundStyle(Palette.text3)
+                        .foregroundStyle(SettingsPalette.text3)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.bottom, 6)
                 }
-                section("Menu bar", symbol: "menubar.rectangle", color: Palette.silver) {
+                section("Menu bar", symbol: "menubar.rectangle", color: SettingsPalette.silver) {
                     row("Next to the icon") {
                         Picker("", selection: $menuBarMode) {
                             ForEach(MenuBarMode.allCases) { Text($0.title).tag($0.rawValue) }
@@ -153,22 +153,22 @@ struct SettingsView: View {
                     .font(.system(size: 10.5, weight: .medium))
                     .foregroundStyle(color)
                     .frame(width: 24, height: 24)
-                    .background(Circle().fill(Palette.glass))
-                    .overlay(Circle().strokeBorder(Palette.line, lineWidth: 1))
+                    .background(Circle().fill(SettingsPalette.glass))
+                    .overlay(Circle().strokeBorder(SettingsPalette.line, lineWidth: 1))
                 Text(title.uppercased())
                     .font(.app(10.5, .semibold))
                     .tracking(1.2)
-                    .foregroundStyle(Palette.text2)
+                    .foregroundStyle(SettingsPalette.text2)
             }
             .padding(.bottom, 4)
             content()
         }
-        .card()
+        .settingsCard()
     }
 
     private func row<Control: View>(_ label: String, @ViewBuilder control: () -> Control) -> some View {
         HStack {
-            Text(label).font(.app(12.5)).foregroundStyle(Palette.text)
+            Text(label).font(.app(12.5)).foregroundStyle(SettingsPalette.text)
             Spacer()
             control()
         }
@@ -179,7 +179,7 @@ struct SettingsView: View {
         HStack(spacing: 6) {
             Text("\(binding.wrappedValue) min")
                 .font(.app(12))
-                .foregroundStyle(Palette.text2)
+                .foregroundStyle(SettingsPalette.text2)
                 .monospacedDigit()
             Stepper("", value: binding, in: range, step: step)
                 .labelsHidden()
@@ -188,7 +188,7 @@ struct SettingsView: View {
     }
 
     private func toggle(_ binding: Binding<Bool>) -> some View {
-        Toggle("", isOn: binding).toggleStyle(.switch).controlSize(.mini).tint(Palette.steel).labelsHidden()
+        Toggle("", isOn: binding).toggleStyle(.switch).controlSize(.mini).tint(SettingsPalette.steel).labelsHidden()
     }
 }
 
@@ -205,19 +205,19 @@ private struct SettingsTabs: View {
                     Image(systemName: tabs[i].1).font(.system(size: 11, weight: .medium))
                     Text(tabs[i].0).font(.app(9, .medium)).lineLimit(1).minimumScaleFactor(0.8)
                 }
-                .foregroundStyle(selection == i ? Palette.onSilver : Palette.text2)
+                .foregroundStyle(selection == i ? SettingsPalette.onSilver : SettingsPalette.text2)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 5)
                 .background {
-                    if selection == i { RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Palette.silverGradient) }
+                    if selection == i { RoundedRectangle(cornerRadius: 9, style: .continuous).fill(SettingsPalette.silverGradient) }
                 }
                 .contentShape(Rectangle())
                 .onTapGesture { withAnimation(Motion.smooth) { selection = i } }
             }
         }
         .padding(2)
-        .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(Palette.glass))
-        .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).strokeBorder(Palette.rim, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(SettingsPalette.glass))
+        .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).strokeBorder(SettingsPalette.rim, lineWidth: 1))
     }
 }
 
@@ -233,12 +233,12 @@ private struct ModulesSettings: View {
                     Button("Reset order") { registry.setOrder(nil) }
                         .buttonStyle(.plain)
                         .font(.app(10.5, .medium))
-                        .foregroundStyle(Palette.text2)
+                        .foregroundStyle(SettingsPalette.text2)
                 }
             }
             Text("Drag to choose which module wins the live notch when several are active.")
                 .font(.app(11))
-                .foregroundStyle(Palette.text3)
+                .foregroundStyle(SettingsPalette.text3)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.bottom, 4)
             ForEach(registry.orderedIDs, id: \.self) { id in
@@ -260,28 +260,28 @@ private struct ModulesSettings: View {
             }
             Text("Info (the next calendar event) lives in the header and never takes the live notch.")
                 .font(.app(10.5))
-                .foregroundStyle(Palette.text3)
+                .foregroundStyle(SettingsPalette.text3)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 4)
         }
-        .card()
+        .settingsCard()
     }
 
     private func row(_ id: String) -> some View {
         HStack(spacing: 10) {
             Image(systemName: "line.3.horizontal")
                 .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(Palette.text3)
+                .foregroundStyle(SettingsPalette.text3)
             Text(ModuleRegistry.title(for: id))
                 .font(.app(12.5))
-                .foregroundStyle(Palette.text)
+                .foregroundStyle(SettingsPalette.text)
             Spacer()
             Toggle("", isOn: Binding(get: { registry.isEnabled(id) }, set: { registry.setEnabled(id, $0) }))
-                .toggleStyle(.switch).controlSize(.mini).tint(Palette.steel).labelsHidden()
+                .toggleStyle(.switch).controlSize(.mini).tint(SettingsPalette.steel).labelsHidden()
         }
         .frame(minHeight: 30)
         .padding(.horizontal, 8)
-        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Palette.glass))
+        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(SettingsPalette.glass))
         .contentShape(Rectangle())
     }
 }

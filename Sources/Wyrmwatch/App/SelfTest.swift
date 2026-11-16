@@ -39,7 +39,7 @@ enum SelfTest {
             await wait(0.8)
             switch CommandLine.arguments[i + 1] {
             case "dragon": await checkDragon()
-            case "directions": await renderDirections()
+            case "design": await renderDesign()
             default: await checkDesignStates()
             }
             await finish(original, originalNotchTab, savedTasks, savedTimer)
@@ -592,15 +592,17 @@ enum SelfTest {
         await wait(0.6)
     }
 
-    /// Home and Focus in each design direction under review (docs/directions): Claude working with a song playing,
-    /// a Pomodoro running, everything idle, and the Timer's setup. Also checks that the dragon is clear of the camera.
-    private static func renderDirections() async {
+    /// Pictures for the design review, with made-up but fixed data (Reduce Motion on, so nothing is caught
+    /// mid-animation): Home and Focus busy and idle, the Timer's setup, Music and Claude. Also checks that the
+    /// dragon is clear of the camera.
+    private static func renderDesign() async {
         let notch = NotchWindowController.shared
         let sessions = AppModels.sessions, bridge = AppModels.music.bridge, timer = AppModels.pomodoro.timer
         let tasks = TaskLog.shared
         let defaults = UserDefaults.standard
-        log("— Design directions")
+        log("— Design review pictures")
         let savedPomodoro = savedSettings(prefix: "pomodoro.")
+        let savedMotion = savedSettings(prefix: "motion.")
         defaults.removeObject(forKey: "focus.log")
         defaults.removeObject(forKey: "focus.recentTasks")
         tasks.reloadForTesting()
@@ -609,44 +611,57 @@ enum SelfTest {
         tasks.add(minutes: 10, task: "")
         for name in ["Reply to reviewers", "Meeting", "Revise chapter 3"] { tasks.use(name) }
         let song = NowPlaying(id: "AAAA", title: "Wait for You", artist: "Elliott Yamin", album: "Wait for You", duration: 261)
-        let working = LiveSession(pid: 1, sessionId: "test", cwd: NSHomeDirectory() + "/Projects/thesis", name: nil, status: "busy",
-                                  kind: nil, startedAt: Date().timeIntervalSince1970 * 1000 - 600_000,
-                                  statusUpdatedAt: Date().timeIntervalSince1970 * 1000 - 90_000)
+        let list = (1...40).map { PlaylistTrack(index: $0, title: "Song number \($0)", artist: "Artist \($0 % 7)", duration: 200) }
+        func session(_ pid: Int32, _ status: String, _ folder: String) -> LiveSession {
+            LiveSession(pid: pid, sessionId: "test\(pid)", cwd: NSHomeDirectory() + "/Projects/" + folder, name: nil, status: status,
+                        kind: nil, startedAt: Date().timeIntervalSince1970 * 1000 - 600_000,
+                        statusUpdatedAt: Date().timeIntervalSince1970 * 1000 - 90_000)
+        }
         let camera = notch.screens.first?.screen.notch.width ?? 185
         let hidden = CGRect(x: (ExpandedPanel.width - camera) / 2, y: -100, width: camera, height: 200)
-        let only = CommandLine.arguments.firstIndex(of: "--design").map { CommandLine.arguments[$0 + 1] }
-        // Fixed numbers, a still dragon and no rolling digits, so the pictures can be compared.
-        let savedMotion = savedSettings(prefix: "motion.")
         defaults.set(true, forKey: MotionPreference.forceKey)
         AppModels.limits.injectForTesting([LimitWindow(id: "five_hour", utilization: 24, resetsAt: Date().addingTimeInterval(3 * 3600 + 20 * 60)),
                                            LimitWindow(id: "seven_day", utilization: 41, resetsAt: Date().addingTimeInterval(4 * 86400))])
-        for design in Design.allCases where only == nil || only == design.rawValue {
-            Design.active = design
-            let name = design.rawValue
-            timer.stopToSetup()
-            timer.task = "Revise chapter 3"
-            WyrmState.forTesting = .working
-            sessions.injectForTesting([working])
-            bridge.injectForTesting(track: song, playing: true, position: 74, artwork: testCover(hue: 0.08))
-            defaults.set("pomodoro", forKey: "focus.pageMode")
-            await snapshotExpanded(tab: .home, "\(name)-home", keepOpen: true)
-            if design != .current, let dragon = LayoutProbe.frames["header.dragon"] {
-                check(!dragon.intersects(hidden), "\(name): the dragon is clear of the camera (\(Int(dragon.minX))–\(Int(dragon.maxX)))")
-            }
-            notch.close()
-            await wait(0.6)
-            timer.runForTesting(phase: .focus, secondsLeft: 24 * 60 + 59)
-            await snapshotExpanded(tab: .focus, "\(name)-focus")
-            timer.stopToSetup()
-            WyrmState.forTesting = .peek
-            sessions.injectForTesting([])
-            bridge.injectForTesting(track: nil, playing: false)
-            await snapshotExpanded(tab: .home, "\(name)-home-idle")
-            defaults.set("countdown", forKey: "focus.pageMode")
-            defaults.set(5400, forKey: "timer.seconds")
-            await snapshotExpanded(tab: .focus, "\(name)-focus-timer")
+
+        // Busy: Claude working, a song playing, focus stopped.
+        timer.stopToSetup()
+        timer.task = "Revise chapter 3"
+        WyrmState.forTesting = .working
+        sessions.injectForTesting([session(1, "busy", "thesis"), session(2, "waiting", "wyrmwatch")])
+        bridge.injectForTesting(track: song, playing: true, position: 74, artwork: testCover(hue: 0.08), playlist: list, currentIndex: 12)
+        defaults.set("pomodoro", forKey: "focus.pageMode")
+        await snapshotExpanded(tab: .home, "review-home", keepOpen: true)
+        if let dragon = LayoutProbe.frames["header.dragon"] {
+            check(!dragon.intersects(hidden), "the dragon is clear of the camera (\(Int(dragon.minX))–\(Int(dragon.maxX)))")
         }
-        Design.active = .current
+        notch.close()
+        await wait(0.6)
+        // The live notch and a pop, with Claude working.
+        await wait(0.6)
+        if let w = notch.window { snapshot(w, "review-live-claude") }
+        AppModels.claude.pop(session(3, "idle", "thesis"))
+        await wait(1.0)
+        if let w = notch.window { snapshot(w, "review-pop-claude") }
+        notch.model.registry.popQueue.clear()
+        await wait(0.6)
+        await snapshotExpanded(tab: .music, "review-music")
+        await snapshotExpanded(tab: .claude, "review-claude")
+        timer.runForTesting(phase: .focus, secondsLeft: 24 * 60 + 59)
+        await snapshotExpanded(tab: .focus, "review-focus")
+        await snapshotExpanded(tab: .home, "review-home-focus")
+        await wait(0.4)
+        if let w = notch.window { snapshot(w, "review-live-focus") }
+        // Idle.
+        timer.stopToSetup()
+        WyrmState.forTesting = .peek
+        sessions.injectForTesting([])
+        bridge.injectForTesting(track: nil, playing: false)
+        await snapshotExpanded(tab: .home, "review-home-idle")
+        defaults.set("countdown", forKey: "focus.pageMode")
+        defaults.set(5400, forKey: "timer.seconds")
+        await snapshotExpanded(tab: .focus, "review-focus-timer")
+        await snapshotExpanded(tab: .claude, "review-claude-idle")
+
         WyrmState.forTesting = nil
         AppModels.limits.injectForTesting(nil)
         restoreSettings(savedMotion, prefix: "motion.")

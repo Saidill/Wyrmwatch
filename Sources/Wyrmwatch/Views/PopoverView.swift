@@ -181,11 +181,8 @@ struct PopoverView: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            ZStack {
-                Radius.shape(Radius.button).fill(Palette.card)
-                WyrmSlot(state: WyrmState.current(sessions: sessions, idleFor: ExpandedPanel.userIdleTime), size: 28)
-            }
-            .frame(width: 40, height: 40)
+            WyrmSlot(state: WyrmState.current(sessions: sessions, idleFor: ExpandedPanel.userIdleTime), size: 28)
+                .frame(height: 40)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(showSettings ? "Settings" : "Claude")
@@ -278,15 +275,15 @@ struct PopoverView: View {
     private var sessionsCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             SectionTitle("Sessions") {
-                if !sessions.sessions.isEmpty {
+                // In the notch the "Sessions running" number right above already says how many.
+                if !inNotch, !sessions.sessions.isEmpty {
                     Text("\(sessions.sessions.count)")
                         .font(.app(11, .semibold))
                         .foregroundStyle(Palette.text)
                         .monospacedDigit()
                         .padding(.horizontal, 8)
                         .padding(.vertical, 2)
-                        .background(Capsule().fill(Palette.glass))
-                        .overlay(Capsule().strokeBorder(Palette.line, lineWidth: 0.5))
+                        .overlay(Capsule(style: .circular).strokeBorder(Palette.hairline, lineWidth: 1))
                         .contentTransition(.numericText())
                 }
             }
@@ -354,7 +351,8 @@ struct PopoverView: View {
 
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(formatTokens(bigNumber))
-                    .font(.app(34, .ultraLight))
+                    .font(.app(28, .semibold))
+                    .monospacedDigit()
                     .foregroundStyle(hoveredBar == nil ? AnyShapeStyle(Palette.text) : AnyShapeStyle(Palette.silverGradient))
                     .contentTransition(.numericText())
                     .animation(Motion.quick, value: bigNumber)
@@ -379,7 +377,7 @@ struct PopoverView: View {
                 }
                 GridRow {
                     Chip(label: "Cache", value: formatTokens(summary.cacheRead + summary.cacheWrite), color: Palette.text3)
-                    Chip(label: "Replies", value: summary.messages.formatted(), color: .white)
+                    Chip(label: "Replies", value: summary.messages.formatted(), color: Palette.text)
                 }
             }
 
@@ -480,9 +478,7 @@ struct SessionRow: View {
         HStack(spacing: 8) {
             ZStack {
                 Circle()
-                    .fill(Palette.glass)
-                    .overlay(Circle().strokeBorder(session.isBusy ? AnyShapeStyle(Palette.silverGradient) : AnyShapeStyle(Palette.line),
-                                                   lineWidth: 1))
+                    .strokeBorder(session.isBusy ? Palette.accent : session.isWaiting ? Palette.text2 : Palette.hairline, lineWidth: 1)
                     .frame(width: 32, height: 32)
                 if session.isBusy {
                     WorkingBadge(hovering: hovering)
@@ -579,8 +575,8 @@ struct RecentRow: View {
                 .foregroundStyle(hovering ? Palette.onSilver : Palette.silver)
                 .contentTransition(.symbolEffect(.replace))
                 .frame(width: 32, height: 32)
-                .background(Circle().fill(hovering ? AnyShapeStyle(Palette.silverGradient) : AnyShapeStyle(Palette.glass)))
-                .overlay(Circle().strokeBorder(Palette.line, lineWidth: hovering ? 0 : 1))
+                .background(Circle().fill(hovering ? Palette.silver : .clear))
+                .overlay(Circle().strokeBorder(Palette.hairline, lineWidth: hovering ? 0 : 1))
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(session.title)

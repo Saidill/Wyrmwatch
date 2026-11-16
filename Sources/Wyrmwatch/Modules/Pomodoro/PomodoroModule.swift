@@ -139,7 +139,8 @@ private struct PopButton: View {
                 .lineLimit(1)
                 .padding(.horizontal, 12)
                 .frame(height: 28)
-                .background(Capsule().fill(primary ? Palette.silver : (hovering ? Palette.buttonHi : Palette.button)))
+                .background(Capsule().fill(primary ? Palette.silver : (hovering ? Palette.buttonHi : .clear)))
+                .overlay(Capsule(style: .circular).strokeBorder(primary ? .clear : Palette.hairline, lineWidth: 1))
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -241,7 +242,7 @@ private struct FocusCard: View {
     }
 }
 
-/// The icon at the start of a pop: a symbol on a #2C2C2E tile.
+/// The icon at the start of a pop: a symbol in an outlined tile.
 struct PopIcon: View {
     let systemName: String
 
@@ -250,7 +251,7 @@ struct PopIcon: View {
             .font(.system(size: 16, weight: .semibold))
             .foregroundStyle(Palette.text)
             .frame(width: 40, height: 40)
-            .background(Radius.shape(Radius.button).fill(Palette.button))
+            .background(ControlPlate(radius: Radius.button))
             .padding(.trailing, 8)
     }
 }

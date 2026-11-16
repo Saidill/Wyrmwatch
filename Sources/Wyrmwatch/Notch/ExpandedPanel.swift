@@ -62,58 +62,31 @@ struct ExpandedPanel: View {
         .environment(\.layoutProbing, true)
     }
 
-    /// Tabs on the left, the camera in the middle, the clock on the right. Where the dragon goes depends on the
-    /// design: in the camera gap today (hidden by a real camera); in the directions under review it moves out:
-    /// Obsidian puts it before the tabs, Hearth walks it along a ground line under the header, Vault perches it
-    /// on the top edge of the last card.
+    /// The dragon and the tabs on the left, the camera in the middle (left empty: a real camera hides whatever
+    /// is there), the clock on the right. A ground line runs under all of it; the dragon stands on it.
     private var header: some View {
-        let design = Design.active
-        return HStack(spacing: 0) {
+        HStack(spacing: 0) {
             HStack(spacing: 8) {
-                switch design {
-                case .obsidian:
-                    WyrmSlot(state: wyrmState, size: min(notch.height - 4, 26)).probe("header.dragon")
-                case .hearth:
-                    // Standing on the ground line.
-                    WyrmSlot(state: wyrmState, size: notch.height - 2)
-                        .offset(y: 1 + (notch.height - 2) * WyrmSlot.groundGap)
-                        .probe("header.dragon")
-                default:
-                    EmptyView()
-                }
+                WyrmSlot(state: wyrmState, size: notch.height - 2)
+                    .offset(y: 1 + (notch.height - 2) * WyrmSlot.groundGap)
+                    .probe("header.dragon")
                 TabBar(selection: $tab).probe("header.tabs")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            // The camera.
-            Group {
-                if design == .current { WyrmSlot(state: wyrmState, size: min(notch.height - 4, 28)) }
+            Color.clear.frame(width: notch.width, height: notch.height)
+            TimelineView(.everyMinute) { context in
+                // Two digits each: in some regions "minute" alone drops the leading zero ("01.8").
+                Text(context.date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)))
+                    .font(.app(11))
+                    .foregroundStyle(Palette.text2)
+                    .monospacedDigit()
+                    .fixedSize()
             }
-            .frame(width: notch.width, height: notch.height)
-            HStack(spacing: 8) {
-                TimelineView(.everyMinute) { context in
-                    // Two digits each: in some regions "minute" alone drops the leading zero ("01.8").
-                    Text(context.date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)))
-                        .font(.app(11))
-                        .foregroundStyle(Palette.text2)
-                        .monospacedDigit()
-                        .fixedSize()
-                }
-                .probe("header.right")
-                if design == .vault {
-                    // Perched on the top edge of the card below (8 pt under the header), facing in.
-                    let size = notch.height + 8
-                    WyrmSlot(state: wyrmState, size: size, facingLeft: true)
-                        .frame(height: notch.height, alignment: .bottom)
-                        .offset(y: 8 + size * WyrmSlot.groundGap)
-                        .probe("header.dragon")
-                }
-            }
+            .probe("header.right")
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .frame(height: notch.height)
-        .overlay(alignment: .bottom) {
-            if design == .hearth { Rectangle().fill(Palette.hairline).frame(height: 1).offset(y: 1) }
-        }
+        .overlay(alignment: .bottom) { Rectangle().fill(Palette.hairline).frame(height: 1).offset(y: 1) }
     }
 
     private var wyrmState: WyrmState {
@@ -142,36 +115,23 @@ struct ExpandedPanel: View {
     }
 }
 
-/// Four 28 × 28 icon tabs (16 pt icons, radius 8): #1C1C1E with grey icons, the active one #3A3A3C and white.
-/// Hearth draws no boxes: just the icons, with a short bar on the ground line under the active one.
+/// Four icon tabs (16 pt icons in 28 × 28), no boxes: the active one is bone-white with a short bar on the
+/// header's ground line under it.
 private struct TabBar: View {
     @Binding var selection: NotchTab
 
     var body: some View {
-        let design = Design.active
-        HStack(spacing: design == .hearth ? 4 : 8) {
+        HStack(spacing: 4) {
             ForEach(NotchTab.allCases) { tab in
                 Button { withAnimation(Motion.quick) { selection = tab } } label: {
                     tab.icon()
                         .frame(width: 16, height: 16)
                         .foregroundStyle(selection == tab ? Palette.text : Palette.text2)
                         .frame(width: 28, height: 28)
-                        .background {
-                            switch design {
-                            case .current, .obsidian:
-                                Radius.shape(Radius.tab).fill(selection == tab ? Palette.buttonHi : Palette.card)
-                            case .vault:
-                                ControlPlate(radius: Radius.tab, on: selection == tab)
-                            case .hearth:
-                                EmptyView()
-                            }
-                        }
                         .overlay(alignment: .bottom) {
-                            if design == .hearth, selection == tab {
-                                Rectangle().fill(Palette.text).frame(width: 16, height: 2).offset(y: 4)
-                            }
+                            if selection == tab { Rectangle().fill(Palette.text).frame(width: 16, height: 2).offset(y: 4) }
                         }
-                        .contentShape(Radius.shape(Radius.tab))
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.pressable)
                 .help(tab.title)

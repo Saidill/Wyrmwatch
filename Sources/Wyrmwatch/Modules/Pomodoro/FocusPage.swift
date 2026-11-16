@@ -210,13 +210,7 @@ private struct TaskChip: View {
                 .truncationMode(.tail)
                 .padding(.horizontal, 8)
                 .frame(height: 20)
-                .background {
-                    if Design.active == .current {
-                        Capsule().fill(selected || hovering ? Palette.buttonHi : Palette.card)
-                    } else {
-                        ControlPlate(radius: 10, on: selected || hovering)
-                    }
-                }
+                .background(ControlPlate(radius: 10, on: selected || hovering))
                 .contentShape(Capsule())
         }
         .buttonStyle(.pressable)
@@ -328,14 +322,7 @@ private struct ModeSwitch: View {
                         .frame(maxWidth: .infinity, minHeight: 24)
                         .background {
                             if selection == mode {
-                                Group {
-                                    if Design.active == .current {
-                                        Radius.shape(Radius.tab).fill(Palette.buttonHi)
-                                    } else {
-                                        ControlPlate(radius: Radius.tab, on: true)
-                                    }
-                                }
-                                .matchedGeometryEffect(id: "mode", in: glide)
+                                ControlPlate(radius: Radius.tab, on: true).matchedGeometryEffect(id: "mode", in: glide)
                             }
                         }
                         .contentShape(Rectangle())
@@ -344,9 +331,7 @@ private struct ModeSwitch: View {
             }
         }
         .padding(2)
-        .background {
-            if Design.active == .current { Radius.shape(Radius.button).fill(Palette.card) } else { ControlPlate(radius: Radius.button) }
-        }
+        .background(ControlPlate(radius: Radius.button))
     }
 }
 

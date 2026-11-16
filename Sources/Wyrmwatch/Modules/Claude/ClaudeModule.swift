@@ -123,14 +123,10 @@ private struct ClaudeFinishedPop: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            // Room on the right for its fire.
-            Image(systemName: "checkmark")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Palette.text)
-                .frame(width: 40, height: 40)
-                .background(Radius.shape(Radius.button).fill(Palette.button))
+            // The dragon itself says it: it rears up and strikes once.
+            WyrmSlot(state: .done, size: 28)
+                .frame(height: 40)
                 .padding(.trailing, 8)
-                .scaleEffect(checked ? 1 : 0.6)
                 .opacity(checked ? 1 : 0)
 
             VStack(alignment: .leading, spacing: 2) {

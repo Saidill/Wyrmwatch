@@ -251,9 +251,9 @@ struct PhaseBar: View {
     var body: some View {
         if let end = timer.endDate {
             TimelineView(.periodic(from: end.addingTimeInterval(-100_000), by: 1)) { context in
-                // In the directions under review a running timer's bar takes the accent.
+                // A running timer's bar takes the accent.
                 ThinBar(fraction: 1 - timer.fractionLeft(at: context.date),
-                        color: Design.active != .current && timer.isRunning ? Palette.accent : Palette.silver)
+                        color: timer.isRunning ? Palette.accent : Palette.silver)
             }
             .frame(height: 8)
         } else {

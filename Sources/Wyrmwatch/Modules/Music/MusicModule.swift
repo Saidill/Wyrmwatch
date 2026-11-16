@@ -167,10 +167,6 @@ struct NowPlayingCard: View {
             .animation(Motion.adapt(Motion.slide, reduceMotion), value: showList)
         }
         .card()
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(nsColor: bridge.accent ?? .clear).opacity(0.10))
-        )
         .animation(Motion.smooth, value: showList)
         .onHover { inside in
             hoverTask?.cancel()
@@ -256,12 +252,8 @@ struct Scrubber: View {
             let now = dragging ?? bridge.currentPosition(at: context.date)
             VStack(spacing: 4) {
                 GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Palette.line)
-                        Capsule().fill(Palette.silverGradient)
-                            .frame(width: geo.size.width * min(now / duration, 1))
-                    }
-                    .frame(height: dragging == nil ? 3 : 5)
+                    // A scale bar, like every other progress bar.
+                    ThinBar(fraction: min(now / duration, 1))
                     .frame(maxHeight: .infinity)
                     .contentShape(Rectangle())
                     .gesture(DragGesture(minimumDistance: 0)

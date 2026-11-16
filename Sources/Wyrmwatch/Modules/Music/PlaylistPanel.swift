@@ -70,8 +70,8 @@ private struct PlaylistRow: View {
             .frame(width: 20)
             VStack(alignment: .leading, spacing: 1) {
                 Text(item.title)
-                    .font(.app(11.5, current ? .semibold : .regular))
-                    .foregroundStyle(current ? Palette.silver : Palette.text2)
+                    .font(.app(13, current ? .semibold : .regular))
+                    .foregroundStyle(current ? Palette.text : Palette.text2)
                     .lineLimit(1)
                 Text(item.artist)
                     .font(.app(11))
@@ -82,8 +82,7 @@ private struct PlaylistRow: View {
         }
         .padding(.vertical, 4)
         .padding(.horizontal, 4)
-        .background(RoundedRectangle(cornerRadius: 8, style: .continuous)
-            .fill(current ? Palette.silver.opacity(0.16) : hovering ? Palette.glass : .clear))
+        .background(Radius.shape(Radius.tab).fill(current || hovering ? Palette.buttonHi : .clear))
         .contentShape(Rectangle())
         .onTapGesture(perform: play)
         .onHover { h in withAnimation(Motion.quick) { hovering = h } }
