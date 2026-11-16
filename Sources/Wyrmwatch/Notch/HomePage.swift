@@ -9,6 +9,10 @@ struct HomePage: View {
     @ObservedObject var sessions: SessionMonitor
     var coverSpace: Namespace.ID?
     static let height: CGFloat = 120
+    /// Every card ends the same way, so the three scale bars sit on one line: the bar, a gap, then a footer
+    /// (buttons, or the status line) of one height.
+    static let footer: CGFloat = 32
+    static let barGap: CGFloat = 8
 
     var body: some View {
         GeometryReader { geo in
@@ -63,9 +67,10 @@ private struct ClaudeCard: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             ThinBar(fraction: (percent ?? 0) / 100, color: Palette.level(percent ?? 0, base: Palette.silver))
-                .padding(.top, 2)
-            Spacer(minLength: 6)
+                .probe("home.claude.bar")
             Text(statusLine).cardLabel()
+                .frame(height: HomePage.footer, alignment: .leading)
+                .padding(.top, HomePage.barGap)
         }
         .notchCard(active: sessions.busyCount > 0)
     }
@@ -111,20 +116,20 @@ private struct MusicCard: View {
                     }
                     .frame(height: 8)
                     .probe("home.progress")
-                    Spacer(minLength: 6)
                     GeometryReader { geo in
                         let unit = (geo.size.width - 12) / 3.3
                         HStack(spacing: 8) {
-                            CardButton(systemName: "backward.fill", help: "Previous") { bridge.previous() }
+                            CardButton(systemName: "backward.fill", height: HomePage.footer, help: "Previous") { bridge.previous() }
                                 .frame(width: unit)
-                            CardButton(systemName: bridge.isPlaying ? "pause.fill" : "play.fill", active: true,
+                            CardButton(systemName: bridge.isPlaying ? "pause.fill" : "play.fill", active: true, height: HomePage.footer,
                                        help: bridge.isPlaying ? "Pause" : "Play") { bridge.playPause() }
                                 .frame(width: unit * 1.3)
-                            CardButton(systemName: "forward.fill", help: "Next") { bridge.next() }
+                            CardButton(systemName: "forward.fill", height: HomePage.footer, help: "Next") { bridge.next() }
                                 .frame(width: unit)
                         }
                     }
-                    .frame(height: 32)
+                    .frame(height: HomePage.footer)
+                    .padding(.top, HomePage.barGap)
                     .probe("home.controls")
                 }
             } else {
@@ -176,12 +181,12 @@ private struct FocusCard: View {
                     .probe("home.focus.time")
                 PhaseBar(timer: timer)
                     .probe("home.focus.bar")
-                Spacer(minLength: 8)
                 HStack(spacing: 8) {
-                    CardButton(systemName: timer.isPaused ? "play.fill" : "pause.fill", active: true,
+                    CardButton(systemName: timer.isPaused ? "play.fill" : "pause.fill", active: true, height: HomePage.footer,
                                help: timer.isPaused ? "Resume" : "Pause") { timer.toggle() }
-                    CardButton(systemName: "stop.fill", help: "Stop") { timer.stopToSetup() }
+                    CardButton(systemName: "stop.fill", height: HomePage.footer, help: "Stop") { timer.stopToSetup() }
                 }
+                .padding(.top, HomePage.barGap)
                 .probe("home.focus.buttons")
             } else {
                 // Stopped: the last task, how much was done today, and the presets to start it again.
