@@ -9,15 +9,20 @@ ICON="$ROOT/.build/AppIcon.icns"
 INSTALLED="/Applications/Wyrmwatch.app"
 
 cd "$ROOT"
+# Command Line Tools 27.2 ship a SwiftUI whose @State is a macro, but not the macro plugin (that comes with Xcode),
+# so `swift build` fails with "plugin for module 'SwiftUIMacros' not found". Without Xcode, use the 26 SDK instead.
+CLT="/Library/Developer/CommandLineTools"
+if [[ -z "${SDKROOT:-}" && "$(xcode-select -p 2>/dev/null)" == "$CLT" && -d "$CLT/SDKs/MacOSX26.sdk" ]] \
+    && ! ls "$CLT"/usr/lib/swift/host/plugins/*SwiftUIMacros* >/dev/null 2>&1; then
+    export SDKROOT="$CLT/SDKs/MacOSX26.sdk"
+fi
 swift build -c release --arch arm64
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 BIN="$(swift build -c release --arch arm64 --show-bin-path)"
 cp "$BIN/Wyrmwatch" "$APP/Contents/MacOS/Wyrmwatch"
-# The Rive runtime (for the mascot) is a framework the binary loads from Contents/Frameworks.
 mkdir -p "$APP/Contents/Frameworks"
-cp -R "$BIN/RiveRuntime.framework" "$APP/Contents/Frameworks/"
 install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/Wyrmwatch" 2>/dev/null || true
 # Now playing from any app (Spotify, browsers, ...): mediaremote-adapter (BSD 3-Clause, vendored at v0.7.7).
 # Built with CMake once and again only when its sources change; without CMake the app falls back to Music only.
@@ -38,8 +43,8 @@ if [[ -n "$CMAKE" ]]; then
 else
     echo "warning: cmake not found, building without mediaremote-adapter (now playing from Music only)" >&2
 fi
-# The mascot itself, when there is one.
-if [[ -f "$ROOT/Resources/wyrm.riv" ]]; then cp "$ROOT/Resources/wyrm.riv" "$APP/Contents/Resources/"; fi
+# The mascot's sprite sheets (Cethiel's CC0 dragon, packed by scripts/make-dragon-atlas.py).
+cp -R "$ROOT/Resources/Dragon" "$APP/Contents/Resources/Dragon"
 
 # The icon is the app's own dragon, drawn by the binary; only redraw it when the drawing changes.
 if [[ ! -f "$ICON" || "$ROOT/Sources/Wyrmwatch/App/IconRenderer.swift" -nt "$ICON" ]]; then
@@ -76,7 +81,6 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 </plist>
 PLIST
 
-codesign --force --sign - "$APP/Contents/Frameworks/RiveRuntime.framework"
 [[ -d "$APP/Contents/Frameworks/MediaRemoteAdapter.framework" ]] && codesign --force --sign - "$APP/Contents/Frameworks/MediaRemoteAdapter.framework"
 codesign --force --sign - "$APP"
 echo "Built $APP"

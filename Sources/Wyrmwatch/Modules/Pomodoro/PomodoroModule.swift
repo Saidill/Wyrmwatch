@@ -72,7 +72,7 @@ private struct PomodoroLiveDragon: View {
     @ObservedObject var sessions = AppModels.sessions
 
     var body: some View {
-        WyrmSlot(state: WyrmState.current(sessions: sessions, idleFor: 0), look: nil, size: 24)
+        WyrmSlot(state: WyrmState.current(sessions: sessions, idleFor: 0), size: 24)
             .opacity(timer.isPaused ? 0.6 : 1)
     }
 }
