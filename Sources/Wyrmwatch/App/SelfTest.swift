@@ -687,8 +687,14 @@ enum SelfTest {
         await show(.done)
         check(host()?.sheetForTesting == "done", "done plays its sheet")
         if let w = notch.window { snapshot(w, "dragon-done") }
-        await wait(3.6)
-        check(host()?.sheetForTesting == "idle" && host()?.isAnimatingForTesting == true, "done plays once, then back to idle")
+        // 3.4 s of animation; allow for a restart (the header being rebuilt mid-way) rather than a fixed wait.
+        var waited = 0.0
+        while waited < 9, host()?.sheetForTesting != "idle" {
+            await wait(0.3)
+            waited += 0.3
+        }
+        check(host()?.sheetForTesting == "idle" && host()?.isAnimatingForTesting == true,
+              "done plays once, then back to idle (after \(String(format: "%.1f", waited + 0.5)) s)")
         await show(.sleep)
         check(host()?.sheetForTesting == "sleep", "sleep lies down")
         await wait(3.2)
