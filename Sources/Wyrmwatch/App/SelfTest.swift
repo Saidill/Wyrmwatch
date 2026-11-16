@@ -648,7 +648,13 @@ enum SelfTest {
         await snapshotExpanded(tab: .claude, "review-claude")
         timer.runForTesting(phase: .focus, secondsLeft: 24 * 60 + 59)
         await snapshotExpanded(tab: .focus, "review-focus")
-        await snapshotExpanded(tab: .home, "review-home-focus")
+        await snapshotExpanded(tab: .home, "review-home-focus", keepOpen: true)
+        // Claude's, the song's and the timer's scale bars sit on one line.
+        let bars = ["home.claude.bar", "home.progress", "home.focus.bar"].compactMap { LayoutProbe.frames[$0]?.midY }
+        check(bars.count == 3 && (bars.max() ?? 0) - (bars.min() ?? 0) < 0.6,
+              "Home: the three scale bars line up (\(bars.map { String(format: "%.1f", $0) }.joined(separator: ", ")))")
+        notch.close()
+        await wait(0.6)
         await wait(0.4)
         if let w = notch.window { snapshot(w, "review-live-focus") }
         // Idle.
