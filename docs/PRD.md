@@ -36,7 +36,7 @@ Keputusannya: disatukan dan dikembangkan di repo yang sudah ada (sebelumnya `cla
 | Kurva open spring(0.46, 0.8), close spring(0.36, 1) | `NotchView` | Jadi standar semua modul |
 | Mode Auto / Menu bar / Notch | `DisplayMode.swift` | Ditambah notch virtual |
 | Usage, limit, sesi, forecast, notifikasi | `PlanLimitClient`, `SessionMonitor`, `UsageTracker`, dll. | Dipindah ke modul Claude |
-| Slot maskot (hidden, peek, working, alert, done, sleep) | `Views/WyrmSlot.swift` (`WyrmSlot`), `Views/WyrmArt.swift` | Maskot sementara dari ikon Tabler "dragon" (MIT) per bagian; diganti `wyrm.riv` kalau ada |
+| Slot maskot (hidden, peek, working, alert, done, sleep) | `Views/WyrmSlot.swift` (`WyrmSlot`), `Views/DragonSpriteView.swift` | Naga sprite "Dragon - Fully Animated" oleh Cethiel (CC0), lihat `docs/MASCOT.md` |
 | Tema hitam frosted dan silver | `Views/Theme.swift` | Jadi design system semua modul |
 
 **Kenapa disatukan**
@@ -88,7 +88,7 @@ Lebar tetap ±640 pt (panel 620 + flare). Tinggi mengikuti isi tab aktif (`Geome
     - Kiri: 4 tab ikon (Home, Focus, Music, Claude). Tombol 28 × 28, radius 8, ikon custom 16 pt. Tidak aktif: bg `#1C1C1E`, ikon `#8E8E93`. Aktif: bg `#3A3A3C`, ikon putih.
     - Tengah: kosong (kamera), berisi slot maskot `WyrmSlot`. Di notch fisik bagian ini tertutup kamera; maskot terlihat di notch virtual dan di notch live.
     - Kanan: jam 11 pt. (Pill nama tab dihapus karena mengulang tab yang sudah menyala.)
-    - Settings bukan tab. Dibuka lewat klik kanan notch (menu Settings… / Quit, membuka jendela Settings) atau ikon menu bar.
+    - Settings bukan tab. Dibuka lewat klik kanan notch (menu About / Settings… / Quit, membuka jendela Settings) atau ikon menu bar.
     - Fungsi: pindah halaman dengan satu klik dan melihat jam tanpa menutupi apa pun.
 2. **Home**: 3 kartu sejajar, tinggi sama 120 pt, gap 8, kolom [1 | 1,25 | 1], padding 12.
     - Claude: "Claude" + titik merah berdenyut dan "working" saat busy (atau titik putih dan "waiting" saat Claude menunggu kamu), persen sesi besar + scale bar, lalu 1 baris status: alat yang sedang dipakai (dari ekor transkrip, misalnya "Editing HomePage.swift") atau nama proyek, plus waktu reset (ellipsis).
@@ -214,8 +214,11 @@ Fungsi: melihat dan mengendalikan musik tanpa pindah app.
 
 - **Maskot**: naga lama (`Views/Dragon.swift` dan ikon game-icons.net) dihapus. Penggantinya adalah slot `WyrmSlot(state:look:)` di celah tengah header dan di kiri notch live. Fungsi: menunjukkan status Claude sekilas (tidur, mengintip, bekerja, menunggu, selesai) tanpa teks.
     - State: `hidden`, `peek`, `working`, `alert`, `done`, `sleep`. Pemetaan: user idle lama (> 5 menit) → sleep, Claude busy → working, Claude menunggu input → alert, sesi selesai → done, selain itu peek.
-    - Kalau `Resources/wyrm.riv` ada, file itu diputar dengan RiveRuntime (rive-ios 6.x, framework ±14 MB di `Contents/Frameworks`). Setiap state dipetakan ke input boolean bernama sama di state machine, ditambah input angka `lookX` / `lookY` dari posisi kursor (maks. 15 fps, hanya saat notch terbuka). Rive di-pause saat notch tertutup.
-    - Kalau file belum ada, dipakai **maskot sementara** `WyrmArt`: ikon Tabler "dragon" (MIT, © Paweł Kuna) yang digambar ulang sebagai layer Core Animation terpisah (sayap, badan, kepala, jambul, rahang, mata). Mata berkedip, kepala menoleh ke kursor dengan spring (hanya saat peek/alert, maks. 15 fps, tidak saat Reduce Motion), rahang membuka dengan semburan api singkat saat "done". Kandidat lain dan lisensinya ada di `assets/candidates/README.md`.
+    - Maskotnya **naga sprite**: "Dragon - Fully Animated" oleh Cethiel (OpenGameArt, CC0), dipilih dari empat kandidat (alasan dan tabel di `docs/MASCOT.md`). Sprite sheet per animasi ada di `Resources/Dragon/` + `dragon.json` (30 fps, tinggi 96 px, total ±1 MB), dibuat oleh `scripts/make-dragon-atlas.py`.
+    - Animasi per state: peek → Idle, working → Walking, alert → Idle Battle, done → Attack 2 (sekali, lalu Idle), sleep → rebah (akhir animasi Death) lalu bernapas pelan, bangun → rebah diputar mundur.
+    - `DragonSpriteView`: satu `CALayer`, frame berganti lewat `CAKeyframeAnimation` pada `contentsRect` (dikerjakan render server, tanpa redraw SwiftUI per frame). Pindah state dengan crossfade 150 ms. Saat notch tertutup atau Reduce Motion aktif: satu frame diam, tanpa animasi.
+    - Naga tidak lagi menoleh ke kursor (sprite tidak bisa), jadi pelacakan kursor 15 fps di header dihapus. RiveRuntime dilepas dari app.
+    - Kredit pembuat ada di README dan panel About (klik kanan notch → About Wyrmwatch).
 - **Tiga elemen khas** (hanya tiga):
     1. **Ember Edge**: tepi bawah notch 1,5 pt. Claude bekerja → merah `#E5322B` dengan bara yang bergerak pelan di sepanjang tepi; Claude menunggu → putih berdenyut pelan; idle → tidak ada. Core Animation, maks. 30 fps, berhenti saat notch tertutup atau Reduce Motion. Fungsi: status Claude terbaca dari ujung mata tanpa membaca apa pun. Ini satu-satunya efek cahaya di app.
     2. **Wyrm di sarangnya**: maskot di celah kamera dan di kiri notch live (lihat Maskot). State sleep / peek / working / alert / done.
@@ -325,7 +328,9 @@ Sources/Wyrmwatch/
     Pomodoro/     PomodoroTimer, PomodoroModule, FocusPage, EmberViews (EmberFuse, EmberDots)
     Music/        MusicBridge (AppleScript), NowPlayingAdapter (mediaremote-adapter), MusicModule, MusicPage, PlaylistPanel, ArtworkCache
     Info/         CalendarSource, InfoModule
-  Views/          Theme (Palette, Motion), WyrmSlot, WyrmArt, CoreAnimationViews (Ember Edge), komponen bersama
+  Views/          Theme (Palette, Motion), WyrmSlot, DragonSpriteView, CoreAnimationViews (Ember Edge), komponen bersama
+Resources/
+  Dragon/         sprite sheet naga + dragon.json
 Vendor/
   mediaremote-adapter/   v0.7.7, BSD 3-Clause, dibangun oleh build-app.sh
 ```
@@ -432,4 +437,8 @@ Semua pengembangan dilakukan di branch terpisah, di-commit otomatis per langkah,
     - Keputusan: adapter dipakai untuk semua pemutar selain Apple Music. Apple Music tetap lewat notifikasi + AppleScript karena hanya jalur itu yang memberi playlist, favorit, shuffle, dan repeat, dan notifikasinya sudah instan. Kalau adapter tidak ada atau berhenti, app tetap jalan dengan Apple Music saja.
 - Preset di halaman Focus tetap terlihat saat timer berjalan, jadi klik preset memulai ulang. Keputusan sementara: dibiarkan (satu klik untuk ganti rencana); perlu diuji manual.
 - Maskot di tengah header tertutup kamera di notch fisik. Keputusan sementara: dibiarkan (terlihat di notch virtual dan di live notch).
+- Naga tidak punya animasi api, tidur, dan bangun di versi CC0. Keputusan sementara: "done" memakai gerakan menerkam (tanpa api), tidur memakai akhir animasi Death, bangun memakai animasi yang sama diputar mundur. Versi HD berbayar dari pembuatnya punya Roar, Sleeping, dan Waking Up kalau nanti diinginkan.
+- Panel About hanya bisa dibuka dari klik kanan notch. Di mode Menu bar belum ada jalan ke About, karena Settings tidak boleh diubah di revisi ini.
+- RiveRuntime dilepas (app turun ±14 MB) karena maskot sekarang sprite. Kalau nanti pindah ke maskot Rive, dependensinya perlu ditambahkan lagi.
+- Command Line Tools 27.2 (tanpa Xcode) gagal membangun app dengan SDK 27.2 ("plugin for module 'SwiftUIMacros' not found"). Keputusan sementara: `build-app.sh` memakai SDK macOS 26 dalam kondisi itu. Untuk `swift build` langsung: `SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.sdk swift build`.
 - Riwayat tugas: tugas tanpa nama dicatat sebagai "No task". Fokus yang dihentikan di bawah 30 detik tidak dicatat.

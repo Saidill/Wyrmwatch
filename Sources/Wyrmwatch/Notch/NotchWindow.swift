@@ -247,7 +247,7 @@ final class NotchWindowController {
         if let click = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDown, handler: { [weak self] _ in
             MainActor.assumeIsolated { self?.clicked() }
         }) { monitors.append(click) }
-        // A right-click on the notch (open or closed) shows Settings and Quit.
+        // A right-click on the notch (open or closed) shows About, Settings and Quit.
         if let right = NSEvent.addGlobalMonitorForEvents(matching: .rightMouseDown, handler: { [weak self] _ in
             MainActor.assumeIsolated { _ = self?.rightClicked() }
         }) { monitors.append(right) }
@@ -328,13 +328,16 @@ final class NotchWindowController {
         }
     }
 
-    /// Shows the notch menu if the pointer is on a notch; returns whether it did.
+    /// Shows the notch menu (About, Settings…, Quit) if the pointer is on a notch; returns whether it did.
     @discardableResult
     private func rightClicked() -> Bool {
         guard !SelfTest.isRequested else { return false }
         let location = NSEvent.mouseLocation
         guard panels.contains(where: { activeRect($0.value.panel, $0.value.screen).contains(location) }) else { return false }
         let menu = NSMenu()
+        let about = NSMenuItem(title: "About \(AppInfo.name)", action: #selector(NotchMenuTarget.openAbout), keyEquivalent: "")
+        about.target = NotchMenuTarget.shared
+        menu.addItem(about)
         let settings = NSMenuItem(title: "Settings…", action: #selector(NotchMenuTarget.openSettings), keyEquivalent: ",")
         settings.target = NotchMenuTarget.shared
         menu.addItem(settings)
@@ -429,7 +432,25 @@ final class NotchWindowController {
 final class NotchMenuTarget: NSObject {
     static let shared = NotchMenuTarget()
     @objc func openSettings() { MainActor.assumeIsolated { SettingsWindow.shared.show() } }
+    @objc func openAbout() { MainActor.assumeIsolated { AboutPanel.show() } }
     @objc func quit() { NSApp.terminate(nil) }
+}
+
+/// The standard About panel, with the credits the licences ask for (and the ones they don't).
+@MainActor
+enum AboutPanel {
+    static let credits = """
+        Dragon: "Dragon - Fully Animated" by Cethiel (opengameart.org), CC0.
+        Now playing from other apps: mediaremote-adapter by Jonas van den Berg and contributors, BSD 3-Clause.
+        """
+
+    static func show() {
+        let text = NSAttributedString(string: credits, attributes: [
+            .font: NSFont.systemFont(ofSize: 11), .foregroundColor: NSColor.labelColor,
+        ])
+        NSApp.activate()
+        NSApp.orderFrontStandardAboutPanel(options: [.credits: text])
+    }
 }
 
 /// Settings in a small window of its own (it is no longer a tab of the notch).

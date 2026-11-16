@@ -63,7 +63,7 @@ private struct ClaudeLiveDragon: View {
     @ObservedObject var sessions: SessionMonitor
 
     var body: some View {
-        WyrmSlot(state: WyrmState.current(sessions: sessions, idleFor: ExpandedPanel.userIdleTime), look: nil, size: 24)
+        WyrmSlot(state: WyrmState.current(sessions: sessions, idleFor: ExpandedPanel.userIdleTime), size: 24)
     }
 }
 

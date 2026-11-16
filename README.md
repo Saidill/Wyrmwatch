@@ -12,7 +12,7 @@ Wyrmwatch is a macOS notch app: a Pomodoro and a timer with task names, what's p
 
 ## In the notch
 
-Hover the notch (or click it) to open it. The header is split by the camera: four small tabs on the left (Home, Focus, Music, Claude), the time on the right, and in between, where the camera sits, the Wyrmwatch mascot. The notch grows to fit each tab. Right-click the notch for **Settings** and **Quit**.
+Hover the notch (or click it) to open it. The header is split by the camera: four small tabs on the left (Home, Focus, Music, Claude), the time on the right, and in between, where the camera sits, the Wyrmwatch mascot. The notch grows to fit each tab. Right-click the notch for **About**, **Settings** and **Quit**.
 
 - **Home**: three cards of the same height, one big number each.
   - **Claude**: your session limit, whether Claude is working (a slowly pulsing red dot) or waiting for you, and what it is doing right now ("Editing HomePage.swift"), with when the limit resets.
@@ -32,7 +32,7 @@ On a screen without a notch (an external monitor), the app draws one: a small bl
 The look is black with #1C1C1E cards, five text sizes and a 4 pt grid. Three things are its own:
 
 - **Ember Edge**: while Claude works, the bottom edge of the notch is a thin red line with an ember drifting along it; while Claude waits for you it pulses white. Idle, there's nothing.
-- **The wyrm in its nest**: the mascot in the camera gap and on the left of the live notch. It sleeps, peeks at your pointer, works, looks up when Claude needs you, and breathes a short burst of fire when a session is done.
+- **The wyrm in its nest**: the mascot in the camera gap and on the left of the live notch. It sleeps, stands watch, paces while Claude works, crouches when Claude needs you, and rears up and strikes when a session is done.
 - **Scale bars**: every progress bar is a row of small overlapping scales that light up one by one.
 
 The only colour is red (#E5322B), and only for signals: Claude working, usage above 90%, the Ember Edge, the wyrm's eye and fire. Repeating animations run in Core Animation, so the app does no work per frame. Nothing animates unless it's on screen, and Reduce Motion (or Settings → System → Always reduce motion) turns all repeating animation off. See [docs/DESIGN-REVIEW.md](docs/DESIGN-REVIEW.md) for the design critique.
@@ -104,12 +104,13 @@ Sources/Wyrmwatch/
     Pomodoro/     timer, task log, Focus page, phase ring and dots
     Music/        Music.app bridge, mediaremote-adapter client, artwork cache, Music page, playlist
     Info/         next calendar event
-  Views/          design tokens and motion, the mascot (WyrmSlot, WyrmArt), Ember Edge, shared controls, popover, settings
+  Views/          design tokens and motion, the mascot (WyrmSlot, DragonSpriteView), Ember Edge, shared controls, popover, settings
 Vendor/
   mediaremote-adapter/  v0.7.7, BSD 3-Clause
-assets/candidates/      mascot candidates and their licences
+assets/candidates/      earlier mascot candidates (icons) and their licences
+Resources/Dragon/       the dragon's sprite sheets and dragon.json
 scripts/
-  build-app.sh    builds Wyrmwatch.app (with the Rive runtime, mediaremote-adapter and app icon); --install puts it in /Applications
+  build-app.sh    builds Wyrmwatch.app (with the dragon sprites, mediaremote-adapter and app icon); --install puts it in /Applications
   measure-perf.sh CPU and memory per notch state
   dev.sh          rebuild and relaunch on every save
 ```
@@ -125,17 +126,22 @@ No Xcode project is needed. It's a plain Swift package.
 
 ## The mascot
 
-Until there's a final one, the mascot is the Tabler "dragon" icon redrawn as separate Core Animation layers (wing, body, head, crest, jaw, eye), so each part moves on its own: the eye blinks, the head turns to the pointer on a spring, and the jaw opens with a burst of fire on "done".
+The dragon is ["Dragon - Fully Animated"](https://opengameart.org/content/dragon-fully-animated) by Cethiel (CC0): a rendered dark-fantasy dragon with 60 fps animations. `scripts/make-dragon-atlas.py` turns the original frames into one sprite sheet per animation in `Resources/Dragon` (30 fps, 96 px high, about 1 MB in total), described by `dragon.json`.
 
-When `Resources/wyrm.riv` is present, the slot plays it with [Rive](https://rive.app) (`RiveRuntime`, about 14 MB in the app) instead. Its state machine gets one boolean input per state (`hidden`, `peek`, `working`, `alert`, `done`, `sleep`) and the numbers `lookX` / `lookY` for where the pointer is.
+| State | When | Animation |
+| --- | --- | --- |
+| peek | nothing going on | Idle (loop) |
+| working | Claude is working | Walking (loop) |
+| alert | Claude is waiting for you | Idle Battle (loop) |
+| done | a session just finished | Attack 2: rears up and strikes, once, then back to Idle |
+| sleep | no input for 5 minutes | lies down (the end of Death), then breathes slowly |
+| wake | leaving sleep | the lie-down played backwards |
 
-Other candidates, with their licences, are in [assets/candidates](assets/candidates/README.md). The ones that need a login to download:
+`DragonSpriteView` shows a sheet on one `CALayer` and steps through the frames with a keyframe animation on `contentsRect`, so the render server does the work and nothing is redrawn per frame. States crossfade in 150 ms. Nothing plays while the notch is closed or Reduce Motion is on.
 
-- Rive Community, search "dragon": https://rive.app/community/files?search=dragon
-- LottieFiles, search "dragon": https://lottiefiles.com/search?q=dragon
+Why this dragon, and what it was compared with: [docs/MASCOT.md](docs/MASCOT.md).
 
 ## Credits
 
-- Mascot: [Tabler Icons](https://tabler.io/icons) "dragon", MIT licence, © Paweł Kuna.
+- Mascot: ["Dragon - Fully Animated"](https://opengameart.org/content/dragon-fully-animated) by [Cethiel](https://opengameart.org/users/cethiel), CC0. No attribution is required; it is credited here and in the app's About panel (right-click the notch) anyway.
 - Now playing from other apps: [mediaremote-adapter](https://github.com/ungive/mediaremote-adapter) by Jonas van den Berg and contributors, BSD 3-Clause licence (see `Vendor/mediaremote-adapter/LICENSE`, also shipped in the app as `mediaremote-adapter-LICENSE`).
-- Mascot runtime: [Rive](https://github.com/rive-app/rive-ios), MIT licence.

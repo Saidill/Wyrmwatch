@@ -1,0 +1,47 @@
+{
+  "frameWidth": 173,
+  "frameHeight": 96,
+  "scale": 2,
+  "animations": {
+    "idle": {
+      "file": "idle.png",
+      "columns": 9,
+      "rows": 9,
+      "frames": 80,
+      "fps": 30,
+      "loop": true
+    },
+    "working": {
+      "file": "working.png",
+      "columns": 9,
+      "rows": 9,
+      "frames": 81,
+      "fps": 30,
+      "loop": true
+    },
+    "alert": {
+      "file": "alert.png",
+      "columns": 9,
+      "rows": 8,
+      "frames": 70,
+      "fps": 30,
+      "loop": true
+    },
+    "done": {
+      "file": "done.png",
+      "columns": 11,
+      "rows": 10,
+      "frames": 102,
+      "fps": 30,
+      "loop": false
+    },
+    "sleep": {
+      "file": "sleep.png",
+      "columns": 10,
+      "rows": 9,
+      "frames": 88,
+      "fps": 30,
+      "loop": false
+    }
+  }
+}

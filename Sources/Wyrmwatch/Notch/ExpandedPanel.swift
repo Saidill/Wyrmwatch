@@ -1,4 +1,3 @@
-import Combine
 import SwiftUI
 
 /// Pages of the open notch, picked in the header's tabs. (Settings opens from a right-click on the notch or
@@ -38,16 +37,11 @@ struct ExpandedPanel: View {
 
     let notch: CGSize
     var coverSpace: Namespace.ID?
-    /// The notch's screen, for working out where the pointer is relative to the mascot.
-    var screenFrame: CGRect = .zero
     /// Reports the page's height so the shape can follow it.
     let onPageHeight: (CGFloat) -> Void
     @AppStorage(NotchTab.storageKey) private var tab: NotchTab = .home
     @EnvironmentObject var sessions: SessionMonitor
     @EnvironmentObject var limits: PlanLimitClient
-    @Environment(\.animationsPaused) private var paused
-    @Environment(\.reduceMotion) private var reduceMotion
-    @State private var look: CGPoint?
 
     var body: some View {
         VStack(spacing: 8) {
@@ -56,7 +50,7 @@ struct ExpandedPanel: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .probe("header.tabs")
                 // The camera; the mascot lives here.
-                WyrmSlot(state: wyrmState, look: look, size: min(notch.height - 4, 28))
+                WyrmSlot(state: wyrmState, size: min(notch.height - 4, 28))
                     .frame(width: notch.width, height: notch.height)
                 HStack(spacing: 8) {
                     TimelineView(.everyMinute) { context in
@@ -84,23 +78,6 @@ struct ExpandedPanel: View {
         .frame(width: Self.width, alignment: .top)
         .coordinateSpace(name: LayoutProbe.space)
         .environment(\.layoutProbing, true)
-        // Where the pointer is, for the mascot to look at: only while open and awake, at most 15 fps.
-        .onReceive(lookTimer) { _ in updateLook() }
-    }
-
-    private var lookTimer: AnyPublisher<Date, Never> {
-        // The built-in mascot and a Rive one both follow the pointer, but only when awake (peek or alert).
-        guard !paused, !reduceMotion, [.peek, .alert].contains(wyrmState) else { return Empty().eraseToAnyPublisher() }
-        return Timer.publish(every: 1.0 / 15, on: .main, in: .common).autoconnect().eraseToAnyPublisher()
-    }
-
-    private func updateLook() {
-        guard screenFrame.width > 0 else { return }
-        let mouse = NSEvent.mouseLocation
-        let origin = CGPoint(x: screenFrame.midX, y: screenFrame.maxY - notch.height / 2)
-        let next = CGPoint(x: max(-1, min(1, (mouse.x - origin.x) / (screenFrame.width / 2))),
-                           y: max(-1, min(1, (origin.y - mouse.y) / (screenFrame.height / 2))))
-        if look.map({ abs($0.x - next.x) + abs($0.y - next.y) > 0.01 }) ?? true { look = next }
     }
 
     private var wyrmState: WyrmState {

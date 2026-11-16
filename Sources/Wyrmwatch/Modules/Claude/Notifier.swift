@@ -47,6 +47,9 @@ final class Notifier {
     /// A short timer alarm (two sets of three quick beeps, about 1.2 s): a Pomodoro phase has run out.
     func playAlarm() {
         alarmPlayer?.currentTime = 0
+        // Not in the self-test: play() blocks the main thread while the audio system is busy, and a stalled audio
+        // device once hung a whole test run there.
+        guard !CommandLine.arguments.contains("--selftest") else { return }
         alarmPlayer?.play()
     }
 

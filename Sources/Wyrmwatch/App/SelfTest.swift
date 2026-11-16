@@ -33,6 +33,18 @@ enum SelfTest {
         notch.model.registry.popQueue.isHovering = { false }
         await wait(1.5) // let the app finish launching
 
+        // `--only dragon`: just that part, for a quick look while working on it.
+        if let i = CommandLine.arguments.firstIndex(of: "--only"), CommandLine.arguments.count > i + 1 {
+            display.setting = .notch
+            await wait(0.8)
+            switch CommandLine.arguments[i + 1] {
+            case "dragon": await checkDragon()
+            default: await checkDesignStates()
+            }
+            await finish(original, originalNotchTab, savedTasks, savedTimer)
+            return
+        }
+
         for round in 1...3 {
             log("— Round \(round)")
 
@@ -128,10 +140,16 @@ enum SelfTest {
         await checkOtherPlayers()
         await checkInfo()
         await checkDesignStates()
+        await checkDragon()
         await checkReduceMotion()
         renderSettings()
         await checkVirtualNotch()
+        await finish(original, originalNotchTab, savedTasks, savedTimer)
+    }
 
+    private static func finish(_ original: DisplayMode, _ originalNotchTab: Any?, _ savedTasks: [String: Any],
+                               _ savedTimer: [String: Any]) async {
+        let display = DisplayModeController.shared
         display.setting = original
         UserDefaults.standard.set(originalNotchTab, forKey: NotchTab.storageKey)
         restoreSettings(savedTasks, prefix: "focus.")
@@ -571,6 +589,63 @@ enum SelfTest {
         registry.onlyForTesting = nil
         sessions.injectForTesting(nil)
         await wait(0.6)
+    }
+
+    /// The sprite dragon: every state plays its own sheet, "done" plays once and goes back to idle, lying down
+    /// ends on the sleeping frame, waking plays before the next loop, and nothing plays once the notch is closed.
+    private static func checkDragon() async {
+        let notch = NotchWindowController.shared
+        let sessions = AppModels.sessions
+        log("— Dragon")
+        check(DragonAtlas.shared != nil, "the dragon's sprite sheets are in the app")
+        if let atlas = DragonAtlas.shared {
+            for name in ["idle", "working", "alert", "done", "sleep"] {
+                check(atlas.image(name) != nil && (atlas.animations[name]?.fps ?? 99) <= 30, "sheet \(name) loads, at most 30 fps")
+            }
+        }
+        func show(_ state: WyrmState) async {
+            WyrmState.forTesting = state
+            sessions.objectWillChange.send()
+            await wait(0.5)
+        }
+        func host() -> DragonSpriteHost? { find(DragonSpriteHost.self, in: notch.window?.contentView) }
+        await show(.peek)
+        UserDefaults.standard.set(NotchTab.home.rawValue, forKey: NotchTab.storageKey)
+        notch.open()
+        await wait(1.0)
+        for (state, sheet) in [(WyrmState.peek, "idle"), (.working, "working"), (.alert, "alert")] {
+            await show(state)
+            check(host()?.sheetForTesting == sheet && host()?.isAnimatingForTesting == true, "\(state.rawValue) plays the \(sheet) sheet")
+            if let w = notch.window { snapshot(w, "dragon-\(state.rawValue)") }
+        }
+        await show(.done)
+        check(host()?.sheetForTesting == "done", "done plays its sheet")
+        if let w = notch.window { snapshot(w, "dragon-done") }
+        // 3.4 s of animation; allow for a restart (the header being rebuilt mid-way) rather than a fixed wait.
+        var waited = 0.0
+        while waited < 9, host()?.sheetForTesting != "idle" {
+            await wait(0.3)
+            waited += 0.3
+        }
+        check(host()?.sheetForTesting == "idle" && host()?.isAnimatingForTesting == true,
+              "done plays once, then back to idle (after \(String(format: "%.1f", waited + 0.5)) s)")
+        await show(.sleep)
+        check(host()?.sheetForTesting == "sleep", "sleep lies down")
+        await wait(3.2)
+        check(host()?.isAnimatingForTesting == true, "asleep, it breathes")
+        if let w = notch.window { snapshot(w, "dragon-sleep") }
+        await show(.working)
+        check(host()?.sheetForTesting == "sleep", "waking gets up first")
+        await wait(2.4)
+        check(host()?.sheetForTesting == "working", "then it works")
+        notch.model.registry.onlyForTesting = []
+        notch.close()
+        await wait(1.0)
+        check(host().map { !$0.isAnimatingForTesting } ?? true, "closed: the dragon holds still")
+        notch.model.registry.onlyForTesting = nil
+        WyrmState.forTesting = nil
+        sessions.objectWillChange.send()
+        await wait(0.4)
     }
 
     /// With Reduce Motion forced on, nothing repeats: the dragon in the open notch holds still.

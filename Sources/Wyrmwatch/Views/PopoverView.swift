@@ -183,7 +183,7 @@ struct PopoverView: View {
         HStack(spacing: 8) {
             ZStack {
                 Radius.shape(Radius.button).fill(Palette.card)
-                WyrmSlot(state: WyrmState.current(sessions: sessions, idleFor: ExpandedPanel.userIdleTime), look: nil, size: 28)
+                WyrmSlot(state: WyrmState.current(sessions: sessions, idleFor: ExpandedPanel.userIdleTime), size: 28)
             }
             .frame(width: 40, height: 40)
 
