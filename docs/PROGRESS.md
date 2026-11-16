@@ -353,3 +353,12 @@ Hasil (sesi Claude ini aktif selama pengukuran): closed ±0,1–1%, live 0,9–1
 - Sesi selesai: naga berdiri lalu menerkam sekali.
 - Klik kanan notch → About Wyrmwatch.
 - Di notch fisik, naga di header masih tertutup kamera. Posisinya diputuskan di revisi desain berikutnya.
+
+## Tiga arah desain, belum diterapkan (`design/directions`)
+
+- Prototipe Obsidian, Hearth, dan Vault untuk tab Home dan Focus, di balik `--design <nama>` (`Views/Design.swift`: `Design`, `Plate`, `CardSurface`, `ControlPlate`; `Palette` dan `Font.app` kini membaca arah yang aktif). Tanpa flag, app tampil seperti biasa.
+- Screenshot, kritik, dan rekomendasi: `docs/directions/README.md`. Dibuat dengan `--selftest <folder> --only directions`.
+- **Branch ini sengaja tidak di-merge ke `main`** sampai satu arah dipilih. Setelah itu dua arah lain dan flag `--design` dihapus.
+- Bug yang ikut diperbaiki di sini: jam header "01.8" (menit tanpa dua digit di region Indonesia; dicek: `01.8` → `01.08`), kartu Music dan Focus yang kosong saat idle (lagu terakhir / tugas terakhir + preset), dan input Timer h:m:s yang mengambang (kini satu baris "Custom length").
+- Belum: baris playlist terpotong (tab Music) dan badge "1" duplikat di kartu Sessions (tab Claude).
+- Self-test: `PlanLimitClient.injectForTesting` (angka limit tetap), cek bahwa naga tidak menyentuh area kamera di tiap arah.

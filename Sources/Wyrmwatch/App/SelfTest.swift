@@ -39,6 +39,7 @@ enum SelfTest {
             await wait(0.8)
             switch CommandLine.arguments[i + 1] {
             case "dragon": await checkDragon()
+            case "directions": await renderDirections()
             default: await checkDesignStates()
             }
             await finish(original, originalNotchTab, savedTasks, savedTimer)
@@ -589,6 +590,71 @@ enum SelfTest {
         registry.onlyForTesting = nil
         sessions.injectForTesting(nil)
         await wait(0.6)
+    }
+
+    /// Home and Focus in each design direction under review (docs/directions): Claude working with a song playing,
+    /// a Pomodoro running, everything idle, and the Timer's setup. Also checks that the dragon is clear of the camera.
+    private static func renderDirections() async {
+        let notch = NotchWindowController.shared
+        let sessions = AppModels.sessions, bridge = AppModels.music.bridge, timer = AppModels.pomodoro.timer
+        let tasks = TaskLog.shared
+        let defaults = UserDefaults.standard
+        log("— Design directions")
+        let savedPomodoro = savedSettings(prefix: "pomodoro.")
+        defaults.removeObject(forKey: "focus.log")
+        defaults.removeObject(forKey: "focus.recentTasks")
+        tasks.reloadForTesting()
+        tasks.add(minutes: 75, task: "Revise chapter 3")
+        tasks.add(minutes: 30, task: "Reply to reviewers")
+        tasks.add(minutes: 10, task: "")
+        for name in ["Reply to reviewers", "Meeting", "Revise chapter 3"] { tasks.use(name) }
+        let song = NowPlaying(id: "AAAA", title: "Wait for You", artist: "Elliott Yamin", album: "Wait for You", duration: 261)
+        let working = LiveSession(pid: 1, sessionId: "test", cwd: NSHomeDirectory() + "/Projects/thesis", name: nil, status: "busy",
+                                  kind: nil, startedAt: Date().timeIntervalSince1970 * 1000 - 600_000,
+                                  statusUpdatedAt: Date().timeIntervalSince1970 * 1000 - 90_000)
+        let camera = notch.screens.first?.screen.notch.width ?? 185
+        let hidden = CGRect(x: (ExpandedPanel.width - camera) / 2, y: -100, width: camera, height: 200)
+        let only = CommandLine.arguments.firstIndex(of: "--design").map { CommandLine.arguments[$0 + 1] }
+        // Fixed numbers, a still dragon and no rolling digits, so the pictures can be compared.
+        let savedMotion = savedSettings(prefix: "motion.")
+        defaults.set(true, forKey: MotionPreference.forceKey)
+        AppModels.limits.injectForTesting([LimitWindow(id: "five_hour", utilization: 24, resetsAt: Date().addingTimeInterval(3 * 3600 + 20 * 60)),
+                                           LimitWindow(id: "seven_day", utilization: 41, resetsAt: Date().addingTimeInterval(4 * 86400))])
+        for design in Design.allCases where only == nil || only == design.rawValue {
+            Design.active = design
+            let name = design.rawValue
+            timer.stopToSetup()
+            timer.task = "Revise chapter 3"
+            WyrmState.forTesting = .working
+            sessions.injectForTesting([working])
+            bridge.injectForTesting(track: song, playing: true, position: 74, artwork: testCover(hue: 0.08))
+            defaults.set("pomodoro", forKey: "focus.pageMode")
+            await snapshotExpanded(tab: .home, "\(name)-home", keepOpen: true)
+            if design != .current, let dragon = LayoutProbe.frames["header.dragon"] {
+                check(!dragon.intersects(hidden), "\(name): the dragon is clear of the camera (\(Int(dragon.minX))–\(Int(dragon.maxX)))")
+            }
+            notch.close()
+            await wait(0.6)
+            timer.runForTesting(phase: .focus, secondsLeft: 24 * 60 + 59)
+            await snapshotExpanded(tab: .focus, "\(name)-focus")
+            timer.stopToSetup()
+            WyrmState.forTesting = .peek
+            sessions.injectForTesting([])
+            bridge.injectForTesting(track: nil, playing: false)
+            await snapshotExpanded(tab: .home, "\(name)-home-idle")
+            defaults.set("countdown", forKey: "focus.pageMode")
+            defaults.set(5400, forKey: "timer.seconds")
+            await snapshotExpanded(tab: .focus, "\(name)-focus-timer")
+        }
+        Design.active = .current
+        WyrmState.forTesting = nil
+        AppModels.limits.injectForTesting(nil)
+        restoreSettings(savedMotion, prefix: "motion.")
+        timer.reset()
+        restoreSettings(savedPomodoro, prefix: "pomodoro.")
+        timer.restore()
+        sessions.injectForTesting(nil)
+        await wait(0.4)
     }
 
     /// The sprite dragon: every state plays its own sheet, "done" plays once and goes back to idle, lying down

@@ -3,36 +3,49 @@ import SwiftUI
 
 // MARK: - Colours & type
 
-/// Black, silver and glass. Always dark, whatever the system appearance.
+/// Black, silver and glass. Always dark, whatever the system appearance. The values after the first belong to
+/// the design directions under review (`Design`): obsidian, hearth, vault.
 enum Palette {
+    private static func pick(_ a: UInt32, _ b: UInt32, _ c: UInt32, _ d: UInt32) -> Color {
+        Color(hex: Design.pick(a, b, c, d))
+    }
+
     static let bg = Color.black
     /// Cards.
-    static let card = Color(hex: 0x1C1C1E)
-    /// Buttons at rest, and the empty part of bars.
-    static let button = Color(hex: 0x2C2C2E)
+    static var card: Color { pick(0x1C1C1E, 0x100D15, 0x000000, 0x151119) }
+    /// Buttons at rest.
+    static var button: Color { pick(0x2C2C2E, 0x1B1723, 0x000000, 0x08060B) }
     /// Active or hovered buttons and tabs.
-    static let buttonHi = Color(hex: 0x3A3A3C)
-    static let text = Color(hex: 0xF5F5F7)
-    static let text2 = Color(hex: 0x8E8E93)
+    static var buttonHi: Color { pick(0x3A3A3C, 0x2C2638, 0x1B1721, 0x241E2B) }
+    static var text: Color { pick(0xF5F5F7, 0xF1EDE6, 0xEDE5D8, 0xF1EDE6) }
+    static var text2: Color { pick(0x8E8E93, 0x8D8792, 0x91887C, 0x8D8792) }
     /// Faintest text (hints, counters).
-    static let text3 = Color(hex: 0x636366)
+    static var text3: Color { pick(0x636366, 0x5D5764, 0x5F584F, 0x5D5764) }
     /// Progress and the visualizer.
-    static let silver = Color(hex: 0xD1D5DB)
-    /// The only colour: Claude's "working" dot and usage above 90%.
-    static let red = Color(hex: 0xE5322B)
+    static var silver: Color { pick(0xD1D5DB, 0xCBC4B9, 0xCBC0AE, 0xCBC4B9) }
+    /// The only colour: Claude's "working" dot, usage above 90%, a running timer. Red today; in the new
+    /// directions the amber of the dragon's eye.
+    static var red: Color { pick(0xE5322B, 0xF0A22B, 0xF0A22B, 0xF0A22B) }
+    static var accent: Color { red }
+    /// 1 pt lines: rules, outlines, lit edges.
+    static var hairline: Color { pick(0x2C2C2E, 0x3A3346, 0x2E2833, 0x2B2533) }
+    /// The unfilled scales of a scale bar.
+    static var scaleEmpty: Color { pick(0x2C2C2E, 0x241F2D, 0x221D28, 0x08060B) }
+    /// A card that is active, in the Vault direction.
+    static var raised: Color { pick(0x1C1C1E, 0x100D15, 0x000000, 0x1E1822) }
 
     // Older names, kept so every view speaks the same palette.
-    static let glass = card
-    static let line = button
-    static let track = button
-    static let hover = buttonHi
-    static let silverBright = silver
-    static let steel = text2
+    static var glass: Color { card }
+    static var line: Color { button }
+    static var track: Color { button }
+    static var hover: Color { buttonHi }
+    static var silverBright: Color { silver }
+    static var steel: Color { text2 }
     static let onSilver = Color(hex: 0x111113)
-    static let rose = red
-    static let silverGradient = LinearGradient(colors: [silver, silver], startPoint: .top, endPoint: .bottom)
-    static let rim = LinearGradient(colors: [card, card], startPoint: .top, endPoint: .bottom)
-    static let confetti: [Color] = [.white, silver, text2, red]
+    static var rose: Color { red }
+    static var silverGradient: LinearGradient { LinearGradient(colors: [silver, silver], startPoint: .top, endPoint: .bottom) }
+    static var rim: LinearGradient { LinearGradient(colors: [card, card], startPoint: .top, endPoint: .bottom) }
+    static var confetti: [Color] { [.white, silver, text2, red] }
 
     /// Usage colour: `base` up to 90%, red above. (No other warning colour.)
     static func level(_ percent: Double, base: Color, warn: Double = 90) -> Color {
@@ -47,7 +60,7 @@ enum Radius {
     static let preset: CGFloat = 11
     static let tab: CGFloat = 8
 
-    static func shape(_ r: CGFloat) -> RoundedRectangle { RoundedRectangle(cornerRadius: r, style: .continuous) }
+    static func shape(_ r: CGFloat) -> Plate { Plate(radius: r) }
 }
 
 extension View {
@@ -69,10 +82,7 @@ extension View {
     /// A card: #1C1C1E, radius 20, padding 12. An `active` card (Claude working, a timer running) gets a 1 pt
     /// #3A3A3C edge; the others have none.
     func notchCard(padding: CGFloat = 12, active: Bool = false) -> some View {
-        self.padding(padding)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background(Radius.shape(Radius.card).fill(Palette.card))
-            .overlay(Radius.shape(Radius.card).strokeBorder(active ? Palette.buttonHi : .clear, lineWidth: 1))
+        modifier(CardSurface(padding: padding, active: active))
     }
 }
 
@@ -127,7 +137,13 @@ extension Font {
     static let scale: [CGFloat] = [11, 13, 16, 28, 38]
 
     static func app(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight)
+        switch Wyrmwatch.Design.active {
+        // Hearth sets titles and numbers in the system serif (New York); labels stay in SF.
+        case .hearth where size >= 16: return .system(size: size, weight: weight, design: .serif)
+        // Vault's numbers are condensed, like figures stamped on a gauge.
+        case .vault where size >= 28: return .system(size: size, weight: weight).width(.condensed)
+        default: return .system(size: size, weight: weight)
+        }
     }
 }
 

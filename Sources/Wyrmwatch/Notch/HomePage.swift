@@ -128,9 +128,25 @@ private struct MusicCard: View {
                     .probe("home.controls")
                 }
             } else {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Music").cardLabel()
-                    Spacer(minLength: 0)
+                // Nothing playing: the last song, dimmed, and one button to pick it up again.
+                VStack(alignment: .leading, spacing: 0) {
+                    if let last = bridge.lastPlayed {
+                        HStack(spacing: 8) {
+                            CoverArt(image: bridge.lastArtwork, id: last.id, size: 46, radius: Radius.preset)
+                                .opacity(0.6)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(last.title).font(.app(13, .semibold)).foregroundStyle(Palette.text2).lineLimit(1)
+                                Text(last.artist.isEmpty ? "Last played" : "\(last.artist) · last played").cardLabel()
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .probe("home.lastSong")
+                    } else {
+                        Text("Music").cardLabel()
+                        Spacer(minLength: 2)
+                        Text("Nothing played yet").font(.app(13)).foregroundStyle(Palette.text3)
+                    }
+                    Spacer(minLength: 8)
                     CardButton(systemName: "play.fill", title: "Play music", active: true, height: 32) { bridge.startMusic() }
                         .probe("home.startMusic")
                 }
@@ -168,8 +184,23 @@ private struct FocusCard: View {
                 }
                 .probe("home.focus.buttons")
             } else {
-                Text("Focus").cardLabel()
-                Spacer(minLength: 0)
+                // Stopped: the last task, how much was done today, and the presets to start it again.
+                let today = TaskLog.shared.today.reduce(0) { $0 + $1.minutes }
+                HStack(spacing: 8) {
+                    Text("Focus").cardLabel()
+                    Spacer(minLength: 4)
+                    if today > 0 {
+                        Text("\(today >= 60 ? "\(today / 60)h \(today % 60)m" : "\(today)m") today").cardLabel().fixedSize()
+                    }
+                }
+                Spacer(minLength: 4)
+                Text(lastTask ?? "No task yet")
+                    .font(.app(16, .semibold))
+                    .foregroundStyle(lastTask == nil ? Palette.text3 : Palette.text)
+                    .lineLimit(2)
+                    .truncationMode(.tail)
+                    .probe("home.focus.task")
+                Spacer(minLength: 8)
                 HStack(spacing: 8) {
                     PresetButton(title: "25/5") { timer.startPomodoro(.classic) }
                     PresetButton(title: "50/10") { timer.startPomodoro(.long) }
@@ -178,6 +209,12 @@ private struct FocusCard: View {
             }
         }
         .notchCard(active: timer.isActive)
+    }
+
+    /// The task a preset would carry on with: the one in the field, else the newest in the log.
+    private var lastTask: String? {
+        let name = timer.task.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? TaskLog.shared.recent.first : name
     }
 
     private var label: String {
@@ -214,7 +251,9 @@ struct PhaseBar: View {
     var body: some View {
         if let end = timer.endDate {
             TimelineView(.periodic(from: end.addingTimeInterval(-100_000), by: 1)) { context in
-                ThinBar(fraction: 1 - timer.fractionLeft(at: context.date))
+                // In the directions under review a running timer's bar takes the accent.
+                ThinBar(fraction: 1 - timer.fractionLeft(at: context.date),
+                        color: Design.active != .current && timer.isRunning ? Palette.accent : Palette.silver)
             }
             .frame(height: 8)
         } else {

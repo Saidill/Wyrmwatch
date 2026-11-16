@@ -22,7 +22,7 @@ struct ThinBar: View {
             ZStack(alignment: .leading) {
                 ForEach(0..<count, id: \.self) { i in
                     ScaleShape()
-                        .fill(i < shown ? color : Palette.button)
+                        .fill(i < shown ? color : Palette.scaleEmpty)
                         .overlay(ScaleShape().stroke(Palette.bg, lineWidth: 1))
                         .frame(width: scale, height: height)
                         .offset(x: CGFloat(i) * step)
@@ -205,7 +205,7 @@ struct CardButton: View {
             }
             .foregroundStyle(Palette.text)
             .frame(maxWidth: .infinity, minHeight: height, maxHeight: height)
-            .background(Radius.shape(Radius.button).fill(active || hovering ? Palette.buttonHi : Palette.button))
+            .background(ControlPlate(radius: Radius.button, on: active || hovering))
             .contentShape(Radius.shape(Radius.button))
         }
         .buttonStyle(.pressable)
@@ -229,7 +229,7 @@ struct PresetButton: View {
                 .foregroundStyle(Palette.text)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, minHeight: 32, maxHeight: 32)
-                .background(Radius.shape(Radius.preset).fill(selected || hovering ? Palette.buttonHi : Palette.button))
+                .background(ControlPlate(radius: Radius.preset, on: selected || hovering))
                 .contentShape(Radius.shape(Radius.preset))
         }
         .buttonStyle(.pressable)
