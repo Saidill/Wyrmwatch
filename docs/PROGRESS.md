@@ -334,3 +334,22 @@ Hasil (sesi Claude ini aktif selama pengukuran): closed ±0,1–1%, live 0,9–1
 - Batasan: item YouTube Music tanpa album (video musik, unggahan) tidak tampil.
 - Self-test: video YouTube di browser tidak tampil, lagu YouTube Music di browser tampil, Podcasts tidak tampil. `ALL PASSED`.
 
+
+## Naga sprite animasi (`feat/dragon-sprite`)
+
+- Empat kandidat diunduh tanpa login, dirender di 24, 48, dan 96 px, lalu dibandingkan (`docs/MASCOT.md`, gambar di `docs/mascot/`). Dipilih: **"Dragon - Fully Animated" oleh Cethiel (CC0)**, satu-satunya yang gerakannya halus (60 fps) dan bergaya dark fantasy. Magicae (3 frame per gerakan), Rive "dragon animations" (maskot form login kartun dengan latar oranye), dan 3 Dragon Animation Pack (2–4 frame) kalah.
+- `scripts/make-dragon-atlas.py` membuat sprite sheet per animasi di `Resources/Dragon/` (idle, working, alert, done, sleep; 30 fps; tinggi 96 px; total ±1 MB) + `dragon.json`. File asli (137 MB) tidak di-commit.
+- `DragonSpriteView`: satu `CALayer` + `CAKeyframeAnimation` pada `contentsRect`. Crossfade 150 ms antar-state, "done" sekali lalu idle, rebah lalu bernapas saat tidur, bangun = rebah diputar mundur. Berhenti total saat notch tertutup atau Reduce Motion.
+- Temuan: baris sprite sheet dihitung dari bawah di `contentsRect` macOS. Ketahuan dari screenshot state tidur yang menampilkan frame berdiri.
+- `WyrmArt` (ikon Tabler), jalur `wyrm.riv`, pelacakan kursor di header, dan RiveRuntime dihapus. App 6,9 MB (sebelumnya ±21 MB).
+- Panel About baru (klik kanan notch) dengan kredit Cethiel dan mediaremote-adapter. README diperbarui.
+- **Build:** Command Line Tools diperbarui 9 Nov 2026 dan SDK 27.2-nya butuh plugin makro SwiftUI yang hanya ada di Xcode, sehingga `swift build` gagal. `build-app.sh` kini memakai SDK macOS 26 dalam kondisi itu.
+- Self-test: bagian baru "Dragon" (16 cek: sheet termuat, tiap state memutar sheet-nya, done kembali ke idle, tidur bernapas, bangun dulu baru kerja, diam saat tertutup). `--selftest <folder> --only dragon` menjalankan bagian itu saja.
+
+**Performa (`--perf`, 16 Nov 2026)**: closed 0,19% · live Pomodoro 0,37% / Claude 0,26% / musik 0,23% · expanded 0,41–0,92% · memori 30–43 MB. Semua dalam anggaran.
+
+**Cek manual**
+- Lihat naga bergerak di notch live saat Claude bekerja (berjalan) dan saat menunggu (merunduk).
+- Sesi selesai: naga berdiri lalu menerkam sekali.
+- Klik kanan notch → About Wyrmwatch.
+- Di notch fisik, naga di header masih tertutup kamera. Posisinya diputuskan di revisi desain berikutnya.
