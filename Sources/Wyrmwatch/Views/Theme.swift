@@ -3,41 +3,65 @@ import SwiftUI
 
 // MARK: - Colours & type
 
-/// Black, silver and glass. Always dark, whatever the system appearance.
+/// Black, bone and one ember. Always dark, whatever the system appearance. Violet-black is only ever depth
+/// (lines and the fill of something switched on), never text.
 enum Palette {
     static let bg = Color.black
-    /// Cards.
-    static let card = Color(hex: 0x1C1C1E)
-    /// Buttons at rest, and the empty part of bars.
-    static let button = Color(hex: 0x2C2C2E)
-    /// Active or hovered buttons and tabs.
-    static let buttonHi = Color(hex: 0x3A3A3C)
-    static let text = Color(hex: 0xF5F5F7)
-    static let text2 = Color(hex: 0x8E8E93)
-    /// Faintest text (hints, counters).
-    static let text3 = Color(hex: 0x636366)
+    /// The few filled plates: pops' pictures, cover placeholders, chart tracks.
+    static let card = Color(hex: 0x131018)
+    /// Controls at rest have no fill (they are outlined); kept for the places that still want a dark fill.
+    static let button = Color(hex: 0x17131C)
+    /// The fill of something on: selected, hovered, a block's main action.
+    static let buttonHi = Color(hex: 0x241F2A)
+    /// Bone, from the dragon's belly and horns.
+    static let text = Color(hex: 0xEDE5D8)
+    static let text2 = Color(hex: 0x968D81)
+    /// Faintest text (hints, counters); also the outline of something on.
+    static let text3 = Color(hex: 0x665F56)
     /// Progress and the visualizer.
-    static let silver = Color(hex: 0xD1D5DB)
-    /// The only colour: Claude's "working" dot and usage above 90%.
-    static let red = Color(hex: 0xE5322B)
+    static let silver = Color(hex: 0xCBC0AE)
+    /// The only colour, the amber of the dragon's eye: Claude working, a running timer, usage above 90%.
+    static let accent = Color(hex: 0xF0A22B)
+    static let red = accent
+    /// 1 pt lines: rules, outlines.
+    static let hairline = Color(hex: 0x3A3340)
+    /// The unfilled scales of a scale bar.
+    static let scaleEmpty = Color(hex: 0x241F2A)
 
     // Older names, kept so every view speaks the same palette.
     static let glass = card
-    static let line = button
-    static let track = button
+    static let line = hairline
+    static let track = scaleEmpty
     static let hover = buttonHi
     static let silverBright = silver
     static let steel = text2
     static let onSilver = Color(hex: 0x111113)
-    static let rose = red
+    static let rose = accent
+    static let silverGradient = LinearGradient(colors: [silver, silver], startPoint: .top, endPoint: .bottom)
+    static let rim = LinearGradient(colors: [hairline, hairline], startPoint: .top, endPoint: .bottom)
+    static let confetti: [Color] = [.white, silver, text2, accent]
+
+    /// Usage colour: `base` up to 90%, the accent above. (No other warning colour.)
+    static func level(_ percent: Double, base: Color, warn: Double = 90) -> Color {
+        percent >= 90 ? accent : base
+    }
+}
+
+/// The Settings window keeps the look it had before the Hearth design (it is not part of this revision).
+enum SettingsPalette {
+    static let card = Color(hex: 0x1C1C1E)
+    static let button = Color(hex: 0x2C2C2E)
+    static let text = Color(hex: 0xF5F5F7)
+    static let text2 = Color(hex: 0x8E8E93)
+    static let text3 = Color(hex: 0x636366)
+    static let silver = Color(hex: 0xD1D5DB)
+    static let glass = card
+    static let line = button
+    static let steel = text2
+    static let onSilver = Color(hex: 0x111113)
+    static let rose = Color(hex: 0xE5322B)
     static let silverGradient = LinearGradient(colors: [silver, silver], startPoint: .top, endPoint: .bottom)
     static let rim = LinearGradient(colors: [card, card], startPoint: .top, endPoint: .bottom)
-    static let confetti: [Color] = [.white, silver, text2, red]
-
-    /// Usage colour: `base` up to 90%, red above. (No other warning colour.)
-    static func level(_ percent: Double, base: Color, warn: Double = 90) -> Color {
-        percent >= 90 ? red : base
-    }
 }
 
 /// Corner radii, all continuous.
@@ -47,7 +71,7 @@ enum Radius {
     static let preset: CGFloat = 11
     static let tab: CGFloat = 8
 
-    static func shape(_ r: CGFloat) -> RoundedRectangle { RoundedRectangle(cornerRadius: r, style: .continuous) }
+    static func shape(_ r: CGFloat) -> Plate { Plate(radius: r) }
 }
 
 extension View {
@@ -69,10 +93,7 @@ extension View {
     /// A card: #1C1C1E, radius 20, padding 12. An `active` card (Claude working, a timer running) gets a 1 pt
     /// #3A3A3C edge; the others have none.
     func notchCard(padding: CGFloat = 12, active: Bool = false) -> some View {
-        self.padding(padding)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background(Radius.shape(Radius.card).fill(Palette.card))
-            .overlay(Radius.shape(Radius.card).strokeBorder(active ? Palette.buttonHi : .clear, lineWidth: 1))
+        modifier(CardSurface(padding: padding, active: active))
     }
 }
 
@@ -127,7 +148,8 @@ extension Font {
     static let scale: [CGFloat] = [11, 13, 16, 28, 38]
 
     static func app(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight)
+        // Titles and numbers in the system serif (New York); labels and body in SF.
+        size >= 16 ? .system(size: size, weight: weight, design: .serif) : .system(size: size, weight: weight)
     }
 }
 
@@ -147,14 +169,21 @@ struct GlassBackground: NSViewRepresentable {
 }
 
 extension View {
-    /// Glass card. `fillHeight` stretches it to the row's height (cards side by side).
+    /// A block in the menu bar popover: the same ruled block as in the notch, as tall as its content unless
+    /// `fillHeight` stretches it to the row's height (blocks side by side).
     func card(fillHeight: Bool = false) -> some View {
+        modifier(CardSurface(fillHeight: fillHeight))
+    }
+
+    /// The filled card of the Settings window (unchanged).
+    func settingsCard() -> some View {
         padding(12)
-            .frame(maxWidth: .infinity, maxHeight: fillHeight ? .infinity : nil, alignment: .topLeading)
-            .background(Radius.shape(Radius.card).fill(Palette.card))
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(SettingsPalette.card))
     }
 }
 
+/// A Settings card's title (unchanged): small capitals.
 struct CardTitle<Trailing: View>: View {
     let text: String
     let trailing: Trailing
@@ -169,7 +198,7 @@ struct CardTitle<Trailing: View>: View {
             Text(text.uppercased())
                 .font(.app(10.5, .semibold))
                 .tracking(1.2)
-                .foregroundStyle(Palette.text2)
+                .foregroundStyle(SettingsPalette.text2)
                 .lineLimit(1)
             Spacer(minLength: 4)
             trailing
@@ -207,7 +236,7 @@ extension SectionTitle where Trailing == EmptyView {
 
 // MARK: - Controls
 
-/// Round glass toolbar button that brightens on hover.
+/// Round outlined toolbar button that fills on hover.
 struct IconButton: View {
     let systemName: String
     let help: String
@@ -222,8 +251,8 @@ struct IconButton: View {
                 .foregroundStyle(hovering ? Palette.text : Palette.text2)
                 .rotationEffect(.degrees(rotation))
                 .frame(width: 28, height: 28)
-                .background(Circle().fill(hovering ? Palette.hover : Palette.glass))
-                .overlay(Circle().strokeBorder(Palette.rim, lineWidth: 1))
+                .background(Circle().fill(hovering ? Palette.hover : .clear))
+                .overlay(Circle().strokeBorder(Palette.hairline, lineWidth: 1))
         }
         .buttonStyle(.plain)
         .onHover { h in withAnimation(Motion.quick) { hovering = h } }
@@ -231,7 +260,7 @@ struct IconButton: View {
     }
 }
 
-/// Segmented control whose silver pill glides between options.
+/// Segmented control: an outline, with a filled plate that glides to the chosen option.
 struct PillToggle: View {
     let options: [String]
     @Binding var selection: Int
@@ -250,7 +279,7 @@ struct PillToggle: View {
                     .frame(maxWidth: fill ? .infinity : nil)
                     .background {
                         if selection == i {
-                            Radius.shape(Radius.tab).fill(Palette.buttonHi).matchedGeometryEffect(id: "pill", in: ns)
+                            ControlPlate(radius: Radius.tab, on: true).matchedGeometryEffect(id: "pill", in: ns)
                         }
                     }
                     .contentShape(Rectangle())
@@ -258,7 +287,7 @@ struct PillToggle: View {
             }
         }
         .padding(2)
-        .background(Radius.shape(Radius.button).fill(Palette.card))
+        .background(ControlPlate(radius: Radius.button))
     }
 }
 
@@ -277,8 +306,7 @@ struct Chip: View {
         .font(.app(11))
         .padding(.horizontal, 8)
         .padding(.vertical, 8)
-        .background(Capsule().fill(Palette.glass))
-        .overlay(Capsule().strokeBorder(Palette.line, lineWidth: 0.5))
+        .overlay(Capsule(style: .circular).strokeBorder(Palette.hairline, lineWidth: 1))
     }
 }
 

@@ -37,6 +37,13 @@ final class PlanLimitClient: ObservableObject {
     private static let samplesKey = "forecast.samples"
     private static let samplesWindowKey = "forecast.window"
 
+    /// Self-test: fixed numbers instead of the account's real ones (nil: back to the real ones).
+    private var frozenForTesting = false
+    func injectForTesting(_ windows: [LimitWindow]?) {
+        frozenForTesting = windows != nil
+        if let windows { self.windows = windows } else { Task { await refresh() } }
+    }
+
     var fiveHourPercent: Double? { windows.first { $0.id == "five_hour" }?.utilization }
 
     private var timer: Timer?
@@ -61,6 +68,7 @@ final class PlanLimitClient: ObservableObject {
     }
 
     func refresh() async {
+        guard !frozenForTesting else { return }
         if let backoffUntil, Date() < backoffUntil { return }
         isRefreshing = true
         defer { isRefreshing = false }

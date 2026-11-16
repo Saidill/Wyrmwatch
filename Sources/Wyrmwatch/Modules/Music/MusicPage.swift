@@ -22,7 +22,7 @@ struct MusicPage: View {
             }
             if let list = bridge.playlist, !list.isEmpty {
                 playlist(list)
-                    .frame(height: 120)
+                    .frame(height: SongRow.height * 5)
                     .probe("music.list")
                     .cardAppear(2)
             }
@@ -92,10 +92,10 @@ struct MusicPage: View {
                             .id(item.index)
                     }
                 }
-                .padding(8)
+                .padding(.leading, 4)
             }
-            .background(Radius.shape(Radius.card).fill(Palette.card))
-            .clipShape(Radius.shape(Radius.card))
+            // Five whole rows: with the playing song in the middle, no row is ever cut in half at rest.
+            .overlay(alignment: .leading) { Rectangle().fill(Palette.hairline).frame(width: 1) }
             .onAppear { center(proxy) }
             .onChange(of: bridge.currentIndex) { _, _ in withAnimation(Motion.smooth) { center(proxy) } }
         }
@@ -113,6 +113,7 @@ private struct SongRow: View {
     let current: Bool
     let play: () -> Void
     @State private var hovering = false
+    static let height: CGFloat = 24
 
     var body: some View {
         HStack(spacing: 8) {
@@ -124,11 +125,11 @@ private struct SongRow: View {
                 .monospacedDigit()
                 .fixedSize()
         }
-        .font(.app(12, current ? .semibold : .regular))
+        .font(.app(13, current ? .semibold : .regular))
         .foregroundStyle(current ? Palette.text : Palette.text2)
         .padding(.horizontal, 8)
-        .frame(height: 28)
-        .background(Radius.shape(Radius.button).fill(hovering ? Palette.button : .clear))
+        .frame(height: Self.height)
+        .background(Radius.shape(Radius.tab).fill(hovering ? Palette.buttonHi : .clear))
         .contentShape(Rectangle())
         .onTapGesture(perform: play)
         .onHover { h in withAnimation(Motion.quick) { hovering = h } }

@@ -45,25 +45,7 @@ struct ExpandedPanel: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            HStack(spacing: 0) {
-                TabBar(selection: $tab)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .probe("header.tabs")
-                // The camera; the mascot lives here.
-                WyrmSlot(state: wyrmState, size: min(notch.height - 4, 28))
-                    .frame(width: notch.width, height: notch.height)
-                HStack(spacing: 8) {
-                    TimelineView(.everyMinute) { context in
-                        Text(context.date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute()))
-                            .font(.app(11))
-                            .foregroundStyle(Palette.text2)
-                            .monospacedDigit()
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .probe("header.right")
-            }
-            .frame(height: notch.height)
+            header
 
             ZStack(alignment: .topLeading) {
                 page
@@ -78,6 +60,33 @@ struct ExpandedPanel: View {
         .frame(width: Self.width, alignment: .top)
         .coordinateSpace(name: LayoutProbe.space)
         .environment(\.layoutProbing, true)
+    }
+
+    /// The dragon and the tabs on the left, the camera in the middle (left empty: a real camera hides whatever
+    /// is there), the clock on the right. A ground line runs under all of it; the dragon stands on it.
+    private var header: some View {
+        HStack(spacing: 0) {
+            HStack(spacing: 8) {
+                WyrmSlot(state: wyrmState, size: notch.height - 2)
+                    .offset(y: 1 + (notch.height - 2) * WyrmSlot.groundGap)
+                    .probe("header.dragon")
+                TabBar(selection: $tab).probe("header.tabs")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Color.clear.frame(width: notch.width, height: notch.height)
+            TimelineView(.everyMinute) { context in
+                // Two digits each: in some regions "minute" alone drops the leading zero ("01.8").
+                Text(context.date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)))
+                    .font(.app(11))
+                    .foregroundStyle(Palette.text2)
+                    .monospacedDigit()
+                    .fixedSize()
+            }
+            .probe("header.right")
+            .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .frame(height: notch.height)
+        .overlay(alignment: .bottom) { Rectangle().fill(Palette.hairline).frame(height: 1).offset(y: 1) }
     }
 
     private var wyrmState: WyrmState {
@@ -106,20 +115,23 @@ struct ExpandedPanel: View {
     }
 }
 
-/// Four 26 × 26 icon tabs (14 pt icons, radius 8): #1C1C1E with grey icons, the active one #3A3A3C and white.
+/// Four icon tabs (16 pt icons in 28 × 28), no boxes: the active one is bone-white with a short bar on the
+/// header's ground line under it.
 private struct TabBar: View {
     @Binding var selection: NotchTab
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 4) {
             ForEach(NotchTab.allCases) { tab in
                 Button { withAnimation(Motion.quick) { selection = tab } } label: {
                     tab.icon()
                         .frame(width: 16, height: 16)
                         .foregroundStyle(selection == tab ? Palette.text : Palette.text2)
                         .frame(width: 28, height: 28)
-                        .background(Radius.shape(Radius.tab).fill(selection == tab ? Palette.buttonHi : Palette.card))
-                        .contentShape(Radius.shape(Radius.tab))
+                        .overlay(alignment: .bottom) {
+                            if selection == tab { Rectangle().fill(Palette.text).frame(width: 16, height: 2).offset(y: 4) }
+                        }
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.pressable)
                 .help(tab.title)
@@ -128,4 +140,3 @@ private struct TabBar: View {
         }
     }
 }
-

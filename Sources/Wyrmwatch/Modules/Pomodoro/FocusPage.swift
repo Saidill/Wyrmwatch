@@ -145,11 +145,18 @@ struct FocusPage: View {
                 }
             }
             .probe("focus.presets")
+            // The free length, as one full-width row under the presets (it used to float on its own at the left).
             HStack(spacing: 8) {
+                Text("Custom length").font(.app(13)).foregroundStyle(Palette.text2).lineLimit(1)
+                Spacer(minLength: 8)
                 DurationField(seconds: $timerSeconds)
                     .probe("focus.duration")
-                Spacer(minLength: 0)
             }
+            .padding(.leading, 12)
+            .padding(.trailing, 4)
+            .frame(height: 32)
+            .background(ControlPlate(radius: Radius.preset))
+            .probe("focus.length")
         }
     }
 
@@ -174,7 +181,7 @@ private struct TaskField: View {
                 .foregroundStyle(Palette.text)
                 .padding(.horizontal, 8)
                 .frame(height: 28)
-                .background(Radius.shape(Radius.button).fill(Palette.button))
+                .background(ControlPlate(radius: Radius.button))
                 .onSubmit(onSubmit)
             if !recent.isEmpty {
                 HStack(spacing: 4) {
@@ -203,7 +210,7 @@ private struct TaskChip: View {
                 .truncationMode(.tail)
                 .padding(.horizontal, 8)
                 .frame(height: 20)
-                .background(Capsule().fill(selected || hovering ? Palette.buttonHi : Palette.card))
+                .background(ControlPlate(radius: 10, on: selected || hovering))
                 .contentShape(Capsule())
         }
         .buttonStyle(.pressable)
@@ -315,7 +322,7 @@ private struct ModeSwitch: View {
                         .frame(maxWidth: .infinity, minHeight: 24)
                         .background {
                             if selection == mode {
-                                Radius.shape(Radius.tab).fill(Palette.buttonHi).matchedGeometryEffect(id: "mode", in: glide)
+                                ControlPlate(radius: Radius.tab, on: true).matchedGeometryEffect(id: "mode", in: glide)
                             }
                         }
                         .contentShape(Rectangle())
@@ -324,7 +331,7 @@ private struct ModeSwitch: View {
             }
         }
         .padding(2)
-        .background(Radius.shape(Radius.button).fill(Palette.card))
+        .background(ControlPlate(radius: Radius.button))
     }
 }
 
@@ -342,7 +349,6 @@ private struct DurationField: View {
         }
         .padding(.horizontal, 4)
         .frame(height: 28)
-        .background(Radius.shape(Radius.button).fill(Palette.button))
         .help("Type a length, or scroll over a number")
     }
 
@@ -460,7 +466,7 @@ struct MinuteStepper: View {
                     .frame(minWidth: unit.isEmpty ? 20 : 48)
                 button("plus", enabled: value < range.upperBound) { value = min(range.upperBound, value + step) }
             }
-            .background(Radius.shape(Radius.button).fill(Palette.button))
+            .background(ControlPlate(radius: Radius.button))
         }
         .animation(Motion.quick, value: value)
     }

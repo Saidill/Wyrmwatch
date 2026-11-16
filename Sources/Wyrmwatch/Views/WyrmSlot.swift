@@ -27,17 +27,21 @@ extension WyrmState {
 struct WyrmSlot: View {
     var state: WyrmState
     var size: CGFloat = 24
+    /// The sprite faces right; this turns it round.
+    var facingLeft = false
     @Environment(\.animationsPaused) private var paused
     @Environment(\.reduceMotion) private var reduceMotion
 
     /// Width over height of the dragon.
     static var aspect: CGFloat { DragonAtlas.shared?.aspect ?? 1 }
+    /// The empty strip under the dragon's feet, as a share of its height (to stand it on a line).
+    static let groundGap: CGFloat = 0.08
 
     var body: some View {
         if state == .hidden || DragonAtlas.shared == nil {
             Color.clear.frame(width: 0, height: 0)
         } else {
-            DragonSpriteView(state: state, running: !paused && !reduceMotion)
+            DragonSpriteView(state: state, running: !paused && !reduceMotion, facingLeft: facingLeft)
                 .frame(width: (size * Self.aspect).rounded(), height: size)
                 .allowsHitTesting(false)
                 .accessibilityLabel("Dragon, \(state.rawValue)")

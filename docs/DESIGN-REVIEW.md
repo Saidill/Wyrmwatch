@@ -49,13 +49,55 @@ Left as they are, with the reason:
 - **The mascot in the header sits under the camera on a real notch.** It's visible on the virtual notch and on the left of the live notch, where it matters most.
 - **The Claude tab has three equal number cards.** Session, the leftmost one, reads first because it's on the left. Making it bigger would break the even row the other tabs use.
 
+## Round 4: the Hearth design (16 November 2026)
+
+The complaint was that the app felt like a generic iOS widget: flat surfaces everywhere, no atmosphere. Three directions were drawn for Home and Focus (`docs/directions/README.md`); Hearth was chosen and applied to every tab, the live notch, the pops and the menu bar popover. Settings is not part of it and renders pixel for pixel as before (the self-test's six Settings pictures were compared).
+
+Three decisions carry it:
+
+1. **No boxes.** A block is content with a 1 pt rule down its left edge. The rule of a block that is running (Claude working, a timer going) is amber.
+2. **Controls are outlines.** A control fills only when it is on: selected, hovered, or the block's main action.
+3. **Numbers and titles are in the system serif** (New York, 16 pt and up); labels and body stay in SF.
+
+Colour: black; violet-black only as depth (lines `#3A3340`, fill of something on `#241F2A`); text in bone `#EDE5D8` from the dragon's belly and horns; one accent, the amber of its eye, `#F0A22B`, only for what is running or over 90%. Red is gone.
+
+The dragon left the camera gap, where a real camera hid it. It stands on a ground line under the header, to the left of the tabs; the self-test checks it stays clear of the camera.
+
+Pictures: `--selftest <folder> --only design` (fixed made-up data, Reduce Motion on).
+
+| # | Where | Problem | Rule | Fix |
+|---|-------|---------|------|-----|
+| 14 | Header clock | Showed "01.8" at 01:08. Not clipped: the minute was formatted without two digits and the Indonesia region drops the zero. | Correctness | Two digits for both; checked: `01.8` → `01.08`. |
+| 15 | Home, Music card, nothing playing | A label and one button in an empty card. | Filler | The last song (dimmed, "· last played") and Play music. Title and artist are kept between launches. |
+| 16 | Home, Focus card, stopped | A label and two presets in an empty card. | Filler | The last task, today's total, and the presets. |
+| 17 | Focus, Timer | The h:m:s field sat alone at the left under the presets. | Grid | One full-width row, "Custom length" with the field at its right. |
+| 18 | Music, playlist | 3.7 rows showed: the top and bottom rows were cut in half, inside a filled box. | Grid | Five whole 24 pt rows with the playing song in the middle; a ruled block, no fill. |
+| 19 | Claude, Sessions | A count badge repeated the "Sessions running" number right above it. | Filler | No badge in the notch (the popover, which has no such number, keeps it). |
+| 20 | Popover, Usage | The token total was 34 pt ultralight: a sixth size and a third weight. | Type scale | 28 pt semibold. |
+| 21 | Playlist rows | 11.5 and 12 pt text. | Type scale | 13 pt. |
+| 22 | Popover, Now playing | A wash of the cover's colour behind the card, and a thin capsule for progress. | One accent; every bar is a scale bar | No wash; a scale bar. |
+| 23 | Claude "finished" pop | A check mark on a tile. | The mascot says it | The dragon, in its "done" animation. |
+| 24 | Pills drawn as outlines | Stray ticks at both ends (a continuous capsule, stroked). | Correctness | Plain capsules. |
+
+Checked against the rules: 4 pt grid (the ground line and the dragon's feet sit 1 pt off it, on purpose, so the feet touch the line); five sizes, two weights, now in two families; one main element per block; no gradient, glow, shadow or emoji anywhere; no decorative text.
+
+Left as they are, with the reason:
+
+- **Many outlines on the Focus page.** About a dozen controls, and the Pomodoro | Timer switch is an outline inside an outline. Filling the selected ones keeps it from reading as a wireframe; fewer controls would mean changing the page's layout, which this round does not touch.
+- **Low-contrast rules.** `#3A3340` on black is quiet by design. It was raised once from `#2E2833`; needs a look at low screen brightness.
+- **The album cover is the one full-colour area.** It is the user's content, not decoration.
+- **Settings looks like the old design**, also when shown inside the popover.
+- **No fire.** The CC0 dragon has no fire animation; "done" is a strike.
+
+Performance with the new design (`--perf`, display awake): closed 0.23%, live 0.26–0.78%, expanded 0.67–1.53%, 34–42 MB. All inside the targets (0.5 / 2 / 5%).
+
 ## Motion, and why each one exists
 
 | Motion | Why |
 |--------|-----|
 | Notch opens and closes (`Motion.open` / `close`) | Shows where the panel comes from and goes back to. |
-| Ember Edge: an ember moving along a red edge / a slow white pulse | Claude working or waiting can be seen from the corner of the eye. |
-| Wyrm: blinks, nods while working, turns to the pointer, jaw and fire on done | The same status, without text; the fire marks the one moment worth celebrating. |
+| Ember Edge: an ember moving along an amber edge / a slow bone-white pulse | Claude working or waiting can be seen from the corner of the eye. |
+| Dragon: stands, paces while Claude works, crouches while it waits, strikes once on done, lies down when idle | The same status, without text; the strike marks the one moment worth celebrating. |
 | Scale bar: scales light one by one (20 ms) | A change in progress reads as a count, not a jump. |
 | Cards come in 30 ms apart | Shows the reading order. |
 | Digits roll (`numericText`) | A changing number stays readable while it changes. |

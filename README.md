@@ -12,7 +12,7 @@ Wyrmwatch is a macOS notch app: a Pomodoro and a timer with task names, what's p
 
 ## In the notch
 
-Hover the notch (or click it) to open it. The header is split by the camera: four small tabs on the left (Home, Focus, Music, Claude), the time on the right, and in between, where the camera sits, the Wyrmwatch mascot. The notch grows to fit each tab. Right-click the notch for **About**, **Settings** and **Quit**.
+Hover the notch (or click it) to open it. The header is split by the camera: the dragon and four small tabs on the left (Home, Focus, Music, Claude), the time on the right, and nothing in between, where the camera sits. The notch grows to fit each tab. Right-click the notch for **About**, **Settings** and **Quit**.
 
 - **Home**: three cards of the same height, one big number each.
   - **Claude**: your session limit, whether Claude is working (a slowly pulsing red dot) or waiting for you, and what it is doing right now ("Editing HomePage.swift"), with when the limit resets.
@@ -29,13 +29,13 @@ When it's closed, the notch shows what matters in a slim "live" strip: the masco
 
 On a screen without a notch (an external monitor), the app draws one: a small black pill at the top that opens the same way. Display modes are Auto, Notch, Menu bar and All screens. In Menu bar mode the app lives in a popover under a menu bar icon instead.
 
-The look is black with #1C1C1E cards, five text sizes and a 4 pt grid. Three things are its own:
+The look is black with no boxes: blocks are marked by a thin rule down their left edge, controls are outlines that fill only when they are on, and numbers and titles are set in the system serif. Text is bone-coloured, five sizes on a 4 pt grid. Three things are its own:
 
-- **Ember Edge**: while Claude works, the bottom edge of the notch is a thin red line with an ember drifting along it; while Claude waits for you it pulses white. Idle, there's nothing.
-- **The wyrm in its nest**: the mascot in the camera gap and on the left of the live notch. It sleeps, stands watch, paces while Claude works, crouches when Claude needs you, and rears up and strikes when a session is done.
+- **Ember Edge**: while Claude works, the bottom edge of the notch is a thin amber line with an ember drifting along it; while Claude waits for you it pulses bone-white. Idle, there's nothing.
+- **The dragon on its ground line**: the mascot stands on a line under the header, left of the tabs, and on the left of the live notch. It sleeps, stands watch, paces while Claude works, crouches when Claude needs you, and rears up and strikes when a session is done.
 - **Scale bars**: every progress bar is a row of small overlapping scales that light up one by one.
 
-The only colour is red (#E5322B), and only for signals: Claude working, usage above 90%, the Ember Edge, the wyrm's eye and fire. Repeating animations run in Core Animation, so the app does no work per frame. Nothing animates unless it's on screen, and Reduce Motion (or Settings → System → Always reduce motion) turns all repeating animation off. See [docs/DESIGN-REVIEW.md](docs/DESIGN-REVIEW.md) for the design critique.
+The only colour is the amber of the dragon's eye (#F0A22B), and only for what is running: Claude working, a timer going, the Ember Edge, and usage above 90%. Repeating animations run in Core Animation, so the app does no work per frame. Nothing animates unless it's on screen, and Reduce Motion (or Settings → System → Always reduce motion) turns all repeating animation off. See [docs/DESIGN-REVIEW.md](docs/DESIGN-REVIEW.md) for the design critique.
 
 ## Claude in the background
 

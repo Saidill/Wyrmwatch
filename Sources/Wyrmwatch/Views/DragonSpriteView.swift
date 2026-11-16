@@ -64,10 +64,12 @@ struct DragonSpriteView: NSViewRepresentable {
     var state: WyrmState
     /// false while the notch is closed or Reduce Motion is on: one still frame, no animation at all.
     var running: Bool
+    var facingLeft = false
 
     func makeNSView(context: Context) -> DragonSpriteHost { DragonSpriteHost() }
 
     func updateNSView(_ view: DragonSpriteHost, context: Context) {
+        view.facingLeft = facingLeft
         view.update(state: state, running: running)
     }
 }
@@ -79,6 +81,10 @@ final class DragonSpriteHost: NSView {
     /// The sheet on the layer.
     private var sheet: String?
     private var next: DispatchWorkItem?
+    /// The sheets face right; mirrored for a dragon that stands on the right and looks in.
+    var facingLeft = false {
+        didSet { if facingLeft != oldValue { sprite.transform = CATransform3DMakeScale(facingLeft ? -1 : 1, 1, 1) } }
+    }
 
     /// For the self-test: the sheet on the layer, and whether frames (or the sleeping breath) are playing.
     var sheetForTesting: String? { sheet }
@@ -94,7 +100,7 @@ final class DragonSpriteHost: NSView {
         wantsLayer = true
         layer?.masksToBounds = false
         // Nothing here animates by itself: frames and the crossfade are added explicitly.
-        sprite.actions = ["contents": NSNull(), "contentsRect": NSNull(), "bounds": NSNull(), "position": NSNull()]
+        sprite.actions = ["contents": NSNull(), "contentsRect": NSNull(), "bounds": NSNull(), "position": NSNull(), "transform": NSNull()]
         sprite.contentsGravity = .resize
         sprite.anchorPoint = CGPoint(x: 0.5, y: 0) // breathes from the ground up
         layer?.addSublayer(sprite)

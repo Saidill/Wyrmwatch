@@ -28,12 +28,25 @@ struct PlaylistTrack: Identifiable, Equatable {
 /// mediaremote-adapter's stream, with its own play/pause/next/previous/seek, and no playlist.
 @MainActor
 final class MusicBridge: ObservableObject {
-    @Published private(set) var track: NowPlaying?
+    @Published private(set) var track: NowPlaying? {
+        didSet {
+            guard let track else { return }
+            lastPlayed = track
+            if !offline { UserDefaults.standard.set([track.title, track.artist, track.album], forKey: Self.lastPlayedKey) }
+        }
+    }
+    /// The last song that played, for the idle cards: its title and artist are kept between launches, its cover
+    /// only while the app runs.
+    @Published private(set) var lastPlayed: NowPlaying?
+    private(set) var lastArtwork: NSImage?
+    private static let lastPlayedKey = "music.lastPlayed"
     @Published private(set) var isPlaying = false
     /// Where playback was at `positionDate`; the app extrapolates from there instead of asking every second.
     @Published private(set) var position: Double = 0
     @Published private(set) var positionDate = Date()
-    @Published private(set) var artwork: NSImage?
+    @Published private(set) var artwork: NSImage? {
+        didSet { if let artwork, track != nil { lastArtwork = artwork } }
+    }
     /// Accent picked from the artwork (its dominant colour), for a faint tint on the card.
     @Published private(set) var accent: NSColor?
     /// nil = not loaded; empty = the source has no readable list (radio, catalog songs outside the library).
@@ -83,6 +96,9 @@ final class MusicBridge: ObservableObject {
         self.offline = offline
         adapter = offline ? nil : NowPlayingAdapter()
         guard !offline else { return }
+        if let last = UserDefaults.standard.stringArray(forKey: Self.lastPlayedKey), last.count == 3 {
+            lastPlayed = NowPlaying(id: "last", title: last[0], artist: last[1], album: last[2], duration: 0)
+        }
         adapter?.onChange = { [weak self] item in self?.adapterChanged(item) }
         adapter?.start()
         observer = DistributedNotificationCenter.default().addObserver(
@@ -392,6 +408,9 @@ final class MusicBridge: ObservableObject {
     /// "Play music" when nothing is on: starts Music (opening it if needed) and plays.
     func startMusic() {
         guard !offline else { return }
+        if let last = UserDefaults.standard.stringArray(forKey: Self.lastPlayedKey), last.count == 3 {
+            lastPlayed = NowPlaying(id: "last", title: last[0], artist: last[1], album: last[2], duration: 0)
+        }
         run("tell application \"Music\" to play") { [weak self] _ in self?.refreshAll() }
     }
 

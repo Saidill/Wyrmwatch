@@ -353,3 +353,31 @@ Hasil (sesi Claude ini aktif selama pengukuran): closed ±0,1–1%, live 0,9–1
 - Sesi selesai: naga berdiri lalu menerkam sekali.
 - Klik kanan notch → About Wyrmwatch.
 - Di notch fisik, naga di header masih tertutup kamera. Posisinya diputuskan di revisi desain berikutnya.
+
+## Tiga arah desain, belum diterapkan (`design/directions`)
+
+- Prototipe Obsidian, Hearth, dan Vault untuk tab Home dan Focus, di balik `--design <nama>` (`Views/Design.swift`: `Design`, `Plate`, `CardSurface`, `ControlPlate`; `Palette` dan `Font.app` kini membaca arah yang aktif). Tanpa flag, app tampil seperti biasa.
+- Screenshot, kritik, dan rekomendasi: `docs/directions/README.md`. Dibuat dengan `--selftest <folder> --only directions`.
+- **Branch ini sengaja tidak di-merge ke `main`** sampai satu arah dipilih. Setelah itu dua arah lain dan flag `--design` dihapus.
+- Bug yang ikut diperbaiki di sini: jam header "01.8" (menit tanpa dua digit di region Indonesia; dicek: `01.8` → `01.08`), kartu Music dan Focus yang kosong saat idle (lagu terakhir / tugas terakhir + preset), dan input Timer h:m:s yang mengambang (kini satu baris "Custom length").
+- Belum: baris playlist terpotong (tab Music) dan badge "1" duplikat di kartu Sessions (tab Claude).
+- Self-test: `PlanLimitClient.injectForTesting` (angka limit tetap), cek bahwa naga tidak menyentuh area kamera di tiap arah.
+
+## Desain Hearth di seluruh app (`feat/hearth-design`)
+
+- Pilihan pengguna: "yang terbagus saja", jadi rekomendasi (Hearth) yang diterapkan. Prototipe Obsidian dan Vault serta flag `--design` dihapus; `Views/Design.swift` kini berisi `Plate`, `CardSurface` (blok bergaris kiri), dan `ControlPlate` (kontrol garis luar).
+- Diterapkan ke Home, Focus, Music, Claude, notch live, pop, dan popover menu bar. Naga berdiri di garis tanah di kiri header.
+- **Settings tidak berubah**: memakai `SettingsPalette` dan `settingsCard()` sendiri. Keenam screenshot Settings dari self-test identik piksel dengan sebelum perubahan.
+- Bug: baris playlist terpotong (kini lima baris utuh 24 pt, lagu aktif di tengah) dan badge jumlah sesi dobel di tab Claude (dihapus di notch). Jam "01.8", kartu idle, dan input Timer sudah diperbaiki di langkah sebelumnya.
+- Lain-lain: pop "sesi selesai" menampilkan naga (animasi done), total token di popover 28 pt semibold (sebelumnya 34 pt ultralight), progress Now Playing di popover jadi scale bar, warna cover di belakang kartu Now Playing dihapus.
+- Design review ronde 4 di `docs/DESIGN-REVIEW.md`. Screenshot README (`docs/screenshots/`) diperbarui.
+- Self-test: `--only design` membuat gambar untuk review (data tiruan tetap, Reduce Motion aktif) dan memeriksa naga tidak menyentuh area kamera.
+
+**Performa (`--perf`, layar menyala, 16 Nov 2026)**: closed 0,23% · live Pomodoro 0,63% / Claude 0,29% / musik 0,26% · expanded 0,67–1,53% · memori 34–42 MB. Semua dalam target.
+
+**Temuan soal pengujian**: saat layar Mac mati (pengguna pergi), `--perf` memberi angka salah (1,4–6%) dan run berikutnya macet lebih dari 15 menit karena app di-nap. Jalankan `--perf` dan `--selftest` dengan `caffeinate -d -i -u`. Run yang dimatikan paksa meninggalkan `pomodoro.endDate` di UserDefaults; sudah dihapus.
+
+**Cek manual**
+- Kontras garis di kecerahan layar rendah.
+- Naga di header pada notch fisik (kiri tab, tidak tertutup kamera) dan di pop "sesi selesai".
+- Kartu Music saat idle setelah app dibuka ulang (judul dan artis terakhir tersimpan, cover tidak).
