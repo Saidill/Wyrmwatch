@@ -1,6 +1,8 @@
 # Tiga arah desain
 
-16 November 2026. Belum ada yang diterapkan ke app. Ketiganya hanya prototipe untuk tab Home dan Focus di branch `design/directions`, dinyalakan dengan `--design <nama>`. Tab Music dan Claude, notch live, pop, popover menu bar, dan Settings belum disentuh.
+**Keputusan (16 November 2026): Hearth dipilih dan sudah diterapkan ke seluruh app** (`feat/hearth-design`), dengan dua perubahan yang disebut di Rekomendasi. Kritik setelah penerapan ada di `docs/DESIGN-REVIEW.md`, ronde 4. Halaman ini catatan perbandingannya; prototipe Obsidian dan Vault serta flag `--design` sudah dihapus dari kode (masih ada di branch `design/directions`).
+
+Saat dibandingkan, ketiganya hanya prototipe untuk tab Home dan Focus. Tab Music dan Claude, notch live, pop, popover menu bar, dan Settings belum disentuh.
 
 Screenshot dibuat oleh app sendiri (`--selftest <folder> --only directions`) dengan data tiruan yang sama untuk semua arah: Claude bekerja, satu lagu diputar, sesi 24%, tiga tugas hari ini. Reduce Motion dipaksa aktif supaya gambarnya bisa dibandingkan, jadi naganya diam di gambar.
 
@@ -117,12 +119,3 @@ Belum, karena ada di tab yang belum disentuh. Dikerjakan saat arah yang dipilih 
 
 - baris playlist terpotong setengah (tab Music)
 - badge "1" duplikat di kartu Sessions (tab Claude)
-
-## Cara melihat sendiri
-
-```
-./scripts/build-app.sh
-./Wyrmwatch.app/Contents/MacOS/Wyrmwatch --design hearth     # atau obsidian, vault
-```
-
-Tutup dulu Wyrmwatch yang terpasang supaya tidak ada dua notch. Di sini naganya bergerak.

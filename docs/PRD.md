@@ -85,15 +85,15 @@ Fungsi: closed tidak mengganggu sama sekali, live memberi satu info terpenting t
 Lebar tetap ±640 pt (panel 620 + flare). Tinggi mengikuti isi tab aktif (`GeometryReader`, spring response 0,45, damping 0,8). Window tetap 680 × 420 dan tidak pernah di-resize.
 
 1. **Header**: grid 3 kolom [kiri | lebar notch fisik | kanan].
-    - Kiri: 4 tab ikon (Home, Focus, Music, Claude). Tombol 28 × 28, radius 8, ikon custom 16 pt. Tidak aktif: bg `#1C1C1E`, ikon `#8E8E93`. Aktif: bg `#3A3A3C`, ikon putih.
-    - Tengah: kosong (kamera), berisi slot maskot `WyrmSlot`. Di notch fisik bagian ini tertutup kamera; maskot terlihat di notch virtual dan di notch live.
-    - Kanan: jam 11 pt. (Pill nama tab dihapus karena mengulang tab yang sudah menyala.)
+    - Kiri: naga (tinggi notch − 2 pt) berdiri di garis tanah 1 pt selebar panel, lalu 4 tab ikon (Home, Focus, Music, Claude) tanpa kotak: ikon 16 pt di area 28 × 28, jarak 4. Tab aktif berwarna tulang dengan garis pendek 16 × 2 pt di garis tanah.
+    - Tengah: kosong (kamera). Naga tidak lagi di sini karena tertutup kamera di notch fisik. Self-test memeriksa bahwa naga tidak menyentuh area kamera.
+    - Kanan: jam 11 pt, selalu dua digit untuk jam dan menit ("01.08").
     - Settings bukan tab. Dibuka lewat klik kanan notch (menu About / Settings… / Quit, membuka jendela Settings) atau ikon menu bar.
     - Fungsi: pindah halaman dengan satu klik dan melihat jam tanpa menutupi apa pun.
 2. **Home**: 3 kartu sejajar, tinggi sama 120 pt, gap 8, kolom [1 | 1,25 | 1], padding 12.
     - Claude: "Claude" + titik merah berdenyut dan "working" saat busy (atau titik putih dan "waiting" saat Claude menunggu kamu), persen sesi besar + scale bar, lalu 1 baris status: alat yang sedang dipakai (dari ekor transkrip, misalnya "Editing HomePage.swift") atau nama proyek, plus waktu reset (ellipsis).
-    - Music: cover 48 pt + judul + artis, scale bar, lalu 3 tombol [1 | 1,3 | 1]: previous, play/pause (aktif), next. Musik mati → "Play music".
-    - Focus: "Focus n/N", "Break", atau "Timer", waktu besar, scale bar fase, lalu pause/resume dan Stop. Timer berhenti → label "Focus" + preset 25/5 dan 50/10.
+    - Music: cover 48 pt + judul + artis, scale bar, lalu 3 tombol [1 | 1,3 | 1]: previous, play/pause (aktif), next. Musik mati → lagu terakhir (diredupkan, "· last played"; judul dan artis disimpan antar-launch) + "Play music".
+    - Focus: "Focus n/N", "Break", atau "Timer", waktu besar, scale bar fase, lalu pause/resume dan Stop. Timer berhenti → tugas terakhir (16 pt), total hari ini, dan preset 25/5 dan 50/10.
     - Fungsi: ringkasan tiga hal terpenting (Claude, musik, fokus) dalam satu pandangan, masing-masing dengan satu aksi utama.
 3. **Focus**: lihat Spesifikasi modul → Pomodoro. Kiri: kartu waktu 200 × 120 (nama tugas, waktu 38 pt, kontrol) dan kartu Today. Kanan: segmented Pomodoro | Timer, kolom tugas + chip nama terakhir, lalu preset mode yang dipilih.
     - Fungsi: menyiapkan, menjalankan, dan meninjau sesi kerja hari ini di satu halaman.
@@ -220,16 +220,16 @@ Fungsi: melihat dan mengendalikan musik tanpa pindah app.
     - Naga tidak lagi menoleh ke kursor (sprite tidak bisa), jadi pelacakan kursor 15 fps di header dihapus. RiveRuntime dilepas dari app.
     - Kredit pembuat ada di README dan panel About (klik kanan notch → About Wyrmwatch).
 - **Tiga elemen khas** (hanya tiga):
-    1. **Ember Edge**: tepi bawah notch 1,5 pt. Claude bekerja → merah `#E5322B` dengan bara yang bergerak pelan di sepanjang tepi; Claude menunggu → putih berdenyut pelan; idle → tidak ada. Core Animation, maks. 30 fps, berhenti saat notch tertutup atau Reduce Motion. Fungsi: status Claude terbaca dari ujung mata tanpa membaca apa pun. Ini satu-satunya efek cahaya di app.
+    1. **Ember Edge**: tepi bawah notch 1,5 pt. Claude bekerja → amber `#F0A22B` dengan bara yang bergerak pelan di sepanjang tepi; Claude menunggu → warna tulang berdenyut pelan; idle → tidak ada. Core Animation, maks. 30 fps, berhenti saat notch tertutup atau Reduce Motion. Fungsi: status Claude terbaca dari ujung mata tanpa membaca apa pun. Ini satu-satunya efek cahaya di app.
     2. **Wyrm di sarangnya**: maskot di celah kamera dan di kiri notch live (lihat Maskot). State sleep / peek / working / alert / done.
-    3. **Scale bar**: setiap progress bar adalah deretan sisik 8 pt yang saling menumpuk. Terisi silver `#D1D5DB`, sisanya `#2C2C2E`. Sisik baru menyala satu per satu dengan jeda 20 ms. Fungsi: progres terbaca sebagai hitungan, dan bentuknya senada dengan wyrm.
-- Kartu aktif (Claude bekerja, timer berjalan) mendapat tepi 1 pt `#3A3A3C`; kartu lain tanpa tepi. Fungsi: menunjukkan apa yang sedang berjalan.
-- **Tema** (`Views/Theme.swift`): bg `#000`, kartu `#1C1C1E`, tombol `#2C2C2E`, tombol aktif/hover `#3A3A3C`, teks `#F5F5F7`, sekunder `#8E8E93`, progress silver `#D1D5DB`. Abu-abu untuk hierarki. Merah `#E5322B` hanya untuk sinyal: Claude bekerja, usage > 90%, Ember Edge, mata dan api wyrm.
-- Radius (semua `.continuous`): kartu 20, tombol 10, preset 11, tab 8.
-- **Tipografi**: hanya 5 ukuran (11 label, 13 isi, 16 judul kartu, 28 dan 38 angka utama), hanya regular dan semibold, `monospacedDigit` untuk angka, rata kiri, satu elemen utama (terbesar) per layar. (Settings memakai ukuran sistemnya sendiri dan tidak diubah.)
+    3. **Scale bar**: setiap progress bar adalah deretan sisik 8 pt yang saling menumpuk. Terisi warna tulang `#CBC0AE` (amber untuk timer yang berjalan dan usage ≥ 90%), sisanya `#241F2A`. Sisik baru menyala satu per satu dengan jeda 20 ms. Fungsi: progres terbaca sebagai hitungan, dan bentuknya senada dengan naga.
+- **Desain Hearth** (dipilih 16 Nov 2026 dari tiga arah, lihat `docs/directions/README.md`): (1) blok tanpa kotak, hanya garis 1 pt di tepi kirinya, amber kalau blok itu sedang berjalan; (2) kontrol berupa garis luar, terisi `#241F2A` hanya saat aktif, dipilih, di-hover, atau menjadi aksi utama blok; (3) angka dan judul memakai serif sistem (New York), label dan isi tetap SF.
+- **Tema** (`Views/Theme.swift`, `Views/Design.swift`): bg `#000`, garis `#3A3340`, isi kontrol aktif `#241F2A`, teks tulang `#EDE5D8`, sekunder `#968D81`, redup `#665F56`, sisik `#CBC0AE`. Ungu gelap hanya untuk kedalaman (garis dan isi), tidak pernah untuk teks. Satu aksen: amber mata naga `#F0A22B`, hanya untuk yang sedang berjalan (Claude bekerja, timer berjalan, Ember Edge) dan usage ≥ 90%. Merah tidak dipakai lagi. Jendela Settings memakai palet lamanya sendiri (`SettingsPalette`) dan tidak berubah.
+- Radius: tombol 10, preset 11, tab 8, cover 11–20; kontrol yang radiusnya setengah tinggi digambar sebagai kapsul biasa.
+- **Tipografi**: hanya 5 ukuran (11 label, 13 isi, 16 judul, 28 dan 38 angka utama), hanya regular dan semibold, `monospacedDigit` untuk angka, rata kiri, satu elemen utama (terbesar) per blok. Ukuran 16 ke atas memakai serif sistem (New York), sisanya SF. (Settings memakai ukuran sistemnya sendiri dan tidak diubah.)
 - **Grid 4 pt** untuk semua padding, gap, dan ukuran di notch dan popover.
 - **Tanpa "AI slop"**: tidak ada gradient besar, glow, emoji, ikon berwarna, tampilan ungu-biru, glass tebal, shadow tebal, teks dekoratif atau tagline di UI, maupun elemen pengisi. Setiap animasi harus punya alasan. Hasil kritiknya ada di `docs/DESIGN-REVIEW.md`.
-- **Ikon app**: notch hitam dengan titik merah (digambar oleh binary lewat `--render-icon`).
+- **Ikon app**: notch hitam dengan titik merah (belum disesuaikan dengan aksen amber) (digambar oleh binary lewat `--render-icon`).
 
 ## Notch virtual di monitor eksternal
 
@@ -436,9 +436,11 @@ Semua pengembangan dilakukan di branch terpisah, di-commit otomatis per langkah,
 - mediaremote-adapter sebagai sumber utama: apakah Apple Music juga dibaca lewat adapter?
     - Keputusan: adapter dipakai untuk semua pemutar selain Apple Music. Apple Music tetap lewat notifikasi + AppleScript karena hanya jalur itu yang memberi playlist, favorit, shuffle, dan repeat, dan notifikasinya sudah instan. Kalau adapter tidak ada atau berhenti, app tetap jalan dengan Apple Music saja.
 - Preset di halaman Focus tetap terlihat saat timer berjalan, jadi klik preset memulai ulang. Keputusan sementara: dibiarkan (satu klik untuk ganti rencana); perlu diuji manual.
-- Maskot di tengah header tertutup kamera di notch fisik. Keputusan sementara: dibiarkan (terlihat di notch virtual dan di live notch).
+- Maskot di tengah header tertutup kamera di notch fisik. Keputusan (16 Nov 2026): naga pindah ke kiri header, berdiri di garis tanah.
 - Naga tidak punya animasi api, tidur, dan bangun di versi CC0. Keputusan sementara: "done" memakai gerakan menerkam (tanpa api), tidur memakai akhir animasi Death, bangun memakai animasi yang sama diputar mundur. Versi HD berbayar dari pembuatnya punya Roar, Sleeping, dan Waking Up kalau nanti diinginkan.
 - Panel About hanya bisa dibuka dari klik kanan notch. Di mode Menu bar belum ada jalan ke About, karena Settings tidak boleh diubah di revisi ini.
 - RiveRuntime dilepas (app turun ±14 MB) karena maskot sekarang sprite. Kalau nanti pindah ke maskot Rive, dependensinya perlu ditambahkan lagi.
 - Command Line Tools 27.2 (tanpa Xcode) gagal membangun app dengan SDK 27.2 ("plugin for module 'SwiftUIMacros' not found"). Keputusan sementara: `build-app.sh` memakai SDK macOS 26 dalam kondisi itu. Untuk `swift build` langsung: `SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.sdk swift build`.
+- Ikon app masih bertitik merah, sedangkan aksen app kini amber. Belum diputuskan apakah ikon ikut diganti.
+- Settings tampil dengan desain lama, juga saat dibuka di dalam popover menu bar, karena Settings tidak boleh diubah di revisi ini.
 - Riwayat tugas: tugas tanpa nama dicatat sebagai "No task". Fokus yang dihentikan di bawah 30 detik tidak dicatat.
