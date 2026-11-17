@@ -441,6 +441,7 @@ final class NotchMenuTarget: NSObject {
 enum AboutPanel {
     static let credits = """
         Dragon: "Dragon - Fully Animated" by Cethiel (opengameart.org), CC0.
+        Its flame: "Lots of game effects" by Soluna Software (opengameart.org), CC0.
         Now playing from other apps: mediaremote-adapter by Jonas van den Berg and contributors, BSD 3-Clause.
         """
 

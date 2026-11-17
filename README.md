@@ -32,7 +32,7 @@ On a screen without a notch (an external monitor), the app draws one: a small bl
 The look is black with no boxes: blocks are marked by a thin rule down their left edge, controls are outlines that fill only when they are on, and numbers and titles are set in the system serif. Text is bone-coloured, five sizes on a 4 pt grid. Three things are its own:
 
 - **Ember Edge**: while Claude works, the bottom edge of the notch is a thin amber line with an ember drifting along it; while Claude waits for you it pulses bone-white. Idle, there's nothing.
-- **The dragon on its ground line**: the mascot stands on a line under the header, left of the tabs, and on the left of the live notch. It sleeps, stands watch, paces while Claude works, crouches when Claude needs you, and rears up and strikes when a session is done.
+- **The dragon on its ground line**: the mascot stands on a line under the header, left of the tabs, and on the left of the live notch. It sleeps, stands watch, paces while Claude works, crouches when Claude needs you, and breathes fire when a session is done. While it watches it rears up now and then.
 - **Scale bars**: every progress bar is a row of small overlapping scales that light up one by one.
 
 The only colour is the amber of the dragon's eye (#F0A22B), and only for what is running: Claude working, a timer going, the Ember Edge, and usage above 90%. Repeating animations run in Core Animation, so the app does no work per frame. Nothing animates unless it's on screen, and Reduce Motion (or Settings → System → Always reduce motion) turns all repeating animation off. See [docs/DESIGN-REVIEW.md](docs/DESIGN-REVIEW.md) for the design critique.
@@ -126,14 +126,14 @@ No Xcode project is needed. It's a plain Swift package.
 
 ## The mascot
 
-The dragon is ["Dragon - Fully Animated"](https://opengameart.org/content/dragon-fully-animated) by Cethiel (CC0): a rendered dark-fantasy dragon with 60 fps animations. `scripts/make-dragon-atlas.py` turns the original frames into one sprite sheet per animation in `Resources/Dragon` (30 fps, 96 px high, about 1 MB in total), described by `dragon.json`.
+The dragon is ["Dragon - Fully Animated"](https://opengameart.org/content/dragon-fully-animated) by Cethiel (CC0): a rendered dark-fantasy dragon with 60 fps animations. `scripts/make-dragon-atlas.py` turns the original frames into one sprite sheet per animation in `Resources/Dragon` (30 fps, 96 px high, about 1.2 MB in total), described by `dragon.json`. The script also recolours it (black scales; the bone belly, horns, claws and amber eyes are kept) and adds the flame, from ["Lots of game effects"](https://opengameart.org/node/52692) by Soluna Software (CC0).
 
 | State | When | Animation |
 | --- | --- | --- |
-| peek | nothing going on | Idle (loop) |
+| peek | nothing going on | Idle (loop); every 30 to 60 seconds Attack 2 once (rears up and strikes) |
 | working | Claude is working | Walking (loop) |
 | alert | Claude is waiting for you | Idle Battle (loop) |
-| done | a session just finished | Attack 2: rears up and strikes, once, then back to Idle |
+| done | a session just finished | Attack 1 with the flame: draws back and breathes fire, once, then back to Idle |
 | sleep | no input for 5 minutes | lies down (the end of Death), then breathes slowly |
 | wake | leaving sleep | the lie-down played backwards |
 
@@ -144,4 +144,5 @@ Why this dragon, and what it was compared with: [docs/MASCOT.md](docs/MASCOT.md)
 ## Credits
 
 - Mascot: ["Dragon - Fully Animated"](https://opengameart.org/content/dragon-fully-animated) by [Cethiel](https://opengameart.org/users/cethiel), CC0. No attribution is required; it is credited here and in the app's About panel (right-click the notch) anyway.
+- The dragon's flame: ["Lots of game effects"](https://opengameart.org/node/52692) by [Soluna Software](https://opengameart.org/users/soluna-software), CC0.
 - Now playing from other apps: [mediaremote-adapter](https://github.com/ungive/mediaremote-adapter) by Jonas van den Berg and contributors, BSD 3-Clause licence (see `Vendor/mediaremote-adapter/LICENSE`, also shipped in the app as `mediaremote-adapter-LICENSE`).

@@ -707,6 +707,7 @@ enum SelfTest {
         }
         await show(.done)
         check(host()?.sheetForTesting == "done", "done plays its sheet")
+        await wait(1.1) // the flame is out
         if let w = notch.window { snapshot(w, "dragon-done") }
         // 2.7 s of animation; allow for a restart (the header being rebuilt mid-way) rather than a fixed wait.
         var waited = 0.0
