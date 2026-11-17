@@ -3,16 +3,16 @@ import SwiftUI
 
 // MARK: - Colours & type
 
-/// Black, bone and one ember. Always dark, whatever the system appearance. Violet-black is only ever depth
-/// (lines and the fill of something switched on), never text.
+/// Black, bone and one ember. Always dark, whatever the system appearance. The surfaces are neutral black and
+/// greys (no tint); they are only ever depth (lines and the fill of something switched on), never text.
 enum Palette {
     static let bg = Color.black
     /// The few filled plates: pops' pictures, cover placeholders, chart tracks.
-    static let card = Color(hex: 0x131018)
+    static let card = Color(hex: 0x101010)
     /// Controls at rest have no fill (they are outlined); kept for the places that still want a dark fill.
-    static let button = Color(hex: 0x17131C)
+    static let button = Color(hex: 0x141414)
     /// The fill of something on: selected, hovered, a block's main action.
-    static let buttonHi = Color(hex: 0x241F2A)
+    static let buttonHi = Color(hex: 0x1F1F1F)
     /// Bone, from the dragon's belly and horns.
     static let text = Color(hex: 0xEDE5D8)
     static let text2 = Color(hex: 0x968D81)
@@ -24,9 +24,9 @@ enum Palette {
     static let accent = Color(hex: 0xF0A22B)
     static let red = accent
     /// 1 pt lines: rules, outlines.
-    static let hairline = Color(hex: 0x3A3340)
+    static let hairline = Color(hex: 0x333333)
     /// The unfilled scales of a scale bar.
-    static let scaleEmpty = Color(hex: 0x241F2A)
+    static let scaleEmpty = Color(hex: 0x1F1F1F)
 
     // Older names, kept so every view speaks the same palette.
     static let glass = card
