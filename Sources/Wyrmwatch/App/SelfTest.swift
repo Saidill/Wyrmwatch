@@ -686,7 +686,7 @@ enum SelfTest {
         log("— Dragon")
         check(DragonAtlas.shared != nil, "the dragon's sprite sheets are in the app")
         if let atlas = DragonAtlas.shared {
-            for name in ["idle", "working", "alert", "done", "sleep"] {
+            for name in ["idle", "working", "alert", "done", "flourish", "sleep"] {
                 check(atlas.image(name) != nil && (atlas.animations[name]?.fps ?? 99) <= 30, "sheet \(name) loads, at most 30 fps")
             }
         }
@@ -707,8 +707,9 @@ enum SelfTest {
         }
         await show(.done)
         check(host()?.sheetForTesting == "done", "done plays its sheet")
+        await wait(1.1) // the flame is out
         if let w = notch.window { snapshot(w, "dragon-done") }
-        // 3.4 s of animation; allow for a restart (the header being rebuilt mid-way) rather than a fixed wait.
+        // 2.7 s of animation; allow for a restart (the header being rebuilt mid-way) rather than a fixed wait.
         var waited = 0.0
         while waited < 9, host()?.sheetForTesting != "idle" {
             await wait(0.3)
@@ -716,6 +717,15 @@ enum SelfTest {
         }
         check(host()?.sheetForTesting == "idle" && host()?.isAnimatingForTesting == true,
               "done plays once, then back to idle (after \(String(format: "%.1f", waited + 0.5)) s)")
+        await show(.peek)
+        host()?.flourishForTesting()
+        check(host()?.sheetForTesting == "flourish", "watching, it can rear up")
+        waited = 0
+        while waited < 9, host()?.sheetForTesting != "idle" {
+            await wait(0.3)
+            waited += 0.3
+        }
+        check(host()?.sheetForTesting == "idle", "and goes back to watching")
         await show(.sleep)
         check(host()?.sheetForTesting == "sleep", "sleep lies down")
         await wait(3.2)

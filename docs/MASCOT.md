@@ -60,3 +60,29 @@ Urutan di gambar: idle, working, alert, done, sleep.
 - Pindah state: crossfade 150 ms (`CATransition`). "Done" sekali lalu idle. Saat notch tertutup atau Reduce Motion aktif, semua animasi dilepas dan yang tampil satu frame diam.
 - Rive tidak dipakai lagi, jadi `RiveRuntime` (14 MB) dilepas dari app. App turun dari ±21 MB ke 6,9 MB.
 - Kredit: README dan panel About (klik kanan notch → About Wyrmwatch). CC0 tidak mewajibkan atribusi, tapi tetap ditulis.
+
+## Putaran kedua: pilihan lain (17 November 2026)
+
+Naga cokelat dinilai membosankan, jadi dicari lagi. Kandidat gratis yang baru (semua di `~/Downloads/wyrmwatch-dragons/`):
+
+![Pilihan pada 96, 48 dan 24 px](mascot/options.png)
+
+**Dipilih: opsi 5** (Obsidian + api).
+
+- 1–5 memakai naga Cethiel yang sama (satu-satunya dengan gerakan halus), diwarnai ulang, dan di opsi 5 ditambah semburan api dari ["Lots of game effects"](https://opengameart.org/node/52692) (CC0, 32 frame).
+- 6: ["Flying Dragon Rework"](https://opengameart.org/node/83655), CC-BY 3.0. Siluet bagus, tapi 3 frame per gerakan.
+- 7: ["Wyvern"](https://opengameart.org/node/6760) oleh Clint Bellanger dan Justin Nichol, CC-BY-SA 3.0. Ada terbang dan sembur, 8 frame, tapi di 24 px tidak terbaca.
+- Dilihat lalu ditolak karena bukan animasi utuh (hanya potongan tubuh atau 4 frame): 2D Dragon Spritesheet, Dragon 1 (M484), Flappy Dragon.
+- Berbayar, tidak diunduh: versi HD Cethiel dengan Roar, Sleeping, Waking Up dan Intimidation (itch.io, $5), Night Dragon ($1), Green Woods Dragon ($2), 2D Dragon Animation Pack ($7).
+
+Yang berubah setelah pilihan itu:
+
+![State baru pada 24, 48 dan 96 px](mascot/chosen-states.png)
+
+Urutan di gambar: idle, working, alert, done (api), flourish, sleep.
+
+- **Warna**: sisik dijadikan hitam di `make-dragon-atlas.py` (warna badan dibuang 85%, digelapkan, sedikit dingin). Bagian terang (perut, tanduk, cakar) dan mata tetap berwarna asli. Di atas notch hitam ia terbaca sebagai abu gelap dengan tepi terang; hitam pekat akan hilang.
+- **Done**: sekarang Attack 1 (menarik kepala lalu menjulur), dengan api ditempel di moncong pada frame asli 58–104. Sheet ini 80 px lebih lebar dari yang lain (`frameWidth` per animasi di `dragon.json`), jadi api keluar dari kotak naga ke arah ia menghadap. Di notch live, sisi itu adalah kamera, jadi apinya sebagian tertutup.
+- **Flourish**: saat idle, tiap 30–60 detik naga berdiri lalu menerkam sekali (Attack 2, yang dulu dipakai "done"), supaya tidak hanya bernapas.
+- Tabel pemetaan state di atas menggambarkan versi pertama (cokelat, done = Attack 2).
+- Total sprite ±1,2 MB.

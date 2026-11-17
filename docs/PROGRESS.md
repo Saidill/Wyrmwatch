@@ -381,3 +381,14 @@ Hasil (sesi Claude ini aktif selama pengukuran): closed ±0,1–1%, live 0,9–1
 - Kontras garis di kecerahan layar rendah.
 - Naga di header pada notch fisik (kiri tab, tidak tertutup kamera) dan di pop "sesi selesai".
 - Kartu Music saat idle setelah app dibuka ulang (judul dan artis terakhir tersimpan, cover tidak).
+
+## Naga hitam berapi dan permukaan hitam netral (`feat/obsidian-dragon`)
+
+- Permintaan pengguna (17 Nov 2026): warna utama jadi hitam, aksen tetap, dan naga dinilai membosankan. Dari tujuh opsi (`docs/mascot/options.png`) dipilih Obsidian + api; "primary" dikonfirmasi sebagai permukaan app.
+- `Palette`: `card`, `button`, `buttonHi`, `hairline`, `scaleEmpty` dari hitam keunguan ke abu netral (`#101010`, `#141414`, `#1F1F1F`, `#333333`). Teks tulang dan aksen amber tetap. Settings tidak disentuh.
+- Naga: sisik hitam, "done" menyembur api (Attack 1 + api CC0 dari Soluna Software), dan sesekali berdiri lalu menerkam saat idle. `DragonSpriteHost` kini mengatur lebar layer per sheet (`place()`), karena sheet "done" lebih lebar.
+- Kredit api ditambahkan di README dan panel About. Screenshot README diperbarui.
+
+**Cek manual**
+- Api di notch live (sebagian tertutup kamera) dan di header (melewati ikon Home selama ±1,5 detik).
+- Naga hitam di kecerahan layar rendah.

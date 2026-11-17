@@ -59,7 +59,7 @@ Three decisions carry it:
 2. **Controls are outlines.** A control fills only when it is on: selected, hovered, or the block's main action.
 3. **Numbers and titles are in the system serif** (New York, 16 pt and up); labels and body stay in SF.
 
-Colour: black; violet-black only as depth (lines `#3A3340`, fill of something on `#241F2A`); text in bone `#EDE5D8` from the dragon's belly and horns; one accent, the amber of its eye, `#F0A22B`, only for what is running or over 90%. Red is gone.
+Colour: black; neutral greys only as depth (lines `#333333`, fill of something on `#1F1F1F`; violet-black until 17 Nov 2026, changed at the owner's request); text in bone `#EDE5D8` from the dragon's belly and horns; one accent, the amber of its eye, `#F0A22B`, only for what is running or over 90%. Red is gone.
 
 The dragon left the camera gap, where a real camera hid it. It stands on a ground line under the header, to the left of the tabs; the self-test checks it stays clear of the camera.
 
