@@ -123,10 +123,10 @@ private struct ClaudeFinishedPop: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            // The dragon itself says it: it rears up and strikes once.
+            // The dragon itself says it: it breathes fire once. The flame needs the room to its right.
             WyrmSlot(state: .done, size: 28)
                 .frame(height: 40)
-                .padding(.trailing, 8)
+                .padding(.trailing, 24)
                 .opacity(checked ? 1 : 0)
 
             VStack(alignment: .leading, spacing: 2) {

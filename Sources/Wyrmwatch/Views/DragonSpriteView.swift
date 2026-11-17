@@ -2,8 +2,9 @@ import AppKit
 import QuartzCore
 import SwiftUI
 
-/// The mascot's sprite sheets: "Dragon - Fully Animated" by Cethiel (CC0, opengameart.org), packed by
-/// scripts/make-dragon-atlas.py into one grid of frames per animation (Resources/Dragon + dragon.json).
+/// The mascot's sprite sheets: "Dragon - Fully Animated" by Cethiel (CC0, opengameart.org) with the flame of
+/// "Lots of game effects" (CC0), recoloured and packed by scripts/make-dragon-atlas.py into one grid of frames
+/// per animation (Resources/Dragon + dragon.json).
 final class DragonAtlas {
     struct Animation: Decodable {
         let file: String
@@ -12,6 +13,8 @@ final class DragonAtlas {
         let frames: Int
         let fps: Double
         let loop: Bool
+        /// Only for a sheet wider than the rest ("done": the flame runs past the dragon's box on the right).
+        let frameWidth: CGFloat?
     }
 
     private struct Manifest: Decodable {
@@ -25,6 +28,7 @@ final class DragonAtlas {
 
     /// Width over height of one frame.
     let aspect: CGFloat
+    private let frameWidth: CGFloat
     let animations: [String: Animation]
     private let folder: URL
     private var images: [String: CGImage] = [:]
@@ -35,6 +39,7 @@ final class DragonAtlas {
               let manifest = try? JSONDecoder().decode(Manifest.self, from: data), manifest.frameHeight > 0 else { return nil }
         self.folder = folder
         aspect = manifest.frameWidth / manifest.frameHeight
+        frameWidth = manifest.frameWidth
         animations = manifest.animations
     }
 
@@ -46,6 +51,12 @@ final class DragonAtlas {
               let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }
         images[name] = image
         return image
+    }
+
+    /// How much wider than the dragon's box the frames of a sheet are (1 for all but "done").
+    func widening(_ name: String?) -> CGFloat {
+        guard let name, let width = animations[name]?.frameWidth, frameWidth > 0 else { return 1 }
+        return width / frameWidth
     }
 
     /// Where each frame sits in its sheet, in unit coordinates. Frames run left to right, top row first; a layer's
@@ -81,6 +92,11 @@ final class DragonSpriteHost: NSView {
     /// The sheet on the layer.
     private var sheet: String?
     private var next: DispatchWorkItem?
+    /// The dragon's box in this view: as large as fits, standing on the bottom edge.
+    private var box = CGSize.zero
+    /// Watching, it rears up and strikes now and then. Not during the self-test, which looks at what is playing.
+    static var flourishes = !CommandLine.arguments.contains("--selftest")
+    private static let flourishEvery: ClosedRange<TimeInterval> = 30...60
     /// The sheets face right; mirrored for a dragon that stands on the right and looks in.
     var facingLeft = false {
         didSet { if facingLeft != oldValue { sprite.transform = CATransform3DMakeScale(facingLeft ? -1 : 1, 1, 1) } }
@@ -100,9 +116,10 @@ final class DragonSpriteHost: NSView {
         wantsLayer = true
         layer?.masksToBounds = false
         // Nothing here animates by itself: frames and the crossfade are added explicitly.
-        sprite.actions = ["contents": NSNull(), "contentsRect": NSNull(), "bounds": NSNull(), "position": NSNull(), "transform": NSNull()]
+        sprite.actions = ["contents": NSNull(), "contentsRect": NSNull(), "bounds": NSNull(), "position": NSNull(),
+                          "anchorPoint": NSNull(), "transform": NSNull()]
         sprite.contentsGravity = .resize
-        sprite.anchorPoint = CGPoint(x: 0.5, y: 0) // breathes from the ground up
+        sprite.anchorPoint = CGPoint(x: 0.5, y: 0)
         layer?.addSublayer(sprite)
     }
 
@@ -111,12 +128,27 @@ final class DragonSpriteHost: NSView {
     override func layout() {
         super.layout()
         guard let atlas else { return }
-        // As large as fits, centred, standing on the bottom edge.
-        let size = bounds.width / max(bounds.height, 1) > atlas.aspect
+        box = bounds.width / max(bounds.height, 1) > atlas.aspect
             ? CGSize(width: bounds.height * atlas.aspect, height: bounds.height)
             : CGSize(width: bounds.width, height: bounds.width / atlas.aspect)
-        sprite.bounds = CGRect(origin: .zero, size: size)
-        sprite.position = CGPoint(x: bounds.midX, y: bounds.midY - size.height / 2)
+        place()
+    }
+
+    /// Sizes the layer for the sheet on it. A wider sheet grows past the view on the side the dragon faces (the
+    /// anchor stays in the middle of the dragon's box, so turning it round still works).
+    private func place() {
+        let widening = atlas?.widening(sheet) ?? 1
+        sprite.anchorPoint = CGPoint(x: 0.5 / widening, y: 0) // breathes from the ground up
+        sprite.bounds = CGRect(x: 0, y: 0, width: box.width * widening, height: box.height)
+        sprite.position = CGPoint(x: bounds.midX, y: bounds.midY - box.height / 2)
+    }
+
+    /// For the self-test: the flourish, now.
+    func flourishForTesting() { flourish() }
+
+    private func flourish() {
+        guard shown?.state == .peek, shown?.running == true, sheet == "idle" else { return }
+        play("flourish") { [weak self] in self?.play("idle") }
     }
 
     func update(state: WyrmState, running: Bool) {
@@ -138,7 +170,7 @@ final class DragonSpriteHost: NSView {
             // Lie down (straight to the last frame when it was already lying there), then breathe.
             if wasAsleep || before == nil { hold(.sleep); breathe() } else { play("sleep") { [weak self] in self?.breathe() } }
         case .done:
-            // Once, then back to watching.
+            // Draws back and breathes fire once, then back to watching.
             play("done") { [weak self] in self?.play("idle") }
         default:
             let name = Self.loop(for: state)
@@ -169,10 +201,16 @@ final class DragonSpriteHost: NSView {
         frames.speed = speed
         frames.repeatCount = animation.loop ? .infinity : 1
         sprite.add(frames, forKey: Self.frames)
-        guard !animation.loop, let then else { return }
-        let work = DispatchWorkItem(block: then)
+        var after = frames.duration / Double(speed)
+        var work = then.map { DispatchWorkItem(block: $0) }
+        if name == "idle", Self.flourishes, shown?.state == .peek {
+            after = .random(in: Self.flourishEvery)
+            work = DispatchWorkItem { [weak self] in self?.flourish() }
+        }
+        guard let work, name == "idle" || !animation.loop else { return }
+        next?.cancel()
         next = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + frames.duration / Double(speed), execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + after, execute: work)
     }
 
     /// One still frame of a state, with nothing moving.
@@ -185,8 +223,8 @@ final class DragonSpriteHost: NSView {
         }
         guard let atlas, let animation = atlas.animations[name], let image = atlas.image(name) else { return }
         let rects = atlas.rects(animation)
-        // Asleep: lying down (the last frame). Done: reared up (a third of the way in). Otherwise the first frame.
-        let index = state == .sleep ? rects.count - 1 : state == .done ? rects.count / 3 : 0
+        // Asleep: lying down (the last frame). Done: breathing fire (half-way in). Otherwise the first frame.
+        let index = state == .sleep ? rects.count - 1 : state == .done ? rects.count / 2 : 0
         sprite.removeAllAnimations()
         show(image, name, rect: rects[index], fade: false)
     }
@@ -202,6 +240,7 @@ final class DragonSpriteHost: NSView {
         sprite.contents = image
         sprite.contentsRect = rect
         sheet = name
+        place()
     }
 
     /// Asleep: a slow rise and fall.

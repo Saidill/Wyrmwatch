@@ -29,6 +29,15 @@
     },
     "done": {
       "file": "done.png",
+      "columns": 9,
+      "rows": 9,
+      "frames": 81,
+      "fps": 30,
+      "loop": false,
+      "frameWidth": 253
+    },
+    "flourish": {
+      "file": "flourish.png",
       "columns": 11,
       "rows": 10,
       "frames": 102,
